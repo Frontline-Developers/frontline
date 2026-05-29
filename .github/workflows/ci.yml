@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  flutter-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+          cache: true
+
+      - name: Inject firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS }}
+        run: |
+          echo "$FIREBASE_OPTIONS" | base64 -d > lib/firebase_options.dart
+
+      - run: flutter pub get
+
+      - run: dart run build_runner build
+
+      - name: Check generated files are up to date
+        run: git diff --exit-code -- ':!pubspec.lock'
+
+      - name: Format check
+        run: dart format --set-exit-if-changed lib/ test/
+
+      - run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: |
+          if find test -name '*_test.dart' 2>/dev/null | grep -q .; then
+            flutter test --coverage
+          else
+            echo "No test files found — skipping"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/mobile/coverage/lcov.info
+          retention-days: 30
+
+  functions-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - run: npm run lint
+
+      - run: npm run build
