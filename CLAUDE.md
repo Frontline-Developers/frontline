@@ -193,9 +193,10 @@ No AI attribution in commits or PRs. Write as a developer would.
 5. Never use `ListView(children: [...])` for dynamic data — always `ListView.builder`
 6. Never skip `flutter analyze` before opening a PR
 7. Never push directly to `main`/`master` — always create a branch and open a PR
-8. Never commit `google-services.json`, `GoogleService-Info.plist`, `firebase_options.dart`, or `.env`
-9. Never add `// Co-Authored-By:` or AI attribution lines to commits or PRs
-10. Never use mock frameworks for Flutter tests — extend the real Notifier class with `_FakeXxxNotifier`
+8. **Never merge a PR** — only humans may merge pull requests. Claude opens PRs and fixes CI; merging is the developer's decision
+9. Never commit `google-services.json`, `GoogleService-Info.plist`, `firebase_options.dart`, or `.env`
+10. Never add `// Co-Authored-By:` or AI attribution lines to commits or PRs
+11. Never use mock frameworks for Flutter tests — extend the real Notifier class with `_FakeXxxNotifier`
 
 ---
 
