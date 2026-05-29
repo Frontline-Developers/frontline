@@ -1,0 +1,25 @@
+# Generated Dart files — never edit directly, regenerate with build_runner
+**/*.g.dart
+**/*.freezed.dart
+
+# Build artifacts
+apps/mobile/android/build/
+apps/mobile/build/
+apps/mobile/coverage/
+functions/lib/
+
+# Dependencies
+functions/node_modules/
+
+# Claude internal worktrees and plans
+.claude/worktrees/
+.claude/plans/
+
+# Secrets — never read by agents
+apps/mobile/.env
+apps/mobile/lib/firebase_options.dart
+apps/mobile/android/app/google-services.json
+
+# Logs
+logs/
+*.log
