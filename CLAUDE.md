@@ -197,6 +197,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 9. Never commit `google-services.json`, `GoogleService-Info.plist`, `firebase_options.dart`, or `.env`
 10. Never add `// Co-Authored-By:` or AI attribution lines to commits or PRs
 11. Never use mock frameworks for Flutter tests — extend the real Notifier class with `_FakeXxxNotifier`
+12. **Never write implementation code before tests** — invoke `/tdd-feature` first, write all tests, confirm they all fail, then implement
 
 ---
 
@@ -206,4 +207,5 @@ No AI attribution in commits or PRs. Write as a developer would.
 - Run `flutter analyze` before every PR — zero warnings is the bar
 - Run `dart run build_runner build --delete-conflicting-outputs` after any model or provider change
 - Keep feature stubs in sync: if a `datasource` gets a real implementation, update the features table above
-- Every new Screen needs at minimum: render test, empty-state test, positive action test
+- **When developing any new feature or fixing a bug, the first action is always `/tdd-feature`.** Do not write a single line of implementation code before tests exist and have been confirmed failing. This is non-negotiable.
+- Every new Screen needs at minimum: render test, empty-state test, positive action test, error-state test, loading-guard test
