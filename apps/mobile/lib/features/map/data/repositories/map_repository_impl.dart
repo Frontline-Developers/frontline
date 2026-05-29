@@ -7,6 +7,9 @@ class MapRepositoryImpl implements MapRepository {
   MapRepositoryImpl(this._datasource);
 
   @override
-  Stream<List<MapReport>> watchReportsNear(double lat, double lng, double radiusKm) =>
-      _datasource.watchReportsNear(lat, lng, radiusKm);
+  Stream<List<MapReport>> watchReportsNear(
+    double lat,
+    double lng,
+    double radiusKm,
+  ) => _datasource.watchReportsNear(lat, lng, radiusKm);
 }

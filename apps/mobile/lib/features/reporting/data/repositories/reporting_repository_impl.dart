@@ -7,5 +7,6 @@ class ReportingRepositoryImpl implements ReportingRepository {
   ReportingRepositoryImpl(this._datasource);
 
   @override
-  Future<String> submitReport(Report report) => _datasource.submitReport(report);
+  Future<String> submitReport(Report report) =>
+      _datasource.submitReport(report);
 }

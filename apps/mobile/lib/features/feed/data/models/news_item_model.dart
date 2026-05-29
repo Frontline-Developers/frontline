@@ -25,7 +25,9 @@ class NewsItemModel {
       title: json['title'] as String,
       body: json['body'] as String?,
       url: json['url'] as String?,
-      source: (json['source'] as String) == 'wire' ? NewsSource.wire : NewsSource.citizen,
+      source: (json['source'] as String) == 'wire'
+          ? NewsSource.wire
+          : NewsSource.citizen,
       publishedAt: ts.toDate(),
     );
   }

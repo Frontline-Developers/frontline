@@ -9,7 +9,11 @@ class MapState {
   final String? error;
   const MapState({this.reports = const [], this.isLoading = false, this.error});
 
-  MapState copyWith({List<MapReport>? reports, bool? isLoading, Object? error = _sentinel}) {
+  MapState copyWith({
+    List<MapReport>? reports,
+    bool? isLoading,
+    Object? error = _sentinel,
+  }) {
     return MapState(
       reports: reports ?? this.reports,
       isLoading: isLoading ?? this.isLoading,
@@ -25,7 +29,9 @@ final _mapRepositoryProvider = Provider(
   (ref) => MapRepositoryImpl(ref.watch(_mapDatasourceProvider)),
 );
 
-final mapNotifierProvider = NotifierProvider<MapNotifier, MapState>(MapNotifier.new);
+final mapNotifierProvider = NotifierProvider<MapNotifier, MapState>(
+  MapNotifier.new,
+);
 
 class MapNotifier extends Notifier<MapState> {
   @override
@@ -33,9 +39,14 @@ class MapNotifier extends Notifier<MapState> {
 
   void watchArea(double lat, double lng, double radiusKm) {
     state = state.copyWith(isLoading: true);
-    ref.watch(_mapRepositoryProvider).watchReportsNear(lat, lng, radiusKm).listen(
-      (reports) => state = state.copyWith(reports: reports, isLoading: false),
-      onError: (e) => state = state.copyWith(isLoading: false, error: e.toString()),
-    );
+    ref
+        .watch(_mapRepositoryProvider)
+        .watchReportsNear(lat, lng, radiusKm)
+        .listen(
+          (reports) =>
+              state = state.copyWith(reports: reports, isLoading: false),
+          onError: (e) =>
+              state = state.copyWith(isLoading: false, error: e.toString()),
+        );
   }
 }

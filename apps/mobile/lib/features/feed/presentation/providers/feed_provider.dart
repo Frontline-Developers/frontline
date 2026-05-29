@@ -9,7 +9,11 @@ class FeedState {
   final String? error;
   const FeedState({this.items = const [], this.isLoading = false, this.error});
 
-  FeedState copyWith({List<NewsItem>? items, bool? isLoading, Object? error = _sentinel}) {
+  FeedState copyWith({
+    List<NewsItem>? items,
+    bool? isLoading,
+    Object? error = _sentinel,
+  }) {
     return FeedState(
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
@@ -25,15 +29,21 @@ final _feedRepositoryProvider = Provider(
   (ref) => FeedRepositoryImpl(ref.watch(_feedDatasourceProvider)),
 );
 
-final feedNotifierProvider = NotifierProvider<FeedNotifier, FeedState>(FeedNotifier.new);
+final feedNotifierProvider = NotifierProvider<FeedNotifier, FeedState>(
+  FeedNotifier.new,
+);
 
 class FeedNotifier extends Notifier<FeedState> {
   @override
   FeedState build() {
-    ref.watch(_feedRepositoryProvider).watchFeed().listen(
-      (items) => state = state.copyWith(items: items, isLoading: false),
-      onError: (e) => state = state.copyWith(isLoading: false, error: e.toString()),
-    );
+    ref
+        .watch(_feedRepositoryProvider)
+        .watchFeed()
+        .listen(
+          (items) => state = state.copyWith(items: items, isLoading: false),
+          onError: (e) =>
+              state = state.copyWith(isLoading: false, error: e.toString()),
+        );
     return const FeedState(isLoading: true);
   }
 }

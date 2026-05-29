@@ -9,7 +9,11 @@ class ReportingState {
   final ReportingStatus status;
   final String? submittedId;
   final String? error;
-  const ReportingState({this.status = ReportingStatus.idle, this.submittedId, this.error});
+  const ReportingState({
+    this.status = ReportingStatus.idle,
+    this.submittedId,
+    this.error,
+  });
 
   ReportingState copyWith({
     ReportingStatus? status,
@@ -18,7 +22,9 @@ class ReportingState {
   }) {
     return ReportingState(
       status: status ?? this.status,
-      submittedId: submittedId == _sentinel ? this.submittedId : submittedId as String?,
+      submittedId: submittedId == _sentinel
+          ? this.submittedId
+          : submittedId as String?,
       error: error == _sentinel ? this.error : error as String?,
     );
   }
@@ -42,10 +48,15 @@ class ReportingNotifier extends Notifier<ReportingState> {
     if (state.status == ReportingStatus.loading) return;
     state = state.copyWith(status: ReportingStatus.loading);
     try {
-      final id = await ref.read(_reportingRepositoryProvider).submitReport(report);
+      final id = await ref
+          .read(_reportingRepositoryProvider)
+          .submitReport(report);
       state = state.copyWith(status: ReportingStatus.success, submittedId: id);
     } catch (e) {
-      state = state.copyWith(status: ReportingStatus.error, error: e.toString());
+      state = state.copyWith(
+        status: ReportingStatus.error,
+        error: e.toString(),
+      );
     }
   }
 
