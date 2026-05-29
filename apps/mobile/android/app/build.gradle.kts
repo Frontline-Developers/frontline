@@ -18,6 +18,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     defaultConfig {
         applicationId = "com.frontlineapp.frontline"
         minSdk = flutter.minSdkVersion
