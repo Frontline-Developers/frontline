@@ -78,3 +78,5 @@ testWidgets('does not submit on empty form', (tester) async {
 
 ## When to invoke
 When building or modifying Flutter screens, widgets, providers, or data-layer code.
+
+**For any new feature or bug fix: invoke `/tdd-feature` first.** Do not write implementation code before tests are written and confirmed failing. The Iron Law: no production code without a failing test first.
