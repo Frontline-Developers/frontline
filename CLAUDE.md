@@ -192,7 +192,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 4. Never collect or store PII (name, email, phone, IP)
 5. Never use `ListView(children: [...])` for dynamic data — always `ListView.builder`
 6. Never skip `flutter analyze` before opening a PR
-7. Never push directly to `main`/`master` — always create a branch and open a PR
+7. **Never push to `main`/`master`** — commits on feature branches only; open a PR and let a human merge
 8. **Never merge a PR** — only humans may merge pull requests. Claude opens PRs and fixes CI; merging is the developer's decision
 9. Never commit `google-services.json`, `GoogleService-Info.plist`, `firebase_options.dart`, or `.env`
 10. Never add `// Co-Authored-By:` or AI attribution lines to commits or PRs

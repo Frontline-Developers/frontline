@@ -34,11 +34,11 @@
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$cmd\" ] && exit 0; if echo \"$cmd\" | grep -qE 'git push.*(origin )?(main|master)'; then printf '{\"decision\":\"block\",\"reason\":\"Direct push to main/master is not allowed. Create a branch and open a PR instead.\"}'; exit 2; fi"
+            "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/enforce-no-main-push.sh\"'"
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$cmd\" ] && exit 0; if echo \"$cmd\" | grep -qE 'gh pr merge'; then printf '{\"decision\":\"block\",\"reason\":\"Claude is not allowed to merge PRs. Only humans may merge pull requests.\"}'; exit 2; fi"
+            "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/enforce-no-pr-merge.sh\"'"
           }
         ]
       }
