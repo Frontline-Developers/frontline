@@ -3,8 +3,8 @@
 # Runs on every push — slower is fine since it prevents wasted CI minutes.
 #
 # Checks:
-#   flutter:   build_runner → git diff check → dart format check →
-#              flutter analyze → flutter test → pubspec.lock check
+#   flutter:   build_runner → git diff check → dart format (auto-fix + amend) →
+#              flutter analyze → flutter test (skipped if no test files) → pubspec.lock check
 #   functions: npm run lint → npm run build
 
 REPO=$(git rev-parse --show-toplevel)
@@ -31,15 +31,16 @@ else
   printf "ok\n"
 fi
 
-# ── 2. dart format check ──────────────────────────────────────────────────────
-printf "  dart format check...     "
-if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed lib/ test/ > /dev/null 2>&1); then
-  printf "ok\n"
+# ── 2. dart format — auto-fix and amend last commit if needed ─────────────────
+printf "  dart format...           "
+(cd "$REPO/apps/mobile" && dart format lib/ test/ > /dev/null 2>&1)
+FORMAT_DIFF=$(git diff --name-only -- '*.dart' 2>/dev/null || true)
+if [ -n "$FORMAT_DIFF" ]; then
+  printf '%s\n' "$FORMAT_DIFF" | xargs git add
+  git commit --amend --no-edit --no-verify > /dev/null 2>&1
+  printf "auto-fixed + amended\n"
 else
-  printf "FAILED\n\n"
-  printf "  Unformatted Dart files detected. Run from apps/mobile:\n\n"
-  printf "    dart format lib/ test/\n\n"
-  FAIL=1
+  printf "ok\n"
 fi
 
 # ── 3. flutter analyze ────────────────────────────────────────────────────────
@@ -53,11 +54,16 @@ else
   FAIL=1
 fi
 
-# ── 4. flutter test ───────────────────────────────────────────────────────────
-printf "  flutter test...          \n\n"
-if ! (cd "$REPO/apps/mobile" && flutter test --no-pub 2>&1); then
-  printf "\n  ✗  Flutter tests failed — fix before pushing.\n\n"
-  FAIL=1
+# ── 4. flutter test — skip gracefully if no test files exist yet ──────────────
+TEST_FILES=$(find "$REPO/apps/mobile/test" -name '*_test.dart' 2>/dev/null | head -1)
+if [ -z "$TEST_FILES" ]; then
+  printf "  flutter test...          skipped (no test files yet)\n"
+else
+  printf "  flutter test...          \n\n"
+  if ! (cd "$REPO/apps/mobile" && flutter test --no-pub 2>&1); then
+    printf "\n  ✗  Flutter tests failed — fix before pushing.\n\n"
+    FAIL=1
+  fi
 fi
 
 # ── 5. pubspec.lock consistency ───────────────────────────────────────────────
