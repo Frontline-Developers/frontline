@@ -1,0 +1,105 @@
+#!/bin/bash
+# Pre-push: mirrors the full CI pipeline locally so no push ever fails CI.
+# Runs on every push — slower is fine since it prevents wasted CI minutes.
+#
+# Checks:
+#   flutter:   build_runner → git diff check → dart format check →
+#              flutter analyze → flutter test → pubspec.lock check
+#   functions: npm run lint → npm run build
+
+REPO=$(git rev-parse --show-toplevel)
+FAIL=0
+
+printf "\n  Frontline pre-push\n\n"
+
+# ── 1. build_runner — generated files must be up to date ─────────────────────
+printf "  build_runner build...    "
+(cd "$REPO/apps/mobile" && dart run build_runner build --delete-conflicting-outputs > /dev/null 2>&1)
+git checkout HEAD -- apps/mobile/pubspec.lock 2>/dev/null || true
+
+CHANGED_GEN=$(git diff --name-only -- '*.g.dart' '*.freezed.dart' 2>/dev/null || true)
+if [ -n "$CHANGED_GEN" ]; then
+  printf "OUT OF DATE\n\n"
+  printf "  build_runner regenerated files that are not committed:\n\n"
+  printf '%s\n' "$CHANGED_GEN" | sed 's/^/    /'
+  printf "\n  Stage and commit the generated files before pushing:\n\n"
+  printf "    git add -A\n"
+  printf "    git commit -m 'chore: regenerate code'\n\n"
+  printf '%s\n' "$CHANGED_GEN" | xargs git checkout HEAD -- 2>/dev/null || true
+  FAIL=1
+else
+  printf "ok\n"
+fi
+
+# ── 2. dart format check ──────────────────────────────────────────────────────
+printf "  dart format check...     "
+if (cd "$REPO/apps/mobile" && dart format --set-exit-if-changed lib/ test/ > /dev/null 2>&1); then
+  printf "ok\n"
+else
+  printf "FAILED\n\n"
+  printf "  Unformatted Dart files detected. Run from apps/mobile:\n\n"
+  printf "    dart format lib/ test/\n\n"
+  FAIL=1
+fi
+
+# ── 3. flutter analyze ────────────────────────────────────────────────────────
+printf "  flutter analyze...       "
+if (cd "$REPO/apps/mobile" && flutter analyze > /dev/null 2>&1); then
+  printf "ok\n"
+else
+  printf "FAILED\n\n"
+  (cd "$REPO/apps/mobile" && flutter analyze 2>&1) || true
+  printf "\n"
+  FAIL=1
+fi
+
+# ── 4. flutter test ───────────────────────────────────────────────────────────
+printf "  flutter test...          \n\n"
+if ! (cd "$REPO/apps/mobile" && flutter test --no-pub 2>&1); then
+  printf "\n  ✗  Flutter tests failed — fix before pushing.\n\n"
+  FAIL=1
+fi
+
+# ── 5. pubspec.lock consistency ───────────────────────────────────────────────
+printf "  pubspec.lock check...    "
+if git diff --quiet -- apps/mobile/pubspec.lock 2>/dev/null && \
+   git diff --cached --quiet -- apps/mobile/pubspec.lock 2>/dev/null; then
+  printf "ok\n"
+else
+  printf "UNCOMMITTED CHANGES\n\n"
+  printf "  pubspec.lock has uncommitted changes. Commit them:\n\n"
+  printf "    git add apps/mobile/pubspec.lock\n"
+  printf "    git commit -m 'chore(deps): update pubspec.lock'\n\n"
+  FAIL=1
+fi
+
+# ── 6. functions: lint ────────────────────────────────────────────────────────
+printf "\n  npm run lint...          "
+if (cd "$REPO/functions" && npm run lint > /dev/null 2>&1); then
+  printf "ok\n"
+else
+  printf "FAILED\n\n"
+  (cd "$REPO/functions" && npm run lint 2>&1) || true
+  printf "\n"
+  FAIL=1
+fi
+
+# ── 7. functions: build ───────────────────────────────────────────────────────
+printf "  npm run build...         "
+if (cd "$REPO/functions" && npm run build > /dev/null 2>&1); then
+  printf "ok\n"
+else
+  printf "FAILED\n\n"
+  (cd "$REPO/functions" && npm run build 2>&1) || true
+  printf "\n"
+  FAIL=1
+fi
+
+printf "\n"
+if [ "$FAIL" -eq 0 ]; then
+  printf "  ✓  All checks passed.\n\n"
+else
+  printf "  ✗  Fix the issues above before pushing.\n\n"
+fi
+
+[ "$FAIL" -eq 0 ] || exit 1

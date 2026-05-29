@@ -164,6 +164,12 @@ if (Select-String -Path $firebaseOptions -Pattern 'TODO' -Quiet) {
   Write-Ok "firebase_options.dart already configured"
 }
 
+# ── Git hooks ─────────────────────────────────────────────────────────────────
+Write-Step "Git hooks"
+& git config core.hooksPath .githooks
+Write-Ok "pre-commit hook active  (dart format + prettier auto-fix; flutter analyze + eslint gate)"
+Write-Ok "pre-push hook active    (flutter test + pubspec.lock check + functions lint + tsc)"
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Hr

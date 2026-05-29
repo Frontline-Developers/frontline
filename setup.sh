@@ -183,12 +183,9 @@ fi
 
 # ── Git hooks ─────────────────────────────────────────────────────────────────
 step "Git hooks"
-if [[ -d "$ROOT_DIR/.githooks" ]]; then
-  git config core.hooksPath .githooks
-  ok "Git hooks active  ${GRAY}(.githooks/)${RESET}"
-else
-  info "No .githooks/ directory — skipping"
-fi
+git config core.hooksPath .githooks
+ok "pre-commit hook active  ${GRAY}(dart format + prettier auto-fix; flutter analyze + eslint gate)${RESET}"
+ok "pre-push hook active    ${GRAY}(flutter test + pubspec.lock check + functions lint + tsc)${RESET}"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n$HR\n\n"
