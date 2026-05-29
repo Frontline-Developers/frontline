@@ -36,3 +36,11 @@ android {
 flutter {
     source = "../.."
 }
+
+// Force espresso 3.5.1 — AGP 9.0 rejects the duplicate namespace in 3.2.0
+configurations.configureEach {
+    resolutionStrategy {
+        force("androidx.test.espresso:espresso-core:3.5.1")
+        force("androidx.test.espresso:espresso-idling-resource:3.5.1")
+    }
+}
