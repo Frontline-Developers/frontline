@@ -4,9 +4,10 @@
 # Claude Code local settings
 **/.claude/settings.local.json
 
-# Claude Code worktrees / plans
+# Claude Code worktrees / plans / runtime files
 .claude/worktrees/
 .claude/plans/
+.claude/scheduled_tasks.lock
 
 # ── Firebase ──────────────────────────────────────────────────────────────────
 # Generated per-dev via `flutterfire configure` — do not commit
