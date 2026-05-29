@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter test *)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub get)",
+      "Bash(dart run build_runner build*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(npm run build:watch)",
+      "Bash(npm run lint *)",
+      "Bash(npm test)",
+      "Bash(npx tsc *)",
+      "Bash(firebase emulators:start*)",
+      "Bash(flutterfire configure*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/enforce-pr-template.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; lock=\"$root/.git/index.lock\"; [ -f \"$lock\" ] && ! lsof \"$lock\" >/dev/null 2>&1 && rm -f \"$lock\"; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

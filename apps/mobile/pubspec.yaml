@@ -1,0 +1,70 @@
+name: frontline
+description: "Frontline - Privacy-focused location-based reporting & news"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.9
+  shared_preferences: ^2.2.2
+
+  # Firebase
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  cloud_firestore: ^6.4.0
+  firebase_storage: ^13.4.0
+  cloud_functions: ^6.2.0
+  firebase_app_check: ^0.4.4+1
+
+  # State management
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
+
+  # Navigation
+  go_router: ^17.2.3
+
+  # Models
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.11.0
+
+  # Maps
+  mapbox_maps_flutter: ^2.4.0
+
+  # Media
+  image_picker: ^1.1.2
+
+  # Geo queries (GeoFire for Firestore)
+  geoflutterfire_plus: ^0.0.31
+
+  # Utilities
+  flutter_secure_storage: ^10.3.0
+  flutter_svg: ^2.0.17
+  google_fonts: ^8.1.0
+  http: ^1.6.0
+  connectivity_plus: ^7.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^4.0.3
+  build_runner: ^2.15.0
+  freezed: ^3.2.5
+  json_serializable: ^6.13.0
+  integration_test:
+    sdk: flutter
+
+dependency_overrides:
+  test_api: 0.7.10
+  path_provider_foundation: 2.4.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

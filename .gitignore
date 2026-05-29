@@ -1,0 +1,79 @@
+# macOS metadata
+.DS_Store
+
+# Claude Code local settings
+**/.claude/settings.local.json
+
+# Claude Code worktrees / plans
+.claude/worktrees/
+.claude/plans/
+
+# ── Firebase ──────────────────────────────────────────────────────────────────
+# Generated per-dev via `flutterfire configure` — do not commit
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/Runner/GoogleService-Info.plist
+apps/mobile/lib/firebase_options.dart
+
+# Firebase cache
+.firebase/
+
+# Logs
+*.log
+logs/
+firebase-debug.log*
+firebase-debug.*.log*
+npm-debug.log*
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+apps/mobile/.env
+*.env
+.env.*
+
+# ── Flutter/Dart ──────────────────────────────────────────────────────────────
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+apps/mobile/build/
+
+# Dart generated files (regenerated via build_runner)
+*.freezed.dart
+*.g.dart
+
+# Symbolication
+app.*.symbols
+app.*.map.json
+
+# Android build artifacts
+apps/mobile/android/app/debug
+apps/mobile/android/app/profile
+apps/mobile/android/app/release
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# ── Node / Cloud Functions ────────────────────────────────────────────────────
+node_modules/
+functions/lib/
+functions/node_modules/
+.npm
+.eslintcache
+.nyc_output
+coverage/
+*.tgz
+.yarn-integrity
+
+# Runtime
+pids
+*.pid
+*.seed
+
+# Misc
+*.bak
+.dataconnect
