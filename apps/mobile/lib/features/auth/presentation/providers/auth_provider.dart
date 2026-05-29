@@ -12,7 +12,11 @@ class AuthState {
   final String? error;
   const AuthState({this.status = AuthStatus.idle, this.user, this.error});
 
-  AuthState copyWith({AuthStatus? status, UserIdentity? user, Object? error = _sentinel}) {
+  AuthState copyWith({
+    AuthStatus? status,
+    UserIdentity? user,
+    Object? error = _sentinel,
+  }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
@@ -23,12 +27,16 @@ class AuthState {
 
 const _sentinel = Object();
 
-final _authDatasourceProvider = Provider((ref) => AuthDatasourceImpl(FirebaseAuth.instance));
+final _authDatasourceProvider = Provider(
+  (ref) => AuthDatasourceImpl(FirebaseAuth.instance),
+);
 final _authRepositoryProvider = Provider(
   (ref) => AuthRepositoryImpl(ref.watch(_authDatasourceProvider)),
 );
 
-final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 class AuthNotifier extends Notifier<AuthState> {
   @override
@@ -49,7 +57,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await ref.read(_authRepositoryProvider).signInAnonymously();
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: e.toString());
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: e.toString(),
+      );
     }
   }
 }

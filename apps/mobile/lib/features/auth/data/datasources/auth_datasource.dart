@@ -20,7 +20,9 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Stream<UserIdentity?> watchAuthState() {
     return _auth.authStateChanges().map(
-      (user) => user == null ? null : UserIdentity(uid: user.uid, isAnonymous: user.isAnonymous),
+      (user) => user == null
+          ? null
+          : UserIdentity(uid: user.uid, isAnonymous: user.isAnonymous),
     );
   }
 

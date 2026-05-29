@@ -9,8 +9,5 @@ import 'dart:math';
   final v = rng.nextDouble();
   final w = radiusKm / 111.0 * sqrt(u);
   final t = 2 * pi * v;
-  return (
-    lat + w * cos(t),
-    lng + w * sin(t) / cos(lat * pi / 180),
-  );
+  return (lat + w * cos(t), lng + w * sin(t) / cos(lat * pi / 180));
 }

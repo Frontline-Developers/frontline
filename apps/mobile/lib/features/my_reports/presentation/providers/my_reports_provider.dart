@@ -8,7 +8,11 @@ class MyReportsState {
   final List<MyReport> reports;
   final bool isLoading;
   final String? error;
-  const MyReportsState({this.reports = const [], this.isLoading = false, this.error});
+  const MyReportsState({
+    this.reports = const [],
+    this.isLoading = false,
+    this.error,
+  });
 }
 
 final _myReportsDatasourceProvider = Provider((_) => MyReportsDatasourceImpl());
@@ -25,10 +29,13 @@ class MyReportsNotifier extends Notifier<MyReportsState> {
     final authState = ref.watch(authNotifierProvider);
     final uid = authState.user?.uid;
     if (uid == null) return const MyReportsState();
-    ref.watch(_myReportsRepositoryProvider).watchMyReports(uid).listen(
-      (reports) => state = MyReportsState(reports: reports),
-      onError: (e) => state = MyReportsState(error: e.toString()),
-    );
+    ref
+        .watch(_myReportsRepositoryProvider)
+        .watchMyReports(uid)
+        .listen(
+          (reports) => state = MyReportsState(reports: reports),
+          onError: (e) => state = MyReportsState(error: e.toString()),
+        );
     return const MyReportsState(isLoading: true);
   }
 }

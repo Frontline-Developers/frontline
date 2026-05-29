@@ -11,14 +11,8 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) => _AppShell(child: child),
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const MapScreen(),
-        ),
-        GoRoute(
-          path: '/feed',
-          builder: (context, state) => const FeedScreen(),
-        ),
+        GoRoute(path: '/', builder: (context, state) => const MapScreen()),
+        GoRoute(path: '/feed', builder: (context, state) => const FeedScreen()),
         GoRoute(
           path: '/my-reports',
           builder: (context, state) => const MyReportsScreen(),
@@ -31,7 +25,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/report/:id',
-      builder: (context, state) => _ReportDetailPlaceholder(id: state.pathParameters['id']!),
+      builder: (context, state) =>
+          _ReportDetailPlaceholder(id: state.pathParameters['id']!),
     ),
   ],
 );
@@ -62,8 +57,14 @@ class _AppShellState extends State<_AppShell> {
         onTap: (i) => context.go(_tabs[i]),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.map_outlined), label: 'Map'),
-          BottomNavigationBarItem(icon: Icon(Icons.newspaper_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), label: 'My Reports'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.newspaper_outlined),
+            label: 'Feed',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            label: 'My Reports',
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(

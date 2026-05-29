@@ -7,5 +7,6 @@ class MyReportsRepositoryImpl implements MyReportsRepository {
   MyReportsRepositoryImpl(this._datasource);
 
   @override
-  Stream<List<MyReport>> watchMyReports(String userId) => _datasource.watchMyReports(userId);
+  Stream<List<MyReport>> watchMyReports(String userId) =>
+      _datasource.watchMyReports(userId);
 }
