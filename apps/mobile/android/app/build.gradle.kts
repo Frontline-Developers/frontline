@@ -3,8 +3,8 @@ plugins {
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // The Flutter Gradle Plugin must be applied after the Android plugin.
+    // kotlin-android is NOT listed here — AGP 9.0 manages Kotlin via builtInKotlin=true
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -30,12 +30,6 @@ android {
         release {
             signingConfig = signingConfigs.getByName("debug")
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
