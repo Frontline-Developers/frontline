@@ -1,0 +1,92 @@
+#!/bin/sh
+# Pre-commit: auto-format staged files + gate on analysis errors.
+# Fast checks only — thorough checks (build_runner, full format, tests) run in pre-push.
+
+REPO=$(git rev-parse --show-toplevel)
+
+DART=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep '\.dart$' \
+  | grep -v '\.g\.dart$' \
+  | grep -v '\.freezed\.dart$' \
+  || true)
+
+TS=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^functions/src/.*\.ts$' \
+  || true)
+
+if [ -z "$DART" ] && [ -z "$TS" ]; then
+  exit 0
+fi
+
+printf "\n  Frontline pre-commit\n\n"
+
+FAIL=0
+
+# ── 1. dart format (auto-fix staged files, re-stage) ─────────────────────────
+if [ -n "$DART" ]; then
+  printf "  dart format...           "
+  if (cd "$REPO" && printf '%s\n' $DART | xargs dart format > /dev/null 2>&1); then
+    printf '%s\n' $DART | xargs git add
+    printf "done\n"
+  else
+    printf "FAILED\n"
+    FAIL=1
+  fi
+fi
+
+# ── 2. Prettier (auto-fix staged TS files, re-stage) ─────────────────────────
+if [ -n "$TS" ]; then
+  printf "  prettier...              "
+  TS_REL=$(printf '%s\n' $TS | sed 's|^functions/||')
+  if (cd "$REPO/functions" && printf '%s\n' $TS_REL | xargs npx prettier --write --log-level silent 2>/dev/null); then
+    printf '%s\n' $TS | xargs git add
+    printf "done\n"
+  else
+    printf "FAILED\n"
+    FAIL=1
+  fi
+fi
+
+# ── 3. Generated files check (warn if .g.dart / .freezed.dart have unstaged changes)
+if [ -n "$DART" ]; then
+  UNSTAGED_GEN=$(git diff --name-only -- '*.g.dart' '*.freezed.dart' 2>/dev/null || true)
+  if [ -n "$UNSTAGED_GEN" ]; then
+    printf "\n  ✗  Generated files have unstaged changes — run build_runner:\n\n"
+    printf "       cd apps/mobile && dart run build_runner build\n"
+    printf "       git add -A\n\n"
+    printf "  Affected:\n"
+    printf '%s\n' "$UNSTAGED_GEN" | sed 's/^/    /'
+    printf "\n"
+    FAIL=1
+  fi
+fi
+
+# ── 4. flutter analyze (whole project, gating) ───────────────────────────────
+if [ -n "$DART" ]; then
+  printf "  flutter analyze...       "
+  if (cd "$REPO/apps/mobile" && flutter analyze > /dev/null 2>&1); then
+    printf "ok\n"
+  else
+    printf "FAILED\n\n"
+    (cd "$REPO/apps/mobile" && flutter analyze 2>&1) || true
+    printf "\n"
+    FAIL=1
+  fi
+fi
+
+# ── 5. ESLint (staged TS files, gating) ──────────────────────────────────────
+if [ -n "$TS" ]; then
+  printf "  eslint...                "
+  TS_REL=$(printf '%s\n' $TS | sed 's|^functions/||')
+  if (cd "$REPO/functions" && printf '%s\n' $TS_REL | xargs npx eslint --quiet > /dev/null 2>&1); then
+    printf "ok\n"
+  else
+    printf "FAILED\n\n"
+    (cd "$REPO/functions" && printf '%s\n' $TS_REL | xargs npx eslint --quiet 2>&1) || true
+    printf "\n"
+    FAIL=1
+  fi
+fi
+
+printf "\n"
+[ "$FAIL" -eq 0 ] || exit 1
