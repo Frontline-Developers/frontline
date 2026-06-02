@@ -34,6 +34,7 @@ dependencies:
 
   # Maps
   mapbox_maps_flutter: ^2.4.0
+  geolocator: ^14.0.0
 
   # Media
   image_picker: ^1.1.2
