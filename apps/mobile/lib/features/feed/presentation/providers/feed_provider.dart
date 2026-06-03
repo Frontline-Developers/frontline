@@ -36,7 +36,7 @@ final feedNotifierProvider = NotifierProvider<FeedNotifier, FeedState>(
 class FeedNotifier extends Notifier<FeedState> {
   @override
   FeedState build() {
-    ref
+    final sub = ref
         .watch(_feedRepositoryProvider)
         .watchFeed()
         .listen(
@@ -44,6 +44,7 @@ class FeedNotifier extends Notifier<FeedState> {
           onError: (e) =>
               state = state.copyWith(isLoading: false, error: e.toString()),
         );
+    ref.onDispose(sub.cancel);
     return const FeedState(isLoading: true);
   }
 }
