@@ -68,7 +68,7 @@ class _AppShellState extends State<_AppShell> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/report/new'),
+        onPressed: () => context.push('/report/new'),
         tooltip: 'Submit Report',
         child: const Icon(Icons.add),
       ),
