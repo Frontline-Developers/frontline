@@ -5,9 +5,9 @@ import 'package:frontline/features/reporting/domain/entities/report.dart';
 
 void main() {
   group('ReportDraft.isDescribeValid', () {
-    test('false when description is 8 chars or fewer', () {
+    test('false when description is under 10 chars', () {
       const d = ReportDraft(
-        description: '12345678',
+        description: '123456789', // 9 chars — one under the minimum
         category: ReportCategory.aid,
       );
       expect(d.isDescribeValid, false);
@@ -26,7 +26,7 @@ void main() {
       expect(d.isDescribeValid, false);
     });
 
-    test('true when description >8 chars and category set', () {
+    test('true when description >= 10 chars and category set', () {
       const d = ReportDraft(
         description: 'a drone hit the substation',
         category: ReportCategory.combat,
@@ -36,13 +36,18 @@ void main() {
   });
 
   group('ReportDraft.isLocationValid', () {
-    test('false when locationLabel is empty', () {
+    test('true when both coords present (label optional)', () {
       const d = ReportDraft(lat: 1.0, lng: 2.0);
-      expect(d.isLocationValid, false);
+      expect(d.isLocationValid, true);
     });
 
     test('false when lat/lng missing', () {
       const d = ReportDraft(locationLabel: 'Kharkiv');
+      expect(d.isLocationValid, false);
+    });
+
+    test('false when only lat present', () {
+      const d = ReportDraft(lat: 50.0);
       expect(d.isLocationValid, false);
     });
 

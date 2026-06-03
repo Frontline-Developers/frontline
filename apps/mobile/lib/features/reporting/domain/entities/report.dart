@@ -57,10 +57,12 @@ class ReportDraft {
     this.timeObserved,
   });
 
-  bool get isDescribeValid => description.trim().length > 8 && category != null;
+  static const int minDescriptionLength = 10;
 
-  bool get isLocationValid =>
-      locationLabel.trim().isNotEmpty && lat != null && lng != null;
+  bool get isDescribeValid =>
+      description.trim().length >= minDescriptionLength && category != null;
+
+  bool get isLocationValid => lat != null && lng != null;
 
   static const int maxPhotos = 5;
 

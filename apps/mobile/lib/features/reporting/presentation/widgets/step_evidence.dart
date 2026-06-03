@@ -1,18 +1,13 @@
-import 'dart:typed_data';
-
+import 'dart:io';
+import 'package:exif/exif.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../providers/reporting_provider.dart';
 import 'report_theme.dart';
-
-const _exifDemoRows = <(String, String)>[
-  ('GPS coordinates', '50.0241°N, 36.2289°E'),
-  ('Device', 'iPhone 13 Pro'),
-  ('Timestamp', '2025-03-18 03:47:12'),
-  ('Camera serial', 'F2LXQK8MNJ29'),
-];
 
 class StepEvidence extends ConsumerStatefulWidget {
   const StepEvidence({super.key});
@@ -25,6 +20,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
     with SingleTickerProviderStateMixin {
   final _picker = ImagePicker();
   late final AnimationController _stripAnim;
+  List<(String, String)> _exifRows = [];
 
   @override
   void initState() {
@@ -48,23 +44,86 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
   }
 
   Future<void> _pickPhoto() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 2048,
-      imageQuality: 88,
-    );
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
-    final bytes = await picked.readAsBytes();
+
+    // Read from original path on mobile to preserve EXIF before any re-encoding.
+    // On web XFile.path is a blob URL so we fall back to readAsBytes().
+    final Uint8List rawBytes;
+    if (!kIsWeb) {
+      rawBytes = await File(picked.path).readAsBytes();
+    } else {
+      rawBytes = await picked.readAsBytes();
+    }
+
     if (!mounted) return;
+
+    // Extract EXIF from full-res bytes first, then compress before storing
+    // so the draft never holds a multi-megabyte raw image in RAM.
+    final rows = await _extractExifRows(rawBytes);
+    final compressed = await FlutterImageCompress.compressWithList(
+      rawBytes,
+      quality: 88,
+      keepExif: false,
+    );
+    if (!mounted) return;
+
+    setState(() => _exifRows = rows);
     _stripAnim.value = 0;
     ref
         .read(reportingNotifierProvider.notifier)
-        .updateDraft(mediaBytes: [bytes]);
+        .updateDraft(mediaBytes: [compressed]);
     _stripAnim.forward();
+  }
+
+  static Future<List<(String, String)>> _extractExifRows(
+    Uint8List bytes,
+  ) async {
+    try {
+      final data = await readExifFromBytes(bytes);
+      if (data.isEmpty) return [];
+
+      final rows = <(String, String)>[];
+
+      final latRef = data['GPS GPSLatitudeRef']?.printable;
+      final lat = data['GPS GPSLatitude']?.printable;
+      final lngRef = data['GPS GPSLongitudeRef']?.printable;
+      final lng = data['GPS GPSLongitude']?.printable;
+      if (lat != null && lng != null) {
+        rows.add(('GPS', '$lat ${latRef ?? ''}, $lng ${lngRef ?? ''}'.trim()));
+      }
+
+      final make = data['Image Make']?.printable.trim();
+      final model = data['Image Model']?.printable.trim();
+      if (make != null || model != null) {
+        rows.add(('Device', [make, model].whereType<String>().join(' ')));
+      }
+
+      final ts =
+          data['EXIF DateTimeOriginal']?.printable ??
+          data['Image DateTime']?.printable;
+      if (ts != null) rows.add(('Timestamp', ts));
+
+      final serial =
+          data['EXIF BodySerialNumber']?.printable ??
+          data['EXIF CameraSerialNumber']?.printable;
+      if (serial != null && serial.trim().isNotEmpty) {
+        rows.add(('Camera serial', serial.trim()));
+      }
+
+      return rows;
+    } catch (e, st) {
+      assert(() {
+        debugPrint('EXIF read failed: $e\n$st');
+        return true;
+      }());
+      return [];
+    }
   }
 
   void _removePhoto() {
     ref.read(reportingNotifierProvider.notifier).updateDraft(mediaBytes: []);
+    setState(() => _exifRows = []);
     _stripAnim.value = 0;
   }
 
@@ -134,7 +193,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
             ),
             SizedBox(height: 8),
             Text(
-              'Add photo or video',
+              'Add photo',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -235,64 +294,42 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: AnimatedBuilder(
-              animation: _stripAnim,
-              builder: (context, _) {
-                final stripped = _stripAnim.value >= 1;
-                return Column(
+          AnimatedBuilder(
+            animation: _stripAnim,
+            builder: (context, _) {
+              if (_stripAnim.value < 1) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'METADATA REMOVED',
-                      style: ReportTextStyles.sectionLabel,
-                    ),
-                    const SizedBox(height: 8),
-                    ..._exifDemoRows.map(
-                      (r) => _ExifRow(
-                        label: r.$1,
-                        value: r.$2,
-                        stripped: stripped,
+                    if (_exifRows.isNotEmpty) ...[
+                      const Text(
+                        'METADATA REMOVED',
+                        style: ReportTextStyles.sectionLabel,
                       ),
-                    ),
-                    if (stripped) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ReportPalette.verifiedSoft,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.verified_user,
-                              color: ReportPalette.verified,
-                              size: 14,
-                            ),
-                            SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'All metadata removed locally — server never sees it',
-                                style: TextStyle(
-                                  color: ReportPalette.verified,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 8),
+                      ..._exifRows.map(
+                        (r) => _ExifRow(label: r.$1, value: r.$2),
+                      ),
+                    ] else ...[
+                      const Text(
+                        'METADATA',
+                        style: ReportTextStyles.sectionLabel,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No metadata found in this image',
+                        style: TextStyle(
+                          color: ReportPalette.inkTertiary,
+                          fontSize: 11.5,
                         ),
                       ),
                     ],
                   ],
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -303,12 +340,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
 class _ExifRow extends StatelessWidget {
   final String label;
   final String value;
-  final bool stripped;
-  const _ExifRow({
-    required this.label,
-    required this.value,
-    required this.stripped,
-  });
+  const _ExifRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -324,17 +356,20 @@ class _ExifRow extends StatelessWidget {
               fontSize: 11.5,
             ),
           ),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 500),
-            style: TextStyle(
-              color: stripped ? ReportPalette.inkTertiary : ReportPalette.ink,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              decoration: stripped
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: ReportPalette.ink,
+                fontSize: 11,
+                fontFamily: 'monospace',
+                decoration: TextDecoration.lineThrough,
+                decorationThickness: 2,
+              ),
             ),
-            child: Text(value),
           ),
         ],
       ),
