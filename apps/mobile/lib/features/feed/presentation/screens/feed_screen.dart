@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/news_item.dart';
 import '../providers/feed_provider.dart';
+import '../providers/vote_provider.dart';
 
-// ── Palette (light, matches design spec) ─────────────────────────────────────
+// ── Palette ───────────────────────────────────────────────────────────────────
+
+const _kMaxWidth = 700.0;
 
 class _P {
   static const surface = Color(0xFFF8F9FA);
@@ -56,26 +60,31 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         backgroundColor: _P.surface,
         body: SafeArea(
           bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _FeedAppBar(),
-              _FeedHeader(),
-              _FilterChips(
-                active: _activeFilter,
-                onChanged: (i) => setState(() => _activeFilter = i),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FeedAppBar(),
+                  _FeedHeader(),
+                  _FilterChips(
+                    active: _activeFilter,
+                    onChanged: (i) => setState(() => _activeFilter = i),
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: state.isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(color: _P.navy),
+                          )
+                        : state.error != null
+                        ? _ErrorState(error: state.error!)
+                        : _FeedList(items: _applyFilter(state.items)),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: state.isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: _P.navy),
-                      )
-                    : state.error != null
-                    ? _ErrorState(error: state.error!)
-                    : _FeedList(items: _applyFilter(state.items)),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -299,12 +308,25 @@ class _ErrorState extends StatelessWidget {
 
 // ── Citizen card ──────────────────────────────────────────────────────────────
 
-class _CitizenCard extends StatelessWidget {
+class _CitizenCard extends ConsumerWidget {
   final NewsItem item;
   const _CitizenCard({required this.item});
 
+  Future<void> _castVote(WidgetRef ref, String type) async {
+    final ds = ref.read(voteDatasourceProvider);
+    await ds.castVote(item.id, type);
+    ref.invalidate(voteProvider(item.id));
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voteAsync = ref.watch(voteProvider(item.id));
+    final userVote = voteAsync.when(
+      data: (v) => v,
+      loading: () => null,
+      error: (e, s) => null,
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
@@ -392,9 +414,42 @@ class _CitizenCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
+                _VerifyMeter(
+                  confirms: item.confirmCount,
+                  disputes: item.disputeCount,
+                ),
+                const SizedBox(height: 10),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    _ActionBtn(
+                      icon: userVote == 'confirm'
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                      count: item.confirmCount,
+                      active: userVote == 'confirm',
+                      activeColor: _P.verified,
+                      onTap: () => _castVote(ref, 'confirm'),
+                    ),
+                    const SizedBox(width: 14),
+                    _ActionBtn(
+                      icon: userVote == 'dispute'
+                          ? Icons.flag
+                          : Icons.flag_outlined,
+                      count: item.disputeCount,
+                      active: userVote == 'dispute',
+                      activeColor: _P.disputed,
+                      onTap: () => _castVote(ref, 'dispute'),
+                    ),
+                    const SizedBox(width: 14),
+                    _ActionBtn(
+                      icon: Icons.chat_bubble_outline,
+                      onTap: () => showCommentsSheet(
+                        context,
+                        reportId: item.id,
+                        title: item.title,
+                      ),
+                    ),
+                    const Spacer(),
                     _ActionBtn(icon: Icons.bookmark_border),
                     const SizedBox(width: 4),
                     _ActionBtn(icon: Icons.share_outlined),
@@ -419,6 +474,49 @@ class _CitizenPlaceholder extends StatelessWidget {
       child: const Center(
         child: Icon(Icons.image_outlined, color: Color(0x44FFFFFF), size: 40),
       ),
+    );
+  }
+}
+
+// ── Verify meter ──────────────────────────────────────────────────────────────
+
+class _VerifyMeter extends StatelessWidget {
+  final int confirms;
+  final int disputes;
+  const _VerifyMeter({required this.confirms, required this.disputes});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = confirms + disputes;
+    if (total == 0) return const SizedBox.shrink();
+    final ratio = confirms / total;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            height: 4,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: (ratio * 100).round(),
+                  child: Container(color: _P.verified),
+                ),
+                Expanded(
+                  flex: 100 - (ratio * 100).round(),
+                  child: Container(color: _P.disputed),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$confirms verified · $disputes flagged',
+          style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
+        ),
+      ],
     );
   }
 }
@@ -625,15 +723,43 @@ class _StatusBadge extends StatelessWidget {
 
 class _ActionBtn extends StatelessWidget {
   final IconData icon;
-  const _ActionBtn({required this.icon});
+  final int? count;
+  final bool active;
+  final Color? activeColor;
+  final VoidCallback? onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    this.count,
+    this.active = false,
+    this.activeColor,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = active ? (activeColor ?? _P.navy) : _P.inkTertiary;
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(icon, size: 20, color: _P.inkTertiary),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: count != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              )
+            : Icon(icon, size: 20, color: color),
       ),
     );
   }
