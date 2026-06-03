@@ -99,40 +99,45 @@ class _AppNavBar extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomPadding),
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              _NavTab(
-                icon: Icons.layers_outlined,
-                activeIcon: Icons.layers,
-                label: 'Feed',
-                active: currentIndex == 0,
-                onTap: () => onTap(0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  _NavTab(
+                    icon: Icons.layers_outlined,
+                    activeIcon: Icons.layers,
+                    label: 'Feed',
+                    active: currentIndex == 0,
+                    onTap: () => onTap(0),
+                  ),
+                  _NavTab(
+                    icon: Icons.map_outlined,
+                    activeIcon: Icons.map,
+                    label: 'Map',
+                    active: currentIndex == 1,
+                    onTap: () => onTap(1),
+                  ),
+                  _ReportTab(onTap: () => onTap(2)),
+                  _NavTab(
+                    icon: Icons.compare_arrows_outlined,
+                    activeIcon: Icons.compare_arrows,
+                    label: 'Compare',
+                    active: currentIndex == 3,
+                    onTap: () => onTap(3),
+                  ),
+                  _NavTab(
+                    icon: Icons.folder_outlined,
+                    activeIcon: Icons.folder,
+                    label: 'My posts',
+                    active: currentIndex == 4,
+                    onTap: () => onTap(4),
+                  ),
+                ],
               ),
-              _NavTab(
-                icon: Icons.map_outlined,
-                activeIcon: Icons.map,
-                label: 'Map',
-                active: currentIndex == 1,
-                onTap: () => onTap(1),
-              ),
-              _ReportTab(onTap: () => onTap(2)),
-              _NavTab(
-                icon: Icons.compare_arrows_outlined,
-                activeIcon: Icons.compare_arrows,
-                label: 'Compare',
-                active: currentIndex == 3,
-                onTap: () => onTap(3),
-              ),
-              _NavTab(
-                icon: Icons.folder_outlined,
-                activeIcon: Icons.folder,
-                label: 'My posts',
-                active: currentIndex == 4,
-                onTap: () => onTap(4),
-              ),
-            ],
+            ),
           ),
         ),
       ),
