@@ -54,38 +54,30 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(feedNotifierProvider);
 
-    return Theme(
-      data: Theme.of(context).copyWith(scaffoldBackgroundColor: _P.surface),
-      child: Scaffold(
-        backgroundColor: _P.surface,
-        body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _kMaxWidth),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _FeedAppBar(),
-                  _FeedHeader(),
-                  _FilterChips(
-                    active: _activeFilter,
-                    onChanged: (i) => setState(() => _activeFilter = i),
-                  ),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: state.isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(color: _P.navy),
-                          )
-                        : state.error != null
-                        ? _ErrorState(error: state.error!)
-                        : _FeedList(items: _applyFilter(state.items)),
-                  ),
-                ],
-              ),
+    return ColoredBox(
+      color: _P.surface,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FeedAppBar(),
+            _FeedHeader(),
+            _FilterChips(
+              active: _activeFilter,
+              onChanged: (i) => setState(() => _activeFilter = i),
             ),
-          ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _P.navy),
+                    )
+                  : state.error != null
+                  ? _ErrorState(error: state.error!)
+                  : _FeedList(items: _applyFilter(state.items)),
+            ),
+          ],
         ),
       ),
     );
@@ -327,138 +319,144 @@ class _CitizenCard extends ConsumerWidget {
       error: (e, s) => null,
     );
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: _P.card,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 10,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                item.mediaUrls.isNotEmpty
-                    ? Image.network(
-                        item.mediaUrls.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, err, stack) =>
-                            const _CitizenPlaceholder(),
-                      )
-                    : const _CitizenPlaceholder(),
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Wrap(
-                    spacing: 6,
-                    children: [
-                      _Badge(
-                        label: 'ON THE GROUND',
-                        bgColor: _P.citizenSoft,
-                        textColor: _P.citizen,
-                      ),
-                      if (item.status != null)
-                        _StatusBadge(status: item.status!),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SourceLine(
-                  dotColor: _P.citizen,
-                  label: 'CITIZEN REPORT',
-                  labelColor: _P.citizen,
-                  meta: [
-                    if (item.category != null) _categoryLabel(item.category!),
-                    _timeAgo(item.publishedAt),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: _P.ink,
-                    height: 1.35,
-                  ),
-                ),
-                if (item.body != null && item.body!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.body!,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: _P.inkSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _VerifyMeter(
-                  confirms: item.confirmCount,
-                  disputes: item.disputeCount,
-                ),
-                const SizedBox(height: 10),
-                Row(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 10,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    _ActionBtn(
-                      icon: userVote == 'confirm'
-                          ? Icons.check_circle
-                          : Icons.check_circle_outline,
-                      count: item.confirmCount,
-                      active: userVote == 'confirm',
-                      activeColor: _P.verified,
-                      onTap: () => _castVote(ref, 'confirm'),
-                    ),
-                    const SizedBox(width: 14),
-                    _ActionBtn(
-                      icon: userVote == 'dispute'
-                          ? Icons.flag
-                          : Icons.flag_outlined,
-                      count: item.disputeCount,
-                      active: userVote == 'dispute',
-                      activeColor: _P.disputed,
-                      onTap: () => _castVote(ref, 'dispute'),
-                    ),
-                    const SizedBox(width: 14),
-                    _ActionBtn(
-                      icon: Icons.chat_bubble_outline,
-                      onTap: () => showCommentsSheet(
-                        context,
-                        reportId: item.id,
-                        title: item.title,
+                    item.mediaUrls.isNotEmpty
+                        ? Image.network(
+                            item.mediaUrls.first,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, err, stack) =>
+                                const _CitizenPlaceholder(),
+                          )
+                        : const _CitizenPlaceholder(),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Wrap(
+                        spacing: 6,
+                        children: [
+                          _Badge(
+                            label: 'ON THE GROUND',
+                            bgColor: _P.citizenSoft,
+                            textColor: _P.citizen,
+                          ),
+                          if (item.status != null)
+                            _StatusBadge(status: item.status!),
+                        ],
                       ),
                     ),
-                    const Spacer(),
-                    _ActionBtn(icon: Icons.bookmark_border),
-                    const SizedBox(width: 4),
-                    _ActionBtn(icon: Icons.share_outlined),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SourceLine(
+                      dotColor: _P.citizen,
+                      label: 'CITIZEN REPORT',
+                      labelColor: _P.citizen,
+                      meta: [
+                        if (item.category != null)
+                          _categoryLabel(item.category!),
+                        _timeAgo(item.publishedAt),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _P.ink,
+                        height: 1.35,
+                      ),
+                    ),
+                    if (item.body != null && item.body!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.body!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: _P.inkSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _VerifyMeter(
+                      confirms: item.confirmCount,
+                      disputes: item.disputeCount,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _ActionBtn(
+                          icon: userVote == 'confirm'
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          count: item.confirmCount,
+                          active: userVote == 'confirm',
+                          activeColor: _P.verified,
+                          onTap: () => _castVote(ref, 'confirm'),
+                        ),
+                        const SizedBox(width: 14),
+                        _ActionBtn(
+                          icon: userVote == 'dispute'
+                              ? Icons.flag
+                              : Icons.flag_outlined,
+                          count: item.disputeCount,
+                          active: userVote == 'dispute',
+                          activeColor: _P.disputed,
+                          onTap: () => _castVote(ref, 'dispute'),
+                        ),
+                        const SizedBox(width: 14),
+                        _ActionBtn(
+                          icon: Icons.chat_bubble_outline,
+                          onTap: () => showCommentsSheet(
+                            context,
+                            reportId: item.id,
+                            title: item.title,
+                          ),
+                        ),
+                        const Spacer(),
+                        _ActionBtn(icon: Icons.bookmark_border),
+                        const SizedBox(width: 4),
+                        _ActionBtn(icon: Icons.share_outlined),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -529,104 +527,109 @@ class _WireCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: _P.card,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 10,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Container(color: const Color(0xFF1A3A5C)),
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: _Badge(
-                    label: 'WIRE',
-                    bgColor: Colors.white,
-                    textColor: _P.navy,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SourceLine(
-                  dotColor: _P.navy,
-                  label: 'WIRE NEWS',
-                  labelColor: _P.navy,
-                  meta: [_timeAgo(item.publishedAt)],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: _P.ink,
-                    height: 1.35,
-                  ),
-                ),
-                if (item.body != null && item.body!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.body!,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: _P.inkSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-                const Divider(height: 20, color: Color(0xFFE9ECEF)),
-                Row(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 10,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    if (item.url != null)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.open_in_new, size: 14, color: _P.navy),
-                          SizedBox(width: 4),
-                          Text(
-                            'Open source',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _P.navy,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    Container(color: const Color(0xFF1A3A5C)),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: _Badge(
+                        label: 'WIRE',
+                        bgColor: Colors.white,
+                        textColor: _P.navy,
                       ),
-                    const Spacer(),
-                    _ActionBtn(icon: Icons.bookmark_border),
-                    const SizedBox(width: 4),
-                    _ActionBtn(icon: Icons.share_outlined),
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SourceLine(
+                      dotColor: _P.navy,
+                      label: 'WIRE NEWS',
+                      labelColor: _P.navy,
+                      meta: [_timeAgo(item.publishedAt)],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _P.ink,
+                        height: 1.35,
+                      ),
+                    ),
+                    if (item.body != null && item.body!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.body!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: _P.inkSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                    const Divider(height: 20, color: Color(0xFFE9ECEF)),
+                    Row(
+                      children: [
+                        if (item.url != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.open_in_new, size: 14, color: _P.navy),
+                              SizedBox(width: 4),
+                              Text(
+                                'Open source',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _P.navy,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        const Spacer(),
+                        _ActionBtn(icon: Icons.bookmark_border),
+                        const SizedBox(width: 4),
+                        _ActionBtn(icon: Icons.share_outlined),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
