@@ -250,11 +250,15 @@ All functions deploy to `asia-southeast1` (Singapore).
 | Phase 2 — UI/UX Design | May 22–28 | Complete |
 | Phase 3 — Flutter Frontend | Late May → Jun 2 | In Progress |
 | Phase 4 — Firebase Backend | May 24 → Jun 1 (concurrent) | In Progress |
-| Phase 5 — Integration | Jun 1–5 | Upcoming |
-| Phase 6 — QA & Privacy | May 24 → Jun 4 (rolling) | Rolling |
+| Phase 5 — Integration | Jun 1–5 | In Progress |
+| Phase 6 — QA & Privacy | May 24 → Jun 4 (rolling) | In Progress |
 | Phase 7 — Deploy & Handover | Jun 3–5 | Upcoming |
 
 **Target launch: Early June 2026**
+
+### Implemented as of Jun 4 2026
+- Compare page (`/compare`) — full Clean Architecture feature: event cluster grouping by category+date, timeline UI, SUPPORTS/CONTRADICTS/UNVERIFIED evidence evaluation per report
+- Test suite: 134 tests across 17 files covering auth, feed, map, my_reports, comments, compare, and reporting features
 
 ---
 
@@ -293,7 +297,7 @@ All functions deploy to `asia-southeast1` (Singapore).
 
 ---
 
-## 9. Pending / TODO Items (as of scaffold)
+## 9. Pending / TODO Items
 
 - [ ] Firestore schema needs GeoFire geohash field added to `reports` (task 4.4)
 - [ ] Firestore indexes for geo queries need to be defined in `firestore.indexes.json` (task 4.4)
@@ -302,3 +306,7 @@ All functions deploy to `asia-southeast1` (Singapore).
 - [ ] Firebase App Check to be initialized in `main.dart` (task 4.8)
 - [ ] No map token needed for OpenStreetMap tiles (flutter_map); if switching to Mapbox raster tiles, token would go in `apps/mobile/.env`
 - [ ] Figma design tokens to be implemented in `AppTheme` / `AppColors` (task 3.4)
+- [ ] Map feature (`/`) is a stub — Mapbox/flutter_map integration still needed (tasks 3.5, 3.6, 5.5)
+- [ ] My Reports withdraw button to be connected (task 5.9)
+- [ ] Offline cache via Drift not yet implemented (tasks 5.10, 5.11)
+- [ ] Compare page grouping uses category+date — can be upgraded to geo-spatial clustering once Map geo queries are live

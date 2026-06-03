@@ -107,6 +107,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
 | `reporting` | `reportingNotifierProvider` | Stub | Multi-step form, calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
+| `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 
 ---
 
@@ -209,3 +210,24 @@ No AI attribution in commits or PRs. Write as a developer would.
 - Keep feature stubs in sync: if a `datasource` gets a real implementation, update the features table above
 - **When developing any new feature or fixing a bug, the first action is always `/tdd-feature`.** Do not write a single line of implementation code before tests exist and have been confirmed failing. This is non-negotiable.
 - Every new Screen needs at minimum: render test, empty-state test, positive action test, error-state test, loading-guard test
+
+---
+
+## 13. Test Coverage
+
+Total: **134 tests** across 17 test files — all pass, zero analyze issues.
+
+| Feature | Test files | What is covered |
+|---|---|---|
+| `auth` | `auth/domain/auth_state_test.dart` | `AuthState`, `UserIdentity`, `AuthStatus` enum, `copyWith` sentinel |
+| `feed` | `feed/domain/news_item_test.dart`, `feed/presentation/feed_screen_test.dart` | `NewsItem` entity; FeedScreen loading/error/empty/loaded; all 4 filter chips |
+| `map` | `map/presentation/map_screen_test.dart` | MapScreen render + placeholder; `MapState.copyWith` sentinel |
+| `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
+| `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
+| `compare` | `compare/domain/event_cluster_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; CompareScreen all states + SUPPORTS/CONTRADICTS badges |
+| `reporting` | 9 files (datasource, model, domain, notifier, screen, widgets) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing |
+
+**Test conventions:**
+- Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
+- Override `FutureProvider.family` (e.g. `voteProvider`) with `.overrideWith((ref, arg) async => null)` to bypass Firebase
+- `ListView.builder` only renders visible viewport — test single items when asserting off-screen labels
