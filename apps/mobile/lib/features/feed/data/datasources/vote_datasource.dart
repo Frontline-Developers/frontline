@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -36,53 +38,44 @@ class VoteDatasourceImpl implements VoteDatasource {
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final voteSnap = await tx.get(voteRef);
+      final reportSnap = await tx.get(reportRef);
+
       String? oldType;
       if (voteSnap.exists) {
         oldType = voteSnap.data()?['type'] as String?;
       }
 
+      // Read actual counts so isDisputed stays consistent with reality.
+      int confirmCount = (reportSnap.data()?['confirmCount'] as int?) ?? 0;
+      int disputeCount = (reportSnap.data()?['disputeCount'] as int?) ?? 0;
+
+      // Remove effect of the user's previous vote.
+      if (oldType == 'confirm') confirmCount--;
+      if (oldType == 'dispute') disputeCount--;
+
       if (oldType == type) {
-        // Toggle off — remove vote
+        // Toggle off — remove vote, add no new one.
         tx.delete(voteRef);
-        if (oldType == 'confirm') {
-          tx.update(reportRef, {'confirmCount': FieldValue.increment(-1)});
-        } else if (oldType == 'dispute') {
-          tx.update(reportRef, {
-            'disputeCount': FieldValue.increment(-1),
-            'isDisputed': false,
+      } else {
+        // Apply new vote.
+        if (type == 'confirm') confirmCount++;
+        if (type == 'dispute') disputeCount++;
+
+        if (type == null) {
+          tx.delete(voteRef);
+        } else {
+          tx.set(voteRef, {
+            'type': type,
+            'createdAt': FieldValue.serverTimestamp(),
           });
         }
-        return;
       }
 
-      // Remove old vote counts first
-      if (oldType == 'confirm') {
-        tx.update(reportRef, {'confirmCount': FieldValue.increment(-1)});
-      } else if (oldType == 'dispute') {
-        tx.update(reportRef, {
-          'disputeCount': FieldValue.increment(-1),
-          'isDisputed': false,
-        });
-      }
-
-      if (type == null) {
-        tx.delete(voteRef);
-        return;
-      }
-
-      // Add new vote
-      tx.set(voteRef, {
-        'type': type,
-        'createdAt': FieldValue.serverTimestamp(),
+      tx.update(reportRef, {
+        'confirmCount': max(0, confirmCount),
+        'disputeCount': max(0, disputeCount),
+        'isDisputed': max(0, disputeCount) > 0,
       });
-      if (type == 'confirm') {
-        tx.update(reportRef, {'confirmCount': FieldValue.increment(1)});
-      } else if (type == 'dispute') {
-        tx.update(reportRef, {
-          'disputeCount': FieldValue.increment(1),
-          'isDisputed': true,
-        });
-      }
     });
   }
 }

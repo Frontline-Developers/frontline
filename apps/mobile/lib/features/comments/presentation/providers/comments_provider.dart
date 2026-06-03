@@ -15,7 +15,7 @@ final commentsStreamProvider = StreamProvider.family<List<Comment>, String>((
   ref,
   reportId,
 ) {
-  return ref.read(commentsDatasourceProvider).watchComments(reportId);
+  return ref.watch(commentsDatasourceProvider).watchComments(reportId);
 });
 
 List<Comment> applySortFilter(List<Comment> all, CommentSort sort) {

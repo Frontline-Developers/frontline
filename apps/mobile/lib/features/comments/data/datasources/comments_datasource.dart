@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../domain/entities/comment.dart';
 import '../models/comment_model.dart';
@@ -55,11 +56,21 @@ class CommentsDatasourceImpl implements CommentsDatasource {
 
   @override
   Future<void> upvote(String reportId, String commentId) async {
-    await FirebaseFirestore.instance
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final commentRef = FirebaseFirestore.instance
         .collection('reports')
         .doc(reportId)
         .collection('comments')
-        .doc(commentId)
-        .update({'upvotes': FieldValue.increment(1)});
+        .doc(commentId);
+    final upvoterRef = commentRef.collection('upvoters').doc(uid);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final already = await tx.get(upvoterRef);
+      if (already.exists) return; // idempotent — already upvoted
+      tx.set(upvoterRef, {'at': FieldValue.serverTimestamp()});
+      tx.update(commentRef, {'upvotes': FieldValue.increment(1)});
+    });
   }
 }

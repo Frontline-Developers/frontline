@@ -12,9 +12,11 @@ abstract class FeedDatasource {
 class FeedDatasourceImpl implements FeedDatasource {
   @override
   Stream<List<NewsItem>> watchFeed() {
-    final ctrl = StreamController<List<NewsItem>>.broadcast();
     List<NewsItem> reports = [];
     List<NewsItem> wire = [];
+    StreamSubscription? s1, s2;
+
+    late final StreamController<List<NewsItem>> ctrl;
 
     void emit() {
       if (ctrl.isClosed) return;
@@ -23,42 +25,46 @@ class FeedDatasourceImpl implements FeedDatasource {
       ctrl.add(merged);
     }
 
-    final s1 = FirebaseFirestore.instance
-        .collection('reports')
-        .orderBy('createdAt', descending: true)
-        .limit(50)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .where((d) => (d.data()['status'] as String?) != 'rejected')
-              .map(ReportFeedModel.fromFirestore)
-              .map((m) => m.toEntity())
-              .toList(),
-        )
-        .listen((items) {
-          reports = items;
-          emit();
-        }, onError: ctrl.addError);
+    ctrl = StreamController<List<NewsItem>>(
+      // Firestore listeners only start when someone actually subscribes.
+      onListen: () {
+        s1 = FirebaseFirestore.instance
+            .collection('reports')
+            .orderBy('createdAt', descending: true)
+            .limit(50)
+            .snapshots()
+            .map(
+              (snap) => snap.docs
+                  .where((d) => (d.data()['status'] as String?) != 'rejected')
+                  .map(ReportFeedModel.fromFirestore)
+                  .map((m) => m.toEntity())
+                  .toList(),
+            )
+            .listen((items) {
+              reports = items;
+              emit();
+            }, onError: ctrl.addError);
 
-    final s2 = FirebaseFirestore.instance
-        .collection('wire_news')
-        .orderBy('publishedAt', descending: true)
-        .limit(25)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => NewsItemModel.fromJson(d.id, d.data()).toEntity())
-              .toList(),
-        )
-        .listen((items) {
-          wire = items;
-          emit();
-        }, onError: ctrl.addError);
-
-    ctrl.onCancel = () {
-      s1.cancel();
-      s2.cancel();
-    };
+        s2 = FirebaseFirestore.instance
+            .collection('wire_news')
+            .orderBy('publishedAt', descending: true)
+            .limit(25)
+            .snapshots()
+            .map(
+              (snap) => snap.docs
+                  .map((d) => NewsItemModel.fromJson(d.id, d.data()).toEntity())
+                  .toList(),
+            )
+            .listen((items) {
+              wire = items;
+              emit();
+            }, onError: ctrl.addError);
+      },
+      onCancel: () {
+        s1?.cancel();
+        s2?.cancel();
+      },
+    );
 
     return ctrl.stream;
   }

@@ -8,5 +8,5 @@ final voteDatasourceProvider = Provider<VoteDatasource>(
 
 // Reads current user's vote ('confirm' | 'dispute' | null) for a report.
 final voteProvider = FutureProvider.family<String?, String>((ref, reportId) {
-  return ref.read(voteDatasourceProvider).getUserVote(reportId);
+  return ref.watch(voteDatasourceProvider).getUserVote(reportId);
 });

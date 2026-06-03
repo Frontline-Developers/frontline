@@ -336,7 +336,9 @@ class _CommentItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = comment.authorToken == myToken;
-    final initials = comment.authorToken.substring(0, 2).toUpperCase();
+    final token = comment.authorToken;
+    final initials = (token.length >= 2 ? token.substring(0, 2) : token)
+        .toUpperCase();
 
     final (borderColor, badgeBg, badgeFg, badgeLabel) = switch (comment.type) {
       CommentType.confirm => (
