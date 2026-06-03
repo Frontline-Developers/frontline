@@ -7,6 +7,8 @@ class MapReportModel {
   final double lng;
   final String category;
   final String title;
+  final String locationLabel;
+  final String status;
   final DateTime createdAt;
 
   const MapReportModel({
@@ -15,18 +17,22 @@ class MapReportModel {
     required this.lng,
     required this.category,
     required this.title,
+    required this.locationLabel,
+    required this.status,
     required this.createdAt,
   });
 
   factory MapReportModel.fromJson(String id, Map<String, dynamic> json) {
     final ts = json['createdAt'] as Timestamp;
-    final gp = json['location'] as GeoPoint;
+    final gp = json['geo'] as GeoPoint;
     return MapReportModel(
       id: id,
       lat: gp.latitude,
       lng: gp.longitude,
-      category: json['category'] as String,
-      title: json['title'] as String,
+      category: json['category'] as String? ?? 'other',
+      title: json['title'] as String? ?? '',
+      locationLabel: json['locationLabel'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
       createdAt: ts.toDate(),
     );
   }
@@ -37,6 +43,8 @@ class MapReportModel {
     lng: lng,
     category: category,
     title: title,
+    locationLabel: locationLabel,
+    status: status,
     createdAt: createdAt,
   );
 }
