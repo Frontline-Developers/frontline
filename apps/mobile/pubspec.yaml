@@ -33,10 +33,16 @@ dependencies:
   json_annotation: ^4.11.0
 
   # Maps
-  mapbox_maps_flutter: ^2.4.0
+  # flutter_map + OpenStreetMap tiles — works on web + mobile with no token
+  # and no per-platform setup. Picked after mapbox_maps_flutter v2.24.3 was
+  # found to have no Flutter-web support (rendered blank on Chrome/Edge).
+  flutter_map: ^7.0.0
+  latlong2: ^0.9.1
+  geolocator: ^14.0.0
 
   # Media
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
 
   # Geo queries (GeoFire for Firestore)
   geoflutterfire_plus: ^0.0.31

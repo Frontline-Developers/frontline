@@ -11,11 +11,25 @@ service cloud.firestore {
     // TODO: flesh out rules once schema is finalized
     match /reports/{reportId} {
       allow create: if request.auth != null
+        && request.resource.data.keys().hasAll([
+            'category', 'description', 'location', 'geohash', 'mediaUrls',
+            'createdAt', 'userId', 'status', 'confirmCount', 'disputeCount',
+            'isDisputed', 'exifStripped'
+          ])
         && request.resource.data.keys().hasOnly([
-          'category', 'description', 'location', 'mediaUrls', 'createdAt', 'userId', 'status'
-        ])
+            'category', 'description', 'location', 'geohash', 'mediaUrls',
+            'createdAt', 'userId', 'status', 'confirmCount', 'disputeCount',
+            'isDisputed', 'exifStripped'
+          ])
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && request.resource.data.confirmCount == 0
+        && request.resource.data.disputeCount == 0
+        && request.resource.data.isDisputed == false
+        && request.resource.data.category in ['combat', 'aid', 'alert', 'displaced', 'infra', 'other']
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 2000;
 
       allow read: if request.auth != null
         && resource.data.userId == request.auth.uid;

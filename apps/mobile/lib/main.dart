@@ -19,7 +19,18 @@ Future<void> main() async {
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
     FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+    // Reporting CF is deployed to asia-southeast1; the regional instance must
+    // also be pointed at the emulator or callable() will fail on the wrong host.
+    FirebaseFunctions.instanceFor(
+      region: 'asia-southeast1',
+    ).useFunctionsEmulator('localhost', 5001);
     await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+
+    // Sign in anonymously up front so the FAB → /report/new flow always has
+    // a uid available for the submit pipeline (matches firestore.rules).
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
   }
 
   runApp(const ProviderScope(child: FrontlineApp()));
