@@ -8,7 +8,7 @@
 ## 1. Project Overview
 
 **Frontline** is a privacy-first, location-based citizen reporting and news platform. Users can:
-- View a **Map Feed** of local events as interactive Mapbox markers with clustering
+- View a **Map Feed** of local events as interactive flutter_map markers with clustering
 - Read a **Live Feed** combining citizen reports and GDELT wire news in a chronological split-timeline
 - Submit **Anonymous Reports** via a multi-step form with camera/gallery media uploads
 - Track their own submissions in a **My Reports** dashboard (local, sorted)
@@ -104,7 +104,7 @@ All functions deploy to `asia-southeast1` (Singapore).
 ## 5. Key Feature Notes
 
 ### Map Feed (features/map)
-- Mapbox Flutter SDK — custom SVG markers per category, dynamic clustering
+- flutter_map + OpenStreetMap tiles — custom marker layers per category, optional clustering via `flutter_map_marker_cluster`. Picker (reporting flow) switched from Mapbox Flutter SDK after v2.24.3 was found to have no Flutter-web support (rendered blank canvas under DDC).
 - GeoFire radius query (`geoflutterfire_plus`) on `reports` collection using bounding-box + geohash
 - Filters by category and time range
 - Tapping a cluster expands; tapping a marker opens Event Detail
@@ -284,8 +284,10 @@ All functions deploy to `asia-southeast1` (Singapore).
 - Enforced on all callable Cloud Functions
 - Purpose: prevent unauthorized API calls and ensure no IP logging via unregistered clients
 
-### Mapbox Token
-- Passed as `--dart-define=MAPBOX_ACCESS_TOKEN=<token>` at build time
+### Map Tiles
+- flutter_map fetches OpenStreetMap tiles via `https://tile.openstreetmap.org/{z}/{x}/{y}.png` — no API key required.
+- `userAgentPackageName: 'app.frontline.mobile'` is set on the `TileLayer` per OSM tile-usage policy.
+- For higher-volume usage, consider switching to a Mapbox raster tile URL with a token at build time
 - Retrieved in Dart via `const String.fromEnvironment('MAPBOX_ACCESS_TOKEN')`
 - Never hardcoded in source files
 
@@ -298,5 +300,5 @@ All functions deploy to `asia-southeast1` (Singapore).
 - [ ] Additional Cloud Functions to be added to `functions/src/`: `stripExifMetadata`, `confirmReport`, `disputeReport`, `checkSpatialConflict`, `withdrawReport`
 - [ ] `drift` dependency to be added to `pubspec.yaml` when implementing task 5.10
 - [ ] Firebase App Check to be initialized in `main.dart` (task 4.8)
-- [ ] `Mapbox` token needs to be set in `apps/mobile/.env` by each developer
+- [ ] No map token needed for OpenStreetMap tiles (flutter_map); if switching to Mapbox raster tiles, token would go in `apps/mobile/.env`
 - [ ] Figma design tokens to be implemented in `AppTheme` / `AppColors` (task 3.4)

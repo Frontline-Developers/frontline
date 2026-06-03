@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart' as geo;
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
+import 'package:latlong2/latlong.dart';
 
 import '../providers/reporting_provider.dart';
 import 'report_theme.dart';
@@ -14,55 +15,39 @@ class StepLocation extends ConsumerStatefulWidget {
 }
 
 class _StepLocationState extends ConsumerState<StepLocation> {
-  late final TextEditingController _controller;
-  mbx.MapboxMap? _mapboxMap;
+  late final TextEditingController _labelController;
+  late final MapController _mapController;
   bool _locating = false;
 
-  // Default starting view — global, low zoom; user picks a real spot.
-  static const _initialLat = 20.0;
-  static const _initialLng = 0.0;
-  static const _initialZoom = 1.5;
+  // Default global view when the user hasn't picked yet.
+  static const LatLng _defaultCenter = LatLng(20.0, 0.0);
+  static const double _defaultZoom = 1.5;
+  static const double _pickedZoom = 12.0;
 
   @override
   void initState() {
     super.initState();
     final draft = ref.read(reportingNotifierProvider).draft;
-    _controller = TextEditingController(text: draft.locationLabel);
+    _labelController = TextEditingController(text: draft.locationLabel);
+    _mapController = MapController();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _labelController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
-  void _onMapCreated(mbx.MapboxMap map) async {
-    _mapboxMap = map;
-    await map.setCamera(
-      mbx.CameraOptions(
-        center: mbx.Point(coordinates: mbx.Position(_initialLng, _initialLat)),
-        zoom: _initialZoom,
-      ),
-    );
-    // Keep map chrome minimal so the crosshair reads cleanly.
-    await map.scaleBar.updateSettings(mbx.ScaleBarSettings(enabled: false));
-    await map.compass.updateSettings(mbx.CompassSettings(enabled: false));
-    await map.logo.updateSettings(
-      mbx.LogoSettings(marginLeft: 8, marginBottom: 8),
-    );
-    await map.attribution.updateSettings(
-      mbx.AttributionSettings(marginRight: 8, marginBottom: 8),
-    );
-  }
-
-  void _onCameraChanged(mbx.CameraChangedEventData _) async {
-    final map = _mapboxMap;
-    if (map == null || !mounted) return;
-    final state = await map.getCameraState();
-    final c = state.center.coordinates;
+  /// Fires whenever the map's camera changes — including programmatic moves
+  /// (e.g. `controller.move` from `_useMyLocation`). We deliberately do NOT
+  /// gate on `hasGesture` so "use my location" also commits the new center.
+  /// Fuzzing happens server-side; spamming `updateDraft` is cheap.
+  void _onPositionChanged(MapCamera camera, bool hasGesture) {
+    if (!mounted) return;
     ref
         .read(reportingNotifierProvider.notifier)
-        .updateDraft(lat: c.lat.toDouble(), lng: c.lng.toDouble());
+        .updateDraft(lat: camera.center.latitude, lng: camera.center.longitude);
   }
 
   Future<void> _useMyLocation() async {
@@ -79,17 +64,8 @@ class _StepLocationState extends ConsumerState<StepLocation> {
           accuracy: geo.LocationAccuracy.low,
         ),
       );
-      final map = _mapboxMap;
-      if (map == null || !mounted) return;
-      await map.flyTo(
-        mbx.CameraOptions(
-          center: mbx.Point(
-            coordinates: mbx.Position(pos.longitude, pos.latitude),
-          ),
-          zoom: 12,
-        ),
-        mbx.MapAnimationOptions(duration: 600),
-      );
+      if (!mounted) return;
+      _mapController.move(LatLng(pos.latitude, pos.longitude), _pickedZoom);
     } catch (e) {
       _showSnack('Could not get your location: $e');
     } finally {
@@ -115,6 +91,13 @@ class _StepLocationState extends ConsumerState<StepLocation> {
 
   @override
   Widget build(BuildContext context) {
+    final draft = ref.watch(reportingNotifierProvider).draft;
+    final hasPickedCoords = draft.lat != null && draft.lng != null;
+    final initialCenter = hasPickedCoords
+        ? LatLng(draft.lat!, draft.lng!)
+        : _defaultCenter;
+    final initialZoom = hasPickedCoords ? _pickedZoom : _defaultZoom;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -124,7 +107,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: _controller,
+          controller: _labelController,
           onChanged: (v) => ref
               .read(reportingNotifierProvider.notifier)
               .updateDraft(locationLabel: v),
@@ -227,13 +210,35 @@ class _StepLocationState extends ConsumerState<StepLocation> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    mbx.MapWidget(
+                    FlutterMap(
                       key: const ValueKey('locationPickerMap'),
-                      styleUri: mbx.MapboxStyles.LIGHT,
-                      onMapCreated: _onMapCreated,
-                      onCameraChangeListener: _onCameraChanged,
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: initialCenter,
+                        initialZoom: initialZoom,
+                        onPositionChanged: _onPositionChanged,
+                        // Disable rotation; users only pan/zoom.
+                        interactionOptions: const InteractionOptions(
+                          flags:
+                              InteractiveFlag.drag |
+                              InteractiveFlag.pinchZoom |
+                              InteractiveFlag.doubleTapZoom |
+                              InteractiveFlag.scrollWheelZoom,
+                        ),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'app.frontline.mobile',
+                          maxNativeZoom: 19,
+                        ),
+                      ],
                     ),
-                    const IgnorePointer(child: _CrosshairOverlay()),
+                    const IgnorePointer(
+                      key: Key('locationCrosshair'),
+                      child: _CrosshairOverlay(),
+                    ),
                     Positioned(
                       right: 10,
                       bottom: 10,
@@ -291,7 +296,7 @@ class _CrosshairOverlay extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // ±3km radius ring (decorative; the actual fuzz is server-side).
+            // ±3km radius ring (decorative; actual fuzz is server-side).
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -302,7 +307,7 @@ class _CrosshairOverlay extends StatelessWidget {
                 ),
               ),
             ),
-            // Center pin
+            // Center pin.
             Container(
               width: 18,
               height: 18,
