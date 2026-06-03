@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/reporting/domain/entities/report.dart';
 
@@ -51,9 +53,29 @@ void main() {
   });
 
   group('ReportDraft.isEvidenceValid', () {
-    test('always true (evidence is optional)', () {
+    test('true when no photos attached', () {
       const empty = ReportDraft();
       expect(empty.isEvidenceValid, true);
+    });
+
+    test('true when exactly maxPhotos photos attached', () {
+      final d = ReportDraft(
+        mediaBytes: List.generate(
+          ReportDraft.maxPhotos,
+          (_) => Uint8List.fromList([1]),
+        ),
+      );
+      expect(d.isEvidenceValid, true);
+    });
+
+    test('false when more than maxPhotos photos attached', () {
+      final d = ReportDraft(
+        mediaBytes: List.generate(
+          ReportDraft.maxPhotos + 1,
+          (_) => Uint8List.fromList([1]),
+        ),
+      );
+      expect(d.isEvidenceValid, false);
     });
   });
 

@@ -200,6 +200,23 @@ void main() {
       );
     });
 
+    test('throws when media exceeds maxPhotos', () async {
+      final calls = _Calls();
+      final ds = _buildDatasource(calls: calls);
+      final draft = ReportDraft(
+        description: 'a drone hit the substation',
+        category: ReportCategory.combat,
+        locationLabel: 'Kharkiv',
+        lat: 50.0,
+        lng: 36.2,
+        mediaBytes: List.generate(
+          ReportDraft.maxPhotos + 1,
+          (_) => Uint8List.fromList([1, 2, 3]),
+        ),
+      );
+      expect(() => ds.submitReport(draft), throwsArgumentError);
+    });
+
     test('includes geohash computed from fuzzed coords', () async {
       final calls = _Calls();
       final ds = _buildDatasource(calls: calls, geohash: 'gbsuv');

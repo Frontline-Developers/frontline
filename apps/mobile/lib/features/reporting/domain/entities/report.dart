@@ -62,7 +62,9 @@ class ReportDraft {
   bool get isLocationValid =>
       locationLabel.trim().isNotEmpty && lat != null && lng != null;
 
-  bool get isEvidenceValid => true;
+  static const int maxPhotos = 5;
+
+  bool get isEvidenceValid => mediaBytes.length <= maxPhotos;
 
   ReportDraft copyWith({
     String? description,

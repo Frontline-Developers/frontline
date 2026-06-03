@@ -146,7 +146,7 @@ class ReportingNotifier extends Notifier<ReportingState> {
     } catch (e) {
       state = state.copyWith(
         stage: ReportingStage.evidence,
-        error: e.toString(),
+        error: 'Submit failed. Please try again.',
         processingStep: 0,
       );
     }
