@@ -1,5 +1,10 @@
 import '../entities/report.dart';
 
+typedef SubmitProgressCallback = void Function(int milestone);
+
 abstract class ReportingRepository {
-  Future<String> submitReport(Report report);
+  Future<SubmitResult> submitReport(
+    ReportDraft draft, {
+    SubmitProgressCallback? onProgress,
+  });
 }
