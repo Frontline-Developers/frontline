@@ -33,8 +33,8 @@ function Require-Cmd($cmd, $label, $hint = "") {
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
 # dart --version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
 $psi = [System.Diagnostics.ProcessStartInfo]@{
-    FileName               = 'dart'
-    Arguments              = '--version'
+    FileName               = 'cmd.exe'
+    Arguments              = '/c dart --version'
     RedirectStandardOutput = $true
     RedirectStandardError  = $true
     UseShellExecute        = $false
@@ -66,8 +66,8 @@ Require-Cmd npm "npm"
 if (Get-Command java -ErrorAction SilentlyContinue) {
     # java -version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
     $psi = [System.Diagnostics.ProcessStartInfo]@{
-        FileName              = 'java'
-        Arguments             = '-version'
+        FileName              = 'cmd.exe'
+        Arguments             = '/c java -version'
         RedirectStandardError = $true
         UseShellExecute       = $false
     }
