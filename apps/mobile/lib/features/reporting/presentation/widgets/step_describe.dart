@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/report.dart';
 import '../providers/reporting_provider.dart';
 import 'report_theme.dart';
 
@@ -31,6 +32,8 @@ class _StepDescribeState extends ConsumerState<StepDescribe> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(reportingNotifierProvider).draft;
+    final len = _controller.text.trim().length;
+    final under = len < ReportDraft.minDescriptionLength;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,9 +80,16 @@ class _StepDescribeState extends ConsumerState<StepDescribe> {
         const SizedBox(height: 6),
         Row(
           children: [
-            Text(
-              '${_controller.text.length}/600 characters',
-              style: ReportTextStyles.micro,
+            Flexible(
+              child: Text(
+                under
+                    ? '$len / 600 · min ${ReportDraft.minDescriptionLength} characters'
+                    : '$len / 600 characters',
+                overflow: TextOverflow.ellipsis,
+                style: ReportTextStyles.micro.copyWith(
+                  color: under ? Colors.red.shade600 : null,
+                ),
+              ),
             ),
             const Spacer(),
             const Row(

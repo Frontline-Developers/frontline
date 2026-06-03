@@ -43,6 +43,7 @@ dependencies:
   # Media
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0
+  exif: ^3.3.0
 
   # Geo queries (GeoFire for Firestore)
   geoflutterfire_plus: ^0.0.31
