@@ -27,7 +27,7 @@ Privacy-first, location-based reporting and news platform — anonymous submissi
 | State | Riverpod 3.x + `Notifier` pattern |
 | Navigation | GoRouter 17.x (`core/router/app_router.dart`) |
 | Backend | Firebase Auth (anonymous), Firestore, Storage, Cloud Functions v2 (TypeScript) |
-| Maps | Mapbox Flutter SDK 2.x |
+| Maps | flutter_map 7.x + OpenStreetMap tiles (no token, web + mobile parity) |
 | Geo queries | geoflutterfire_plus (GeoFire for Firestore) |
 | Models | Freezed + json_serializable |
 | Observability | `firebase-functions/v2/logger` in Cloud Functions |
@@ -103,7 +103,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | Feature | Provider | Status | Notes |
 |---|---|---|---|
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
-| `map` | `mapNotifierProvider` | Stub | Mapbox + geoflutterfire_plus geo queries |
+| `map` | `mapNotifierProvider` | Stub | flutter_map + geoflutterfire_plus geo queries |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
 | `reporting` | `reportingNotifierProvider` | Stub | Multi-step form, calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
@@ -159,7 +159,7 @@ Emulator ports: Auth 9099 · Firestore 8080 · Functions 5001 · Storage 9199
 | Agent | Scope |
 |---|---|
 | `architect` | Feature design, Firestore schema, CF triggers, privacy decisions |
-| `flutter-engineer` | Screens, providers, data layer, GoRouter, Mapbox |
+| `flutter-engineer` | Screens, providers, data layer, GoRouter, flutter_map |
 | `backend-engineer` | Cloud Functions, Firestore rules, Storage rules, GDELT |
 | `qa-engineer` | Widget tests, domain unit tests, privacy audit |
 | `security-reviewer` | Rules review, fuzzing enforcement, PII scan |
@@ -175,7 +175,7 @@ Agent files: `.claude/agents/`
 ```
 feat(map): add GeoFire radius query to map datasource
 fix(reporting): call fuzzReportLocation before Firestore write
-chore(deps): upgrade mapbox_maps_flutter to 2.5.0
+chore(deps): upgrade flutter_map to 7.1.0
 ```
 
 Types: `feat` · `fix` · `docs` · `test` · `refactor` · `chore` · `ci` · `perf` · `revert`
