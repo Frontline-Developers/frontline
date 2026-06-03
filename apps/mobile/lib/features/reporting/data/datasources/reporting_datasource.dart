@@ -71,6 +71,11 @@ class ReportingDatasourceImpl implements ReportingDatasource {
     if (draft.lat == null || draft.lng == null || draft.category == null) {
       throw ArgumentError('Draft is missing required fields.');
     }
+    if (draft.mediaBytes.length > ReportDraft.maxPhotos) {
+      throw ArgumentError(
+        'Too many photos: maximum ${ReportDraft.maxPhotos} allowed.',
+      );
+    }
 
     final reportId = _generateReportId();
 
