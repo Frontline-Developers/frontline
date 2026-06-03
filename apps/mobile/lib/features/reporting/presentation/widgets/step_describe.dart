@@ -32,6 +32,8 @@ class _StepDescribeState extends ConsumerState<StepDescribe> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(reportingNotifierProvider).draft;
+    final len = _controller.text.trim().length;
+    final under = len < ReportDraft.minDescriptionLength;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,20 +81,14 @@ class _StepDescribeState extends ConsumerState<StepDescribe> {
         Row(
           children: [
             Flexible(
-              child: Builder(
-                builder: (_) {
-                  final len = _controller.text.trim().length;
-                  final under = len < ReportDraft.minDescriptionLength;
-                  return Text(
-                    under
-                        ? '$len / 600 · min ${ReportDraft.minDescriptionLength} characters'
-                        : '$len / 600 characters',
-                    overflow: TextOverflow.ellipsis,
-                    style: ReportTextStyles.micro.copyWith(
-                      color: under ? Colors.red.shade600 : null,
-                    ),
-                  );
-                },
+              child: Text(
+                under
+                    ? '$len / 600 · min ${ReportDraft.minDescriptionLength} characters'
+                    : '$len / 600 characters',
+                overflow: TextOverflow.ellipsis,
+                style: ReportTextStyles.micro.copyWith(
+                  color: under ? Colors.red.shade600 : null,
+                ),
               ),
             ),
             const Spacer(),

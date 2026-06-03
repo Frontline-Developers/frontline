@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:exif/exif.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -57,12 +58,21 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
 
     if (!mounted) return;
 
+    // Extract EXIF from full-res bytes first, then compress before storing
+    // so the draft never holds a multi-megabyte raw image in RAM.
     final rows = await _extractExifRows(rawBytes);
+    final compressed = await FlutterImageCompress.compressWithList(
+      rawBytes,
+      quality: 88,
+      keepExif: false,
+    );
+    if (!mounted) return;
+
     setState(() => _exifRows = rows);
     _stripAnim.value = 0;
     ref
         .read(reportingNotifierProvider.notifier)
-        .updateDraft(mediaBytes: [rawBytes]);
+        .updateDraft(mediaBytes: [compressed]);
     _stripAnim.forward();
   }
 
@@ -102,7 +112,11 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
       }
 
       return rows;
-    } catch (_) {
+    } catch (e, st) {
+      assert(() {
+        debugPrint('EXIF read failed: $e\n$st');
+        return true;
+      }());
       return [];
     }
   }
