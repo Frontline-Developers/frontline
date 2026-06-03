@@ -28,21 +28,23 @@ service cloud.firestore {
         && request.resource.data.description.size() > 0
         && request.resource.data.description.size() <= 2000;
 
-      // Feed queries — any signed-in user can list
+      // Feed is intentionally public — any signed-in user can list reports.
       allow list: if request.auth != null;
 
-      // Detail / My Reports — owner only (resource.data safe for get)
+      // Individual report detail / My Reports — owner only.
       allow get: if request.auth != null
         && resource.data.userId == request.auth.uid;
 
-      // Vote transactions only touch confirmCount, disputeCount, isDisputed
+      // Vote transactions only touch confirmCount, disputeCount, isDisputed.
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['confirmCount', 'disputeCount', 'isDisputed']);
 
+      // Per-user vote record — owner can create, update, or delete their own doc.
       match /votes/{userId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
       }
 
       match /comments/{commentId} {
@@ -55,9 +57,17 @@ service cloud.firestore {
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 500
           && request.resource.data.upvotes == 0;
+
+        // Only the upvote transaction may touch the upvotes counter.
         allow update: if request.auth != null
           && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['upvotes']);
+
+        // Per-user upvote record — create once (idempotency enforced in client transaction).
+        match /upvoters/{userId} {
+          allow read: if request.auth != null;
+          allow create: if request.auth != null && request.auth.uid == userId;
+        }
       }
     }
 
