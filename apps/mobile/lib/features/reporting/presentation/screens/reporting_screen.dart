@@ -126,6 +126,9 @@ class _FormShell extends ConsumerWidget {
                       children: [
                         IconButton(
                           onPressed: () {
+                            ref
+                                .read(reportingNotifierProvider.notifier)
+                                .reset();
                             if (context.canPop()) context.pop();
                           },
                           icon: const Icon(
