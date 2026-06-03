@@ -88,7 +88,6 @@ emulators_up() {
 EMULATOR_PID=""
 LOG_FILE=""
 EXIT_CODE=0
-SILENT_ABORT=false
 CLEANUP_DONE=false
 
 stop_emulators() {
@@ -98,6 +97,9 @@ stop_emulators() {
     printf "\n  Stopping emulators...\n"
     kill "$EMULATOR_PID" 2>/dev/null || true
     wait "$EMULATOR_PID" 2>/dev/null || true
+    for port in 9099 8080 5001 9199 4000 4400 4500; do
+      stop_process_on_port "$port"
+    done
   elif $EMULATOR_ONLY; then
     printf "\n  Stopping emulators...\n"
     for port in 9099 8080 5001 9199 4000 4400 4500; do
@@ -118,7 +120,6 @@ show_emulator_tail() {
 
 abort() {
   printf "\n  [x]  %s\n\n" "$*" >&2
-  SILENT_ABORT=true
   exit 1
 }
 
@@ -138,9 +139,10 @@ fi
 if [[ -f "$ENV_FILE" ]]; then
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^\s*# || "$line" =~ ^\s*$ ]] && continue
-    if [[ "$line" =~ ^([A-Z_]+)[[:space:]]*=[[:space:]]*(.+)[[:space:]]*$ ]]; then
+    if [[ "$line" =~ ^([A-Z_]+)[[:space:]]*=[[:space:]]*(.*)[[:space:]]*$ ]]; then
       k="${BASH_REMATCH[1]}"
       v="${BASH_REMATCH[2]}"
+      v="${v%$'\r'}"
       [[ -z "${!k:-}" ]] && export "$k=$v"
     fi
   done < "$ENV_FILE"
@@ -160,7 +162,7 @@ $USE_PROD && FLUTTER_ARGS+=("--dart-define=USE_EMULATOR=false")
 
 # -- Emulator startup ----------------------------------------------------------
 if ! $USE_PROD; then
-  trap 'EXIT_CODE=$?; if ! $SILENT_ABORT; then stop_emulators; fi; exit $EXIT_CODE' EXIT
+  trap 'EXIT_CODE=$?; stop_emulators; exit $EXIT_CODE' EXIT
   trap 'stop_emulators; exit 130' INT TERM
 
   if emulators_up; then
