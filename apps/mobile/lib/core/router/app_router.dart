@@ -93,50 +93,49 @@ class _AppNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
+      height: 68 + bottomPadding,
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: _hairline, width: 0.5)),
       ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomPadding),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700),
-            child: SizedBox(
-              height: 64,
-              child: Row(
-                children: [
-                  _NavTab(
-                    icon: Icons.layers_outlined,
-                    activeIcon: Icons.layers,
-                    label: 'Feed',
-                    active: currentIndex == 0,
-                    onTap: () => onTap(0),
-                  ),
-                  _NavTab(
-                    icon: Icons.map_outlined,
-                    activeIcon: Icons.map,
-                    label: 'Map',
-                    active: currentIndex == 1,
-                    onTap: () => onTap(1),
-                  ),
-                  _ReportTab(onTap: () => onTap(2)),
-                  _NavTab(
-                    icon: Icons.compare_arrows_outlined,
-                    activeIcon: Icons.compare_arrows,
-                    label: 'Compare',
-                    active: currentIndex == 3,
-                    onTap: () => onTap(3),
-                  ),
-                  _NavTab(
-                    icon: Icons.folder_outlined,
-                    activeIcon: Icons.folder,
-                    label: 'My posts',
-                    active: currentIndex == 4,
-                    onTap: () => onTap(4),
-                  ),
-                ],
-              ),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: SizedBox(
+            height: 68,
+            child: Row(
+              children: [
+                _NavTab(
+                  icon: Icons.layers_outlined,
+                  activeIcon: Icons.layers,
+                  label: 'Feed',
+                  active: currentIndex == 0,
+                  onTap: () => onTap(0),
+                ),
+                _NavTab(
+                  icon: Icons.map_outlined,
+                  activeIcon: Icons.map,
+                  label: 'Map',
+                  active: currentIndex == 1,
+                  onTap: () => onTap(1),
+                ),
+                _ReportTab(onTap: () => onTap(2)),
+                _NavTab(
+                  icon: Icons.compare_arrows_outlined,
+                  activeIcon: Icons.compare_arrows,
+                  label: 'Compare',
+                  active: currentIndex == 3,
+                  onTap: () => onTap(3),
+                ),
+                _NavTab(
+                  icon: Icons.folder_outlined,
+                  activeIcon: Icons.folder,
+                  label: 'My posts',
+                  active: currentIndex == 4,
+                  onTap: () => onTap(4),
+                ),
+              ],
             ),
           ),
         ),
