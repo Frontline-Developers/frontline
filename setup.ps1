@@ -34,7 +34,7 @@ Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
 # dart --version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
 $psi = [System.Diagnostics.ProcessStartInfo]@{
     FileName               = 'cmd.exe'
-    Arguments              = '/c dart --version'
+    Arguments              = '/d /c "dart --version"'
     RedirectStandardOutput = $true
     RedirectStandardError  = $true
     UseShellExecute        = $false
@@ -67,7 +67,7 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
     # java -version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
     $psi = [System.Diagnostics.ProcessStartInfo]@{
         FileName              = 'cmd.exe'
-        Arguments             = '/c java -version'
+        Arguments             = '/d /c "java -version"'
         RedirectStandardError = $true
         UseShellExecute       = $false
     }
