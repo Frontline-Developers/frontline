@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/comments_provider.dart';
@@ -7,7 +8,6 @@ import '../providers/comments_provider.dart';
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 class _C {
-  static const surface = Color(0xFFF8F9FA);
   static const card = Colors.white;
   static const navy = Color(0xFF1E3A8A);
   static const ink = Color(0xFF212529);
@@ -95,7 +95,7 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.92,
+        maxHeight: MediaQuery.of(context).size.height * 0.70,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -114,49 +114,27 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
           ),
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 12, 12),
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'COMMUNITY DISCUSSION',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: _C.inkTertiary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: _C.ink,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _C.ink,
+                    ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    size: 18,
-                    color: _C.inkSecondary,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.close, size: 18, color: _C.inkSecondary),
                   ),
                 ),
               ],
@@ -207,23 +185,19 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  itemCount: items.length + 1,
-                  itemBuilder: (_, i) {
-                    if (i == items.length) {
-                      return const _AnonNote();
-                    }
-                    return _CommentItem(
-                      comment: items[i],
-                      myToken: _myToken,
-                      onUpvote: () => ref
-                          .read(commentsDatasourceProvider)
-                          .upvote(widget.reportId, items[i].id),
-                    );
-                  },
+                  itemCount: items.length,
+                  itemBuilder: (_, i) => _CommentItem(
+                    comment: items[i],
+                    myToken: _myToken,
+                    onUpvote: () => ref
+                        .read(commentsDatasourceProvider)
+                        .upvote(widget.reportId, items[i].id),
+                  ),
                 );
               },
             ),
           ),
+          const _AnonNote(),
           // Composer
           _Composer(
             controller: _textCtrl,
@@ -257,62 +231,54 @@ class _StatsAndSort extends StatelessWidget {
     final context_ = all.where((c) => c.type == CommentType.context).length;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: _C.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _C.hairlineSoft),
-            ),
-            child: Row(
-              children: [
-                _Stat(
-                  icon: Icons.check_circle,
+          // Inline stats
+          Row(
+            children: [
+              Icon(Icons.check_circle, size: 13, color: _C.verified),
+              const SizedBox(width: 4),
+              Text(
+                '$confirms',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                   color: _C.verified,
-                  value: confirms,
-                  label: 'confirms',
                 ),
-                Container(
-                  width: 1,
-                  height: 20,
-                  color: _C.hairline,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                _Stat(
-                  icon: Icons.warning_outlined,
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.warning_outlined, size: 13, color: _C.disputed),
+              const SizedBox(width: 4),
+              Text(
+                '$disputes',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                   color: _C.disputed,
-                  value: disputes,
-                  label: 'disputes',
                 ),
-                Container(
-                  width: 1,
-                  height: 20,
-                  color: _C.hairline,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.info_outline, size: 13, color: _C.inkTertiary),
+              const SizedBox(width: 4),
+              Text(
+                '$context_',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _C.inkTertiary,
                 ),
-                _Stat(
-                  icon: Icons.info_outline,
-                  color: _C.inkSecondary,
-                  value: context_,
-                  label: 'context',
-                ),
-                const Spacer(),
-                Text(
-                  '${all.length} total',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _C.inkTertiary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              Text(
+                '${all.length} total',
+                style: const TextStyle(fontSize: 11, color: _C.inkTertiary),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          // Sort chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -325,8 +291,8 @@ class _StatsAndSort extends StatelessWidget {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: sort == s ? _C.ink : Colors.transparent,
@@ -338,8 +304,8 @@ class _StatsAndSort extends StatelessWidget {
                         child: Text(
                           s.label,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
                             color: sort == s ? Colors.white : _C.inkSecondary,
                           ),
                         ),
@@ -351,47 +317,6 @@ class _StatsAndSort extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final int value;
-  final String label;
-  const _Stat({
-    required this.icon,
-    required this.color,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 5),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, color: _C.inkTertiary),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -410,6 +335,9 @@ class _CommentItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMe = comment.authorToken == myToken;
+    final initials = comment.authorToken.substring(0, 2).toUpperCase();
+
     final (borderColor, badgeBg, badgeFg, badgeLabel) = switch (comment.type) {
       CommentType.confirm => (
         _C.verified,
@@ -431,134 +359,130 @@ class _CommentItem extends StatelessWidget {
       ),
     };
 
-    final isMe = comment.authorToken == myToken;
-    final initials = comment.authorToken.substring(0, 2).toUpperCase();
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: _C.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: borderColor, width: 3),
-          top: BorderSide(color: _C.hairlineSoft),
-          right: BorderSide(color: _C.hairlineSoft),
-          bottom: BorderSide(color: _C.hairlineSoft),
-        ),
+        border: Border.all(color: _C.hairlineSoft),
       ),
-      padding: const EdgeInsets.fromLTRB(11, 10, 12, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _C.raised,
-                ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'monospace',
-                      color: _C.inkSecondary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 7),
-              Expanded(
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 3, color: borderColor),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(11, 10, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _C.raised,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'monospace',
+                              color: _C.inkSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            isMe
+                                ? '${comment.authorToken} (you) · ${_timeAgo(comment.createdAt)}'
+                                : '${comment.authorToken} · ${_timeAgo(comment.createdAt)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              color: _C.inkTertiary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: badgeFg,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      isMe
-                          ? '${comment.authorToken} (you)'
-                          : comment.authorToken,
+                      comment.text,
                       style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'monospace',
-                        color: _C.inkSecondary,
+                        fontSize: 13.5,
+                        color: _C.ink,
+                        height: 1.5,
                       ),
                     ),
-                    Text(
-                      _timeAgo(comment.createdAt),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: _C.inkTertiary,
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: onUpvote,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _C.raised,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: _C.hairlineSoft),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.arrow_upward,
+                              size: 12,
+                              color: _C.inkSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${comment.upvotes}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: _C.inkSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  badgeLabel,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: badgeFg,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            comment.text,
-            style: const TextStyle(fontSize: 13.5, color: _C.ink, height: 1.5),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: onUpvote,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _C.raised,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _C.hairlineSoft),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.arrow_upward,
-                        size: 12,
-                        color: _C.inkSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${comment.upvotes}',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: _C.inkSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -571,29 +495,11 @@ class _AnonNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 4, bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _C.raised,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 14, color: _C.inkTertiary),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Comments are anonymous — each commenter gets a random token. Replying does not link you to the original commenter.',
-              style: TextStyle(
-                fontSize: 11,
-                color: _C.inkTertiary,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Text(
+        'Comments are anonymous — tokens don\'t identify you.',
+        style: TextStyle(fontSize: 11, color: _C.inkTertiary),
       ),
     );
   }
@@ -635,47 +541,39 @@ class _Composer extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _C.raised,
-                ),
-                child: const Center(
-                  child: Text(
-                    'YOU',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: _C.inkSecondary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.newline,
-                  style: const TextStyle(fontSize: 13.5, color: _C.ink),
-                  decoration: InputDecoration(
-                    hintText: 'Add context, confirm, or dispute…',
-                    hintStyle: const TextStyle(
-                      color: _C.inkTertiary,
-                      fontSize: 13.5,
-                    ),
-                    filled: true,
-                    fillColor: _C.raised,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
+                child: Focus(
+                  onKeyEvent: (_, event) {
+                    if (event is KeyDownEvent &&
+                        event.logicalKey == LogicalKeyboardKey.enter &&
+                        !HardwareKeyboard.instance.isShiftPressed) {
+                      onSend();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.newline,
+                    style: const TextStyle(fontSize: 13.5, color: _C.ink),
+                    decoration: InputDecoration(
+                      hintText: 'Add context, confirm, or dispute…',
+                      hintStyle: const TextStyle(
+                        color: _C.inkTertiary,
+                        fontSize: 13.5,
+                      ),
+                      filled: true,
+                      fillColor: _C.raised,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
