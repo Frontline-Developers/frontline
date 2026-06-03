@@ -12,7 +12,7 @@ void main() {
       await tester.pumpWidget(_harness(0));
       expect(find.text('Stripping EXIF metadata'), findsOneWidget);
       expect(find.text('Randomizing GPS coordinates ±3km'), findsOneWidget);
-      expect(find.text('Not logging IP address'), findsOneWidget);
+      expect(find.text('Uploading media securely'), findsOneWidget);
       expect(find.text('Generating anonymous token'), findsOneWidget);
     });
 
