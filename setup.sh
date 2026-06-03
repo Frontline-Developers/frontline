@@ -80,7 +80,7 @@ if command -v firebase &>/dev/null; then
 else
   warn "firebase-tools not installed globally"
   info "Run:  npm install -g firebase-tools"
-  info "(or the emulator will fall back to npx, which is slower)"
+  info "firebase-tools is required -- dev.sh calls it directly"
 fi
 
 # ── Flutter dependencies ──────────────────────────────────────────────────────
@@ -112,9 +112,10 @@ fi
 
 # ── Git hooks ─────────────────────────────────────────────────────────────────
 step "Git hooks"
+require git "git" "https://git-scm.com"
 git config core.hooksPath .githooks
-ok "pre-commit hook active  ${DIM}(dart format + prettier auto-fix; dart analyze + eslint gate)${RESET}"
-ok "pre-push hook active    ${DIM}(flutter test + functions lint + tsc)${RESET}"
+ok "pre-commit hook active  ${DIM}(dart format + prettier auto-fix; flutter analyze + eslint gate)${RESET}"
+ok "pre-push hook active    ${DIM}(flutter test + pubspec.lock check + functions lint + tsc)${RESET}"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n$HR\n\n"
@@ -126,5 +127,5 @@ printf "  ${CYAN}▸${RESET}  ${BOLD}./dev.sh --prod${RESET}       Flutter → $
 printf "  ${CYAN}▸${RESET}  ${BOLD}./dev.sh --prod --web${RESET} Flutter → ${YELLOW}live${RESET} Firebase (Chrome)\n"
 printf "\n"
 printf "  ${GRAY}Emulator UI  →  http://127.0.0.1:4000${RESET}\n"
-printf "  ${GRAY}Auth :9099   Firestore :8080   Database :9000   Functions :5001${RESET}\n"
+printf "  ${GRAY}Auth :9099   Firestore :8080   Functions :5001   Storage :9199${RESET}\n"
 printf "\n"

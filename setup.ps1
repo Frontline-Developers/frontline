@@ -31,7 +31,19 @@ function Require-Cmd($cmd, $label, $hint = "") {
 }
 
 Require-Cmd flutter "flutter" "https://docs.flutter.dev/get-started/install"
-$dartVerLine = (& dart --version 2>&1)[0].ToString()
+# dart --version writes to stderr; use ProcessStartInfo to avoid NativeCommandError.
+$psi = [System.Diagnostics.ProcessStartInfo]@{
+    FileName               = 'dart'
+    Arguments              = '--version'
+    RedirectStandardOutput = $true
+    RedirectStandardError  = $true
+    UseShellExecute        = $false
+}
+$proc = [System.Diagnostics.Process]::Start($psi)
+$dartStdout = $proc.StandardOutput.ReadToEnd()
+$dartStderr = $proc.StandardError.ReadToEnd()
+$proc.WaitForExit()
+$dartVerLine = if ($dartStdout.Trim()) { $dartStdout.Trim() } else { $dartStderr.Trim() }
 $dartMatch = [regex]::Match($dartVerLine, '(\d+)\.(\d+)\.\d+')
 if ($dartMatch.Success) {
     $dartMajor = [int]$dartMatch.Groups[1].Value
@@ -83,7 +95,7 @@ if (Get-Command firebase -ErrorAction SilentlyContinue) {
 } else {
     warn "firebase-tools not installed globally"
     info "Run:  npm install -g firebase-tools"
-    info "(or the emulator will fall back to npx, which is slower)"
+    info "firebase-tools is required -- dev.ps1 calls it directly"
 }
 
 # -- Flutter dependencies ------------------------------------------------------
@@ -135,8 +147,8 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     fail "git not found -- install Git from https://git-scm.com"
 }
 & git config core.hooksPath .githooks
-ok "pre-commit hook active (dart format + prettier auto-fix; dart analyze + eslint gate)"
-ok "pre-push hook active   (flutter test + functions lint + tsc)"
+ok "pre-commit hook active (dart format + prettier auto-fix; flutter analyze + eslint gate)"
+ok "pre-push hook active   (flutter test + pubspec.lock check + functions lint + tsc)"
 
 # -- Done ----------------------------------------------------------------------
 Write-Host ""
@@ -152,5 +164,5 @@ Write-Host "  >>  .\dev.ps1 --prod       Flutter -> live Firebase (Android)"
 Write-Host "  >>  .\dev.ps1 --prod --web Flutter -> live Firebase (Chrome)"
 Write-Host ""
 Write-Host "  Emulator UI  ->  http://127.0.0.1:4000" -ForegroundColor DarkGray
-Write-Host "  Auth :9099   Firestore :8080   Database :9000   Functions :5001" -ForegroundColor DarkGray
+Write-Host "  Auth :9099   Firestore :8080   Functions :5001   Storage :9199" -ForegroundColor DarkGray
 Write-Host ""
