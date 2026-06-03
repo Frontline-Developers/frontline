@@ -94,6 +94,9 @@ function Stop-Emulators {
         Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
         & taskkill /F /T /PID $EmulatorProcess.Id 2>$null
         try { $EmulatorProcess.WaitForExit(5000) | Out-Null } catch {}
+        foreach ($port in @(9099, 8080, 5001, 9199, 4000, 4400, 4500)) {
+            Stop-ProcessOnPort $port
+        }
     } elseif ($EMULATOR_ONLY) {
         Write-Host ""
         Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
@@ -142,7 +145,7 @@ if (-not (Test-Path $envFile)) {
 
 if (Test-Path $envFile) {
     Get-Content $envFile | ForEach-Object {
-        if ($_ -match '^\s*([A-Z_]+)\s*=\s*(.+)\s*$') {
+        if ($_ -match '^\s*([A-Z_]+)\s*=\s*(.*)\s*$') {
             $k = $Matches[1]; $v = $Matches[2].Trim()
             if (-not [System.Environment]::GetEnvironmentVariable($k)) {
                 [System.Environment]::SetEnvironmentVariable($k, $v, 'Process')
@@ -300,7 +303,7 @@ try {
                 ) | Where-Object { Test-Path $_ } |
                     ForEach-Object { Get-ChildItem -Path $_ -Directory -ErrorAction SilentlyContinue } |
                     ForEach-Object {
-                        $v = ($_.Name -replace '[^\d].*', '') -as [int]
+                        $v = if ($_.Name -match '(\d+)') { [int]$Matches[1] } else { $null }
                         if ($null -ne $v -and $v -ge 11 -and $v -le 21 -and (Test-Path "$($_.FullName)\bin\java.exe")) {
                             [PSCustomObject]@{ Version = $v; Home = $_.FullName }
                         }
