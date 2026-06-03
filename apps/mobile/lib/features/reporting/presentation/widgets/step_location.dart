@@ -18,11 +18,13 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   late final TextEditingController _labelController;
   late final MapController _mapController;
   bool _locating = false;
+  LatLng _displayCenter = _defaultCenter;
 
   // Default global view when the user hasn't picked yet.
   static const LatLng _defaultCenter = LatLng(20.0, 0.0);
   static const double _defaultZoom = 1.5;
   static const double _pickedZoom = 12.0;
+  static const double _fuzzRadiusMeters = 3000;
 
   @override
   void initState() {
@@ -39,12 +41,10 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     super.dispose();
   }
 
-  /// Fires whenever the map's camera changes — including programmatic moves
-  /// (e.g. `controller.move` from `_useMyLocation`). We deliberately do NOT
-  /// gate on `hasGesture` so "use my location" also commits the new center.
-  /// Fuzzing happens server-side; spamming `updateDraft` is cheap.
   void _onPositionChanged(MapCamera camera, bool hasGesture) {
     if (!mounted) return;
+    setState(() => _displayCenter = camera.center);
+    if (!hasGesture) return;
     ref
         .read(reportingNotifierProvider.notifier)
         .updateDraft(lat: camera.center.latitude, lng: camera.center.longitude);
@@ -66,6 +66,9 @@ class _StepLocationState extends ConsumerState<StepLocation> {
       );
       if (!mounted) return;
       _mapController.move(LatLng(pos.latitude, pos.longitude), _pickedZoom);
+      ref
+          .read(reportingNotifierProvider.notifier)
+          .updateDraft(lat: pos.latitude, lng: pos.longitude);
     } catch (e) {
       _showSnack('Could not get your location: $e');
     } finally {
@@ -233,6 +236,20 @@ class _StepLocationState extends ConsumerState<StepLocation> {
                           userAgentPackageName: 'app.frontline.mobile',
                           maxNativeZoom: 19,
                         ),
+                        CircleLayer(
+                          circles: [
+                            CircleMarker(
+                              point: _displayCenter,
+                              radius: _fuzzRadiusMeters,
+                              useRadiusInMeter: true,
+                              color: ReportPalette.navy.withValues(alpha: 0.10),
+                              borderColor: ReportPalette.navy.withValues(
+                                alpha: 0.65,
+                              ),
+                              borderStrokeWidth: 1.5,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                     const IgnorePointer(
@@ -290,39 +307,18 @@ class _CrosshairOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: SizedBox(
-        width: 110,
-        height: 110,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // ±3km radius ring (decorative; actual fuzz is server-side).
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ReportPalette.navy.withValues(alpha: 0.10),
-                border: Border.all(
-                  color: ReportPalette.navy.withValues(alpha: 0.65),
-                  width: 1.5,
-                ),
-              ),
-            ),
-            // Center pin.
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ReportPalette.navy,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
+      child: Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: ReportPalette.navy,
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),

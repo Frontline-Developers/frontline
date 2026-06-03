@@ -57,15 +57,16 @@ void main() {
     });
 
     testWidgets(
-      'moving the map controller commits the new center as draft lat/lng',
+      'programmatic map move does not commit draft coords (gesture-only)',
       (tester) async {
         await _sizedSurface(tester);
         await tester.pumpWidget(_harness());
         await tester.pump(const Duration(milliseconds: 50));
 
         final flutterMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
-        // Programmatic move to Kharkiv. Must trigger the draft update —
-        // we don't gate on hasGesture so "use my location" also commits.
+        // Only user gestures commit lat/lng; programmatic moves (e.g. from
+        // _useMyLocation) write coords directly via updateDraft, not via the
+        // onPositionChanged callback.
         flutterMap.mapController!.move(const LatLng(49.9935, 36.2304), 12);
         await tester.pumpAndSettle();
 
@@ -73,8 +74,8 @@ void main() {
           tester.element(find.byType(StepLocation)),
         );
         final draft = container.read(reportingNotifierProvider).draft;
-        expect(draft.lat, closeTo(49.9935, 1e-4));
-        expect(draft.lng, closeTo(36.2304, 1e-4));
+        expect(draft.lat, isNull);
+        expect(draft.lng, isNull);
       },
     );
 

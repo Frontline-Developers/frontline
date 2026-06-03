@@ -9,7 +9,7 @@ class ProcessingScreen extends StatelessWidget {
   static const _steps = [
     (icon: Icons.image_outlined, label: 'Stripping EXIF metadata'),
     (icon: Icons.gps_off, label: 'Randomizing GPS coordinates ±3km'),
-    (icon: Icons.visibility_off_outlined, label: 'Not logging IP address'),
+    (icon: Icons.cloud_upload_outlined, label: 'Uploading media securely'),
     (icon: Icons.vpn_key_outlined, label: 'Generating anonymous token'),
   ];
 

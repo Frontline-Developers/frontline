@@ -1,186 +1,345 @@
-# Frontline — dev runner (Windows PowerShell)
-# Usage: .\dev.ps1 [--prod] [--web] [--emulator-only]
+#Requires -Version 5.1
+$ErrorActionPreference = 'Stop'
 
-param(
-  [switch]$prod,
-  [switch]$web,
-  [switch]$emulatorOnly,
-  [switch]$help
-)
+function ok($msg)   { Write-Host "  [+]  $msg" -ForegroundColor Green }
+function fail($msg) { Write-Host "  [x]  $msg" -ForegroundColor Red; exit 1 }
+function log($msg)  { Write-Host "  >>  $msg" -ForegroundColor Cyan }
+function info($msg) { Write-Host "       $msg" -ForegroundColor DarkGray }
+function warn($msg) { Write-Host "  [!]  $msg" -ForegroundColor Yellow }
+function hr()       { Write-Host ("  " + ("-" * 57)) -ForegroundColor DarkGray }
 
-$ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $Root
+$ROOT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
+Set-Location $ROOT_DIR
 
-function Write-Ok($msg)   { Write-Host "  ✓  $msg" -ForegroundColor Green }
-function Write-Fail($msg) { Write-Host "  ✗  $msg" -ForegroundColor Red; exit 1 }
-function Write-Info($msg) { Write-Host "     $msg" -ForegroundColor DarkGray }
-function Write-Log($msg)  { Write-Host "  ▸  $msg" -ForegroundColor Cyan }
-function Write-Warn($msg) { Write-Host "  ⚠  $msg" -ForegroundColor Yellow }
-function Write-Hr        { Write-Host ("─" * 60) -ForegroundColor DarkGray }
+# -- Args ----------------------------------------------------------------------
+$USE_PROD      = $false
+$USE_WEB       = $false
+$EMULATOR_ONLY = $false
 
-if ($help) {
-  Write-Host ""
-  Write-Host "Usage: .\dev.ps1 [--prod] [--web] [--emulator-only]"
-  Write-Host ""
-  Write-Host "  --prod           Connect to live Firebase instead of local emulators"
-  Write-Host "  --web            Run on Chrome instead of Android"
-  Write-Host "  --emulator-only  Start Firebase emulators only — no Flutter"
-  Write-Host ""
-  exit 0
-}
-
-if ($emulatorOnly -and $prod) {
-  Write-Fail "--emulator-only and --prod are mutually exclusive"
-}
-
-# ── Header ────────────────────────────────────────────────────────────────────
-Write-Host ""
-Write-Host "  Frontline  ·  dev runner" -ForegroundColor Magenta
-Write-Hr
-Write-Host ""
-
-$platform = if ($emulatorOnly) { "none (emulator-only)" } elseif ($web) { "Chrome" } else { "auto-detect" }
-$backend  = if ($prod) { "Production Firebase" } else { "Local emulators" }
-
-Write-Host "  Platform  $platform"
-Write-Host "  Backend   $backend"
-Write-Host ""
-
-if ($prod) { Write-Warn "You are connecting to LIVE Firebase — real data, real users." }
-
-# ── Load .env ─────────────────────────────────────────────────────────────────
-$envFile    = Join-Path $Root "apps\mobile\.env"
-$envExample = Join-Path $Root "apps\mobile\.env.example"
-
-if (-not (Test-Path $envFile)) {
-  if (Test-Path $envExample) {
-    Copy-Item $envExample $envFile
-    Write-Warn "apps/mobile/.env not found — created from .env.example"
-    Write-Info "Set MAPBOX_ACCESS_TOKEN in apps/mobile/.env or run .\setup.ps1"
-  }
-}
-
-$envVars = @{}
-if (Test-Path $envFile) {
-  Get-Content $envFile | ForEach-Object {
-    if ($_ -match '^\s*([A-Z_]+)=(.*)$') {
-      $envVars[$matches[1]] = $matches[2]
+foreach ($arg in $args) {
+    switch ($arg) {
+        '--prod'          { $USE_PROD      = $true }
+        '--web'           { $USE_WEB       = $true }
+        '--emulator-only' { $EMULATOR_ONLY = $true }
+        { $_ -in '--help', '-h' } {
+            Write-Host ""
+            Write-Host "  Usage: .\dev.ps1 [--prod] [--web] [--emulator-only]" -ForegroundColor White
+            Write-Host ""
+            Write-Host "  --prod           Connect to live Firebase instead of local emulators"
+            Write-Host "  --web            Run on Chrome instead of Android"
+            Write-Host "  --emulator-only  Start Firebase emulators only -- no Flutter (for integration tests)"
+            Write-Host ""
+            Write-Host "  Without flags: emulator mode, Flutter will ask which device" -ForegroundColor DarkGray
+            Write-Host ""
+            exit 0
+        }
+        default { fail "Unknown argument: $arg  (try --help)" }
     }
-  }
 }
 
-$mapboxToken = $envVars['MAPBOX_ACCESS_TOKEN']
-if ([string]::IsNullOrEmpty($mapboxToken)) {
-  Write-Warn "MAPBOX_ACCESS_TOKEN is not set — map rendering will not work."
-  Write-Info "Run .\setup.ps1 to configure, or set it in apps/mobile/.env"
+if ($EMULATOR_ONLY -and $USE_PROD) {
+    fail "--emulator-only and --prod are mutually exclusive"
 }
 
-# ── Flutter args ──────────────────────────────────────────────────────────────
-$flutterArgs = @()
-if ($web)  { $flutterArgs += @("-d", "chrome") }
-if ($prod) { $flutterArgs += "--dart-define=USE_EMULATOR=false" }
-if (-not [string]::IsNullOrEmpty($mapboxToken)) {
-  $flutterArgs += "--dart-define=MAPBOX_ACCESS_TOKEN=$mapboxToken"
+# -- Header --------------------------------------------------------------------
+Write-Host ""
+Write-Host "  Frontline  -  dev runner" -ForegroundColor Magenta
+hr
+Write-Host ""
+
+$PLATFORM = if ($EMULATOR_ONLY) { "none (emulator-only)" }
+            elseif ($USE_WEB)   { "Chrome" }
+            else                { "auto-detect" }
+$BACKEND  = if ($USE_PROD) { "Production Firebase" } else { "Local emulators" }
+
+Write-Host "  Platform  $PLATFORM"
+Write-Host "  Backend   $BACKEND"
+Write-Host ""
+
+if ($USE_PROD) {
+    warn "You are connecting to live Firebase -- real data, real users."
+    Write-Host ""
 }
 
-# ── Emulator startup ──────────────────────────────────────────────────────────
-function Test-Port($port) {
-  try {
+# -- Helpers -------------------------------------------------------------------
+function Stop-ProcessOnPort([int]$Port) {
+    Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique |
+        ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+}
+
+function Test-Port([int]$Port) {
     $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect("127.0.0.1", $port)
-    $tcp.Close()
-    return $true
-  } catch { return $false }
+    try   { $tcp.Connect('127.0.0.1', $Port); $true  }
+    catch { $false }
+    finally { $tcp.Dispose() }
 }
 
 function Test-EmulatorsUp {
-  foreach ($port in @(9099, 8080, 5001, 9199)) {
-    if (-not (Test-Port $port)) { return $false }
-  }
-  return $true
-}
-
-$emulatorJob = $null
-$logFile = $null
-
-if (-not $prod) {
-  try {
-    if (Test-EmulatorsUp) {
-      Write-Ok "Emulators already running — attaching"
-      Write-Info "Emulator UI → http://127.0.0.1:4000"
-    } else {
-      $null = New-Item -ItemType Directory -Path "$Root\logs" -Force
-      $logFile = Join-Path "$Root\logs" "emulator-$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').log"
-
-      # Build functions first
-      Write-Log "Building Cloud Functions..."
-      Push-Location functions
-      & npm run build 2>&1 | Out-File $logFile
-      Pop-Location
-      Write-Ok "Functions built"
-
-      Write-Log "Starting Firebase emulators..."
-      Write-Info "Emulator UI → http://127.0.0.1:4000"
-      $emulatorJob = Start-Job -ScriptBlock {
-        param($root, $log)
-        Set-Location $root
-        & firebase emulators:start --only functions,auth,firestore,storage 2>&1 | Out-File $log -Append
-      } -ArgumentList $Root, $logFile
-
-      $maxWait = 90
-      foreach ($item in @(
-        @{Name="auth"; Port=9099},
-        @{Name="firestore"; Port=8080},
-        @{Name="functions"; Port=5001},
-        @{Name="storage"; Port=9199}
-      )) {
-        $elapsed = 0
-        Write-Host "  Waiting for $($item.Name) emulator on :$($item.Port)" -NoNewline
-        while (-not (Test-Port $item.Port)) {
-          Write-Host "." -NoNewline
-          Start-Sleep 1
-          $elapsed++
-          if ($elapsed -ge $maxWait) {
-            Write-Host ""
-            Write-Fail "$($item.Name) emulator didn't respond after ${maxWait}s."
-          }
-        }
-        Write-Host " ready" -ForegroundColor Green
-      }
-      Write-Ok "Emulator UI → http://127.0.0.1:4000"
+    foreach ($port in @(9099, 8080, 5001, 9199)) {
+        if (-not (Test-Port $port)) { return $false }
     }
-  } catch {
-    Write-Fail "Emulator startup failed: $_"
-  }
+    return $true
 }
 
-# ── Flutter ───────────────────────────────────────────────────────────────────
-if ($emulatorOnly) {
-  Write-Host ""
-  Write-Ok "Emulators ready"
-  Write-Info "Example: cd functions; npm test"
-  Write-Hr
-  Write-Host ""
-  Write-Host "  Press Ctrl+C to stop." -ForegroundColor DarkGray
-  if ($emulatorJob) {
-    Wait-Job $emulatorJob | Out-Null
-  } else {
-    while ($true) { Start-Sleep 60 }
-  }
-} else {
-  Write-Host ""
-  $target = if ($web) { "on Chrome" } else { "" }
-  Write-Log "Starting Flutter $target..."
-  Write-Hr
-  Write-Host ""
+# -- Emulator state ------------------------------------------------------------
+$EmulatorProcess    = $null
+$LogFile            = $null
+$script:ExitCode    = 0
+$script:SilentAbort = $false
 
-  Push-Location apps/mobile
-  & flutter run @flutterArgs
-  Pop-Location
+function Stop-Emulators {
+    if ($null -ne $EmulatorProcess -and -not $EmulatorProcess.HasExited) {
+        Write-Host ""
+        Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
+        & taskkill /F /T /PID $EmulatorProcess.Id 2>$null
+        try { $EmulatorProcess.WaitForExit(5000) | Out-Null } catch {}
+        foreach ($port in @(9099, 8080, 5001, 9199, 4000, 4400, 4500)) {
+            Stop-ProcessOnPort $port
+        }
+    } elseif ($EMULATOR_ONLY) {
+        Write-Host ""
+        Write-Host "  Stopping emulators..." -ForegroundColor DarkGray
+        foreach ($port in @(9099, 8080, 5001, 9199, 4000, 4400, 4500)) {
+            Stop-ProcessOnPort $port
+        }
+    }
+    if ($null -ne $LogFile) {
+        Write-Host "  Session log saved -> $LogFile" -ForegroundColor DarkGray
+    }
+    Write-Host "  Done." -ForegroundColor DarkGray
+    Write-Host ""
 }
 
-if ($emulatorJob) {
-  Stop-Job $emulatorJob -ErrorAction SilentlyContinue
-  Remove-Job $emulatorJob -ErrorAction SilentlyContinue
+function Show-EmulatorTail {
+    if ($null -ne $LogFile -and (Test-Path $LogFile)) {
+        Get-Content $LogFile -ErrorAction SilentlyContinue |
+            Select-Object -Last 20 |
+            ForEach-Object { Write-Host "    $_" }
+    }
 }
+
+function Abort([string]$msg) {
+    Write-Host ""
+    Write-Host "  [x]  $msg" -ForegroundColor Red
+    Write-Host ""
+    $script:SilentAbort = $true
+    throw $msg
+}
+
+$mobileDir    = Join-Path (Join-Path $ROOT_DIR 'apps') 'mobile'
+$functionsDir = Join-Path $ROOT_DIR 'functions'
+
+# -- Load .env from apps/mobile ------------------------------------------------
+$envFile    = Join-Path $mobileDir '.env'
+$envExample = Join-Path $mobileDir '.env.example'
+
+if (-not (Test-Path $envFile)) {
+    if (Test-Path $envExample) {
+        Copy-Item $envExample $envFile
+        warn "apps/mobile/.env not found -- created from .env.example"
+        info "Open apps/mobile/.env and set your MAPBOX_ACCESS_TOKEN, then re-run."
+        Write-Host ""
+    }
+}
+
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([A-Z_]+)\s*=\s*(.*)\s*$') {
+            $k = $Matches[1]; $v = $Matches[2].Trim()
+            if (-not [System.Environment]::GetEnvironmentVariable($k)) {
+                [System.Environment]::SetEnvironmentVariable($k, $v, 'Process')
+            }
+        }
+    }
+}
+
+if (-not $env:MAPBOX_ACCESS_TOKEN) {
+    warn "MAPBOX_ACCESS_TOKEN is not set -- map rendering will not work."
+    info "Get a token at https://account.mapbox.com/ and add it to apps/mobile/.env"
+    Write-Host ""
+}
+
+# -- Build Flutter args --------------------------------------------------------
+$FLUTTER_ARGS = @()
+if ($USE_WEB)  { $FLUTTER_ARGS += '-d', 'chrome' }
+if ($USE_PROD) { $FLUTTER_ARGS += '--dart-define=USE_EMULATOR=false' }
+if ($env:MAPBOX_ACCESS_TOKEN) { $FLUTTER_ARGS += "--dart-define=MAPBOX_ACCESS_TOKEN=$env:MAPBOX_ACCESS_TOKEN" }
+
+try {
+    # -- Emulator startup ------------------------------------------------------
+    if (-not $USE_PROD) {
+        if (Test-EmulatorsUp) {
+            ok "Emulators already running -- attaching"
+            info "Emulator UI -> http://127.0.0.1:4000"
+            Write-Host ""
+            hr
+        } else {
+            foreach ($port in @(9099, 8080, 5001, 9199, 4000, 4400, 4500)) {
+                Stop-ProcessOnPort $port
+            }
+
+            $logsDir = Join-Path $ROOT_DIR 'logs'
+            if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | Out-Null }
+            $timestamp = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
+            $LogFile   = Join-Path $logsDir "emulator-$timestamp.log"
+
+            Get-ChildItem -Path $logsDir -Filter 'emulator-20*.log' |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -Skip 10 |
+                Remove-Item -Force -ErrorAction SilentlyContinue
+
+            log "Building Cloud Functions..."
+            $buildOut      = & npm --prefix $functionsDir run build 2>&1
+            $buildExitCode = $LASTEXITCODE
+            $buildOut | Out-File -FilePath $LogFile -Encoding utf8
+            if ($buildExitCode -ne 0) {
+                Write-Host ""
+                Write-Host "  [x]  Build failed. Last log:" -ForegroundColor Red
+                Write-Host ""
+                Show-EmulatorTail
+                Abort "Build failed"
+            }
+            ok "Functions built"
+
+            log "Starting Firebase emulators..."
+            info "Session log -> $LogFile"
+            info "Emulator UI -> http://127.0.0.1:4000"
+            Write-Host ""
+
+            $emulatorCmd = "firebase emulators:start --only functions,auth,firestore,storage >> `"$LogFile`" 2>&1"
+            $EmulatorProcess = Start-Process -FilePath 'cmd.exe' `
+                -ArgumentList '/c', $emulatorCmd `
+                -WorkingDirectory $ROOT_DIR `
+                -PassThru -NoNewWindow
+
+            $MAX_WAIT = 90
+
+            function Wait-ForPort([string]$Name, [int]$Port) {
+                $elapsed = 0
+                Write-Host -NoNewline "  Waiting for $Name emulator on :$Port" -ForegroundColor DarkGray
+                while (-not (Test-Port $Port)) {
+                    Write-Host -NoNewline "." -ForegroundColor DarkGray
+                    Start-Sleep -Seconds 1
+                    $elapsed++
+                    if ($elapsed -ge $MAX_WAIT) {
+                        Write-Host ""
+                        Write-Host "  [x]  $Name emulator didn't respond after ${MAX_WAIT}s." -ForegroundColor Red
+                        Write-Host "  Last log lines:" -ForegroundColor DarkGray
+                        Write-Host ""
+                        Show-EmulatorTail
+                        Abort "$Name emulator timed out"
+                    }
+                    $EmulatorProcess.Refresh()
+                    if ($EmulatorProcess.HasExited) {
+                        Write-Host ""
+                        Write-Host "  [x]  Emulator process exited unexpectedly." -ForegroundColor Red
+                        Write-Host "  Last log lines:" -ForegroundColor DarkGray
+                        Write-Host ""
+                        Show-EmulatorTail
+                        Abort "Emulator process exited unexpectedly"
+                    }
+                }
+                Write-Host " ready" -ForegroundColor Green
+            }
+
+            Wait-ForPort "auth"      9099
+            Wait-ForPort "firestore" 8080
+            Wait-ForPort "functions" 5001
+            Wait-ForPort "storage"   9199
+            ok "Emulator UI -> http://127.0.0.1:4000"
+            Write-Host ""
+            hr
+        }
+    }
+
+    # -- Emulator-only mode ----------------------------------------------------
+    if ($EMULATOR_ONLY) {
+        Write-Host ""
+        ok "Emulators ready"
+        info "Example: cd functions; npm test"
+        Write-Host ""
+        hr
+        Write-Host ""
+        Write-Host "  Press Ctrl+C to stop emulators." -ForegroundColor DarkGray
+        Write-Host ""
+        while ($true) { Start-Sleep -Seconds 1 }
+    }
+
+    # -- Java compatibility guard (Android/Gradle only) ------------------------
+    if (-not $USE_WEB -and -not $EMULATOR_ONLY) {
+        $javaVer = $null
+        try {
+            $javaLine = (& java -version 2>&1 | Select-Object -First 1).ToString()
+            if ($javaLine -match '"(\d+)[\.\d]*"') {
+                $major = [int]$Matches[1]
+                if ($major -eq 1 -and $javaLine -match '"1\.(\d+)') { $major = [int]$Matches[1] }
+                $javaVer = $major
+            }
+        } catch {}
+
+        if ($null -ne $javaVer -and $javaVer -gt 21) {
+            $jCandidate = $null
+
+            $regPath = 'HKLM:\SOFTWARE\JavaSoft\JDK'
+            if (Test-Path $regPath) {
+                $jCandidate = Get-ChildItem $regPath -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        $v = ($_.PSChildName -split '\.')[0] -as [int]
+                        $h = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).JavaHome
+                        if ($null -ne $v -and $v -ge 11 -and $v -le 21 -and $h -and (Test-Path "$h\bin\java.exe")) {
+                            [PSCustomObject]@{ Version = $v; Home = $h }
+                        }
+                    } | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Home
+            }
+
+            if (-not $jCandidate) {
+                $jCandidate = @(
+                    'C:\Program Files\Java',
+                    'C:\Program Files\Eclipse Adoptium',
+                    'C:\Program Files\Microsoft',
+                    'C:\Program Files\BellSoft',
+                    'C:\Program Files\Amazon Corretto'
+                ) | Where-Object { Test-Path $_ } |
+                    ForEach-Object { Get-ChildItem -Path $_ -Directory -ErrorAction SilentlyContinue } |
+                    ForEach-Object {
+                        $v = if ($_.Name -match '(\d+)') { [int]$Matches[1] } else { $null }
+                        if ($null -ne $v -and $v -ge 11 -and $v -le 21 -and (Test-Path "$($_.FullName)\bin\java.exe")) {
+                            [PSCustomObject]@{ Version = $v; Home = $_.FullName }
+                        }
+                    } | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Home
+            }
+
+            if (-not $jCandidate) {
+                Abort "Java $javaVer is not supported by the Kotlin Gradle plugin (max: 21).`nInstall any JDK between 11 and 21 and re-run, or set JAVA_HOME manually."
+            }
+
+            $env:JAVA_HOME = $jCandidate
+            warn "Java $javaVer detected -- using $jCandidate for Gradle"
+            Write-Host ""
+        }
+    }
+
+    # -- Flutter ---------------------------------------------------------------
+    Write-Host ""
+    $webSuffix = if ($USE_WEB) { " on Chrome" } else { "" }
+    log "Starting Flutter$webSuffix..."
+    Write-Host ""
+    hr
+    Write-Host ""
+
+    Push-Location $mobileDir
+    try {
+        & flutter run @FLUTTER_ARGS
+    } finally {
+        Pop-Location
+    }
+} catch {
+    if (-not $script:SilentAbort) {
+        Write-Host "  [x]  $_" -ForegroundColor Red
+    }
+    $script:ExitCode = 1
+} finally {
+    if (-not $USE_PROD) { Stop-Emulators }
+}
+exit $script:ExitCode
