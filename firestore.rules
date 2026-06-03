@@ -66,7 +66,7 @@ service cloud.firestore {
         // Per-user upvote record — create once (idempotency enforced in client transaction).
         match /upvoters/{userId} {
           allow read: if request.auth != null;
-          allow create: if request.auth != null && request.auth.uid == userId;
+          allow create, delete: if request.auth != null && request.auth.uid == userId;
         }
       }
     }

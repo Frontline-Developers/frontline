@@ -67,10 +67,16 @@ class CommentsDatasourceImpl implements CommentsDatasource {
     final upvoterRef = commentRef.collection('upvoters').doc(uid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
-      final already = await tx.get(upvoterRef);
-      if (already.exists) return; // idempotent — already upvoted
-      tx.set(upvoterRef, {'at': FieldValue.serverTimestamp()});
-      tx.update(commentRef, {'upvotes': FieldValue.increment(1)});
+      final snap = await tx.get(upvoterRef);
+      if (snap.exists) {
+        // Toggle off — remove upvote
+        tx.delete(upvoterRef);
+        tx.update(commentRef, {'upvotes': FieldValue.increment(-1)});
+      } else {
+        // Toggle on — add upvote
+        tx.set(upvoterRef, {'at': FieldValue.serverTimestamp()});
+        tx.update(commentRef, {'upvotes': FieldValue.increment(1)});
+      }
     });
   }
 }
