@@ -6,6 +6,7 @@ import '../../features/feed/domain/entities/news_item.dart';
 import '../../features/feed/presentation/screens/feed_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/my_reports/presentation/screens/my_reports_screen.dart';
+import '../../features/reporting/presentation/screens/event_detail_screen.dart';
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
 
 const _navy = Color(0xFF1E3A8A);
@@ -40,8 +41,11 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/report/:id',
-      builder: (context, state) =>
-          _ReportDetailPlaceholder(id: state.pathParameters['id']!),
+      builder: (context, state) {
+        final item = state.extra is NewsItem ? state.extra as NewsItem : null;
+        if (item != null) return EventDetailScreen(item: item);
+        return _ReportDetailPlaceholder(id: state.pathParameters['id']!);
+      },
     ),
   ],
 );

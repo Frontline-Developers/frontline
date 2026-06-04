@@ -105,7 +105,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
 | `map` | `mapNotifierProvider` | Active | flutter_map + OSM tiles, category/time filters, "You are here" GPS toggle |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
-| `reporting` | `reportingNotifierProvider` | Stub | Multi-step form, calls `fuzzReportLocation` CF |
+| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `EventDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
 | `alerts` | `alertNotifierProvider` | Active | Save alert subscriptions to Firestore; `sendAlertNotifications` CF dispatches FCM push |
 
@@ -236,3 +236,26 @@ No AI attribution in commits or PRs. Write as a developer would.
 - Keep feature stubs in sync: if a `datasource` gets a real implementation, update the features table above
 - **When developing any new feature or fixing a bug, the first action is always `/tdd-feature`.** Do not write a single line of implementation code before tests exist and have been confirmed failing. This is non-negotiable.
 - Every new Screen needs at minimum: render test, empty-state test, positive action test, error-state test, loading-guard test
+
+---
+
+## 13. Test Coverage
+
+Total: **176 tests** across 22 test files — all pass, zero analyze issues.
+
+| Feature | Test files | What is covered |
+|---|---|---|
+| `auth` | `auth/domain/auth_state_test.dart` | `AuthState`, `UserIdentity`, `AuthStatus` enum, `copyWith` sentinel |
+| `feed` | `feed/domain/news_item_test.dart`, `feed/presentation/feed_screen_test.dart` | `NewsItem` entity; FeedScreen loading/error/empty/loaded; all 4 filter chips |
+| `map` | `map/presentation/map_screen_test.dart` | MapScreen render + placeholder; `MapState.copyWith` sentinel |
+| `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
+| `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
+| `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
+| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, event_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `EventDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
+
+**Test conventions:**
+- Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
+- Override `FutureProvider.family` (e.g. `voteProvider`) with `.overrideWith((ref, arg) async => null)` to bypass Firebase
+- `ListView.builder` only renders visible viewport — test single items when asserting off-screen labels
+- Providers exposed publicly (e.g. `compareRepositoryProvider`) can be overridden in notifier unit tests via `ProviderContainer(overrides: [...])`
+- Screens that use `context.pop()` in tap callbacks do NOT need GoRouter in test harness — it's only resolved when tapped
