@@ -42,22 +42,46 @@ class CompareScreen extends ConsumerStatefulWidget {
 class _CompareScreenState extends ConsumerState<CompareScreen> {
   int _selectedIndex = 0;
   String? _activeSourceFilter;
-  // Guard so we only auto-select the anchor's cluster once, on first load.
   bool _didPreselect = false;
+
+  // Try to match anchor → cluster by item ID first, then by category.
+  // Always returns a valid index (0 as last resort).
+  int _anchorIndex(List<EventCluster> clusters) {
+    final anchor = widget.anchorItem;
+    if (anchor == null) return 0;
+    // Exact item-id match — most reliable
+    final byId = clusters.indexWhere(
+      (c) => c.items.any((item) => item.id == anchor.id),
+    );
+    if (byId >= 0) return byId;
+    // Category match
+    final cat = _effectiveCategory(anchor);
+    final byCat = clusters.indexWhere((c) => c.category == cat);
+    return byCat >= 0 ? byCat : 0;
+  }
+
+  void _doPreselect(List<EventCluster> clusters) {
+    if (_didPreselect || widget.anchorItem == null || clusters.isEmpty) return;
+    _didPreselect = true;
+    final idx = _anchorIndex(clusters);
+    if (mounted) setState(() => _selectedIndex = idx);
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Handles the case where clusters arrive asynchronously after first paint.
+    ref.listen<CompareState>(compareNotifierProvider, (_, next) {
+      _doPreselect(next.clusters);
+    });
+
     final state = ref.watch(compareNotifierProvider);
     final anchor = widget.anchorItem;
     final clusters = state.clusters;
 
-    // Clusters stream in asynchronously; snap to the anchor's cluster the
-    // first time data arrives.
+    // Handles the case where clusters are already in state (cached / fast load).
     if (!_didPreselect && clusters.isNotEmpty && anchor != null) {
       _didPreselect = true;
-      final cat = _effectiveCategory(anchor);
-      final idx = clusters.indexWhere((c) => c.category == cat);
-      if (idx >= 0) _selectedIndex = idx;
+      _selectedIndex = _anchorIndex(clusters); // safe: used in this same frame
     }
 
     return ColoredBox(
@@ -273,10 +297,10 @@ class _CompareBody extends StatelessWidget {
                       vertical: 0,
                     ),
                     decoration: BoxDecoration(
-                      color: selected ? _P.navy : _P.card,
+                      color: selected ? Colors.black : _P.card,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: selected ? _P.navy : _P.hairline,
+                        color: selected ? Colors.black : _P.hairline,
                         width: selected ? 0 : 1,
                       ),
                     ),
@@ -288,7 +312,7 @@ class _CompareBody extends StatelessWidget {
                           height: 7,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: selected ? Colors.white70 : dotColor,
+                            color: dotColor, // always show status colour
                           ),
                         ),
                         const SizedBox(width: 6),
