@@ -159,6 +159,16 @@ export function titleToDocId(title: string): string {
     .slice(0, 32);
 }
 
+// Remove exact URL duplicates that GDELT occasionally returns in one batch.
+export function deduplicateByUrl(articles: GdeltArticle[]): GdeltArticle[] {
+  const seen = new Set<string>();
+  return articles.filter((a) => {
+    if (seen.has(a.url)) return false;
+    seen.add(a.url);
+    return true;
+  });
+}
+
 // Keep only the highest-priority source when multiple articles share a title.
 export function deduplicateByTitle(articles: GdeltArticle[]): GdeltArticle[] {
   const best = new Map<string, GdeltArticle>();
@@ -173,6 +183,27 @@ export function deduplicateByTitle(articles: GdeltArticle[]): GdeltArticle[] {
     }
   }
   return [...best.values()];
+}
+
+// After og:images are fetched, drop articles that share an imageUrl — two
+// articles with identical images are the same story under a different headline.
+// Input articles must already be sorted by priority (highest first) so the
+// best source is retained.
+export function deduplicateByImageUrl(
+  articles: GdeltArticle[],
+  images: (string | null)[],
+): {articles: GdeltArticle[]; images: (string | null)[]} {
+  const seen = new Set<string>();
+  const keptArticles: GdeltArticle[] = [];
+  const keptImages: (string | null)[] = [];
+  for (let i = 0; i < articles.length; i++) {
+    const img = images[i];
+    if (img && seen.has(img)) continue;
+    if (img) seen.add(img);
+    keptArticles.push(articles[i]);
+    keptImages.push(img);
+  }
+  return {articles: keptArticles, images: keptImages};
 }
 
 interface GdeltArticle {
@@ -210,13 +241,12 @@ function computeTone(text: string): number {
 }
 
 function parseSeenDate(seendate: string): Date {
-  const y = seendate.slice(0, 4);
-  const mo = seendate.slice(4, 6);
-  const d = seendate.slice(6, 8);
-  const h = seendate.slice(9, 11);
-  const mi = seendate.slice(11, 13);
-  const s = seendate.slice(13, 15);
-  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
+  // GDELT seendate format: YYYYMMDDTHHMMSSZ — use a regex so format variants
+  // (space separator, milliseconds, etc.) produce a clear error rather than
+  // silently writing NaN components to Firestore.
+  const m = seendate.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
+  if (!m) throw new Error(`Unrecognised seendate format: ${seendate}`);
+  return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
 }
 
 // Fetch the og:image meta tag from an article URL. Returns null on any failure.
@@ -369,14 +399,30 @@ export async function fetchGdeltNewsHandler() {
     return;
   }
 
-  // Drop articles that are the same story syndicated across many sources.
-  const unique = deduplicateByTitle(english);
+  // Three-stage dedup:
+  // 1. URL — GDELT occasionally returns the same URL twice in one batch.
+  // 2. Title — same story syndicated across sources; keep highest-priority source.
+  // 3. ImageUrl — different headlines that share an og:image are the same story.
+  const urlDeduped = deduplicateByUrl(english);
+  // Sort by priority before title dedup so the Map retains the best source.
+  const titleDeduped = deduplicateByTitle(urlDeduped).sort(
+    (a, b) => sourcePriority(b.domain) - sourcePriority(a.domain),
+  );
   logger.info(
-    `fetchGdeltNews: ${english.length} English → ${unique.length} unique stories after dedup`,
+    `fetchGdeltNews: ${english.length} English → ${urlDeduped.length} URL-unique → ${titleDeduped.length} title-unique`,
   );
 
   // Fetch og:images in parallel (capped concurrency) before writing to Firestore.
-  const imageUrls = await fetchOgImages(unique.map((a) => a.url));
+  const rawImageUrls = await fetchOgImages(titleDeduped.map((a) => a.url));
+
+  // Stage 3: drop articles that share an og:image (same photo = same story).
+  const {articles: unique, images: imageUrls} = deduplicateByImageUrl(
+    titleDeduped,
+    rawImageUrls,
+  );
+  logger.info(
+    `fetchGdeltNews: ${titleDeduped.length} title-unique → ${unique.length} image-unique`,
+  );
 
   const batch = db.batch();
   let written = 0;
@@ -402,8 +448,9 @@ export async function fetchGdeltNewsHandler() {
       publishedAt: admin.firestore.Timestamp.fromDate(
         parseSeenDate(article.seendate),
       ),
+      // Always write imageUrl (or delete stale value from a previous run).
+      imageUrl: imageUrls[i] ?? admin.firestore.FieldValue.delete(),
     };
-    if (imageUrls[i]) doc["imageUrl"] = imageUrls[i];
 
     batch.set(ref, doc, {merge: true});
     written++;
@@ -413,7 +460,7 @@ export async function fetchGdeltNewsHandler() {
     await batch.commit();
   }
 
-  const withImages = imageUrls.filter(Boolean).length;
+  const withImages = imageUrls.filter((u) => u != null).length;
   const fetchTime = admin.firestore.Timestamp.now();
   await metaRef.set(
     {
