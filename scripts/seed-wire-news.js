@@ -97,17 +97,10 @@ const articles = [
   },
 ];
 
-// Match gdelt.ts titleToDocId so seeded docs and CF-written docs share the
-// same ID space and don't create duplicates when the scheduler runs.
-function titleToDocId(title) {
-  const key = title.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
-  return Buffer.from(key).toString('base64').replace(/[/+=]/g, '').slice(0, 32);
-}
-
 async function seed() {
   const batch = db.batch();
   for (const article of articles) {
-    const docId = titleToDocId(article.title);
+    const docId = Buffer.from(article.url).toString('base64').replace(/[/+=]/g, '').slice(0, 20);
     batch.set(db.collection('wire_news').doc(docId), { ...article, source: 'wire' });
   }
   await batch.commit();

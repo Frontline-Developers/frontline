@@ -9,9 +9,7 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,
-    "target": "es2017",
-    "types": ["node", "jest"],
-    "isolatedModules": true
+    "target": "es2017"
   },
   "compileOnSave": true,
   "include": [

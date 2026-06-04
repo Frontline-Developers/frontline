@@ -29,15 +29,14 @@ class NewsItemModel {
   });
 
   factory NewsItemModel.fromJson(String id, Map<String, dynamic> json) {
-    final raw = json['publishedAt'];
-    final publishedAt = raw is Timestamp ? raw.toDate() : DateTime.now();
+    final ts = json['publishedAt'] as Timestamp;
     return NewsItemModel(
       id: id,
       title: json['title'] as String,
       body: json['body'] as String?,
       url: json['url'] as String?,
       source: NewsSource.wire,
-      publishedAt: publishedAt,
+      publishedAt: ts.toDate(),
       sourceName: json['sourceName'] as String?,
       imageUrl: json['imageUrl'] as String?,
       locations: List<String>.from(json['locations'] as List? ?? []),
