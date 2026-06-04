@@ -9,14 +9,14 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll([
-            'category', 'description', 'location', 'geohash', 'mediaUrls',
-            'createdAt', 'userId', 'status', 'confirmCount', 'disputeCount',
-            'isDisputed', 'exifStripped'
+            'category', 'description', 'locationLabel', 'location', 'geohash',
+            'mediaUrls', 'createdAt', 'userId', 'status', 'confirmCount',
+            'disputeCount', 'isDisputed', 'exifStripped', 'tokenHash'
           ])
         && request.resource.data.keys().hasOnly([
-            'category', 'description', 'location', 'geohash', 'mediaUrls',
-            'createdAt', 'userId', 'status', 'confirmCount', 'disputeCount',
-            'isDisputed', 'exifStripped'
+            'category', 'description', 'locationLabel', 'location', 'geohash',
+            'mediaUrls', 'createdAt', 'userId', 'status', 'confirmCount',
+            'disputeCount', 'isDisputed', 'exifStripped', 'tokenHash'
           ])
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending'
@@ -40,6 +40,13 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['confirmCount', 'disputeCount', 'isDisputed']);
+
+      // Owner soft-delete: sets status='deleted' and removes tokenHash.
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'tokenHash'])
+        && request.resource.data.status == 'deleted';
 
       // Per-user interaction record — owner can create, update, or delete their own doc.
       match /interactions/{userId} {
@@ -78,6 +85,28 @@ service cloud.firestore {
     match /wire_news/{articleId} {
       allow read: if request.auth != null;
       allow write: if false;
+    }
+
+    // Alert subscriptions — owner can manage their own subscriptions.
+    match /user_alerts/{userId}/subscriptions/{subId} {
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasAll([
+            'userId', 'locationLabel', 'lat', 'lng', 'radiusKm', 'categories', 'createdAt'
+          ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.radiusKm is number
+        && request.resource.data.radiusKm >= 1
+        && request.resource.data.radiusKm <= 20
+        && request.resource.data.categories is list
+        && request.resource.data.categories.size() > 0;
+      allow read:   if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // FCM device tokens — owner write-only; admin SDK reads server-side.
+    match /user_tokens/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
