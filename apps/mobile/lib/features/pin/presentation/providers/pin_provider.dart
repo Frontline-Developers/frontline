@@ -119,16 +119,11 @@ class PinNotifier extends Notifier<PinState> {
 
   Future<void> promptBiometrics() async {
     if (!state.biometricAvailable || !state.biometricEnabled) return;
-    try {
-      final authenticated = await LocalAuthentication().authenticate(
-        localizedReason: 'Unlock Frontline',
-        options: const AuthenticationOptions(biometricOnly: true),
-      );
-      if (authenticated) {
-        state = state.copyWith(status: PinStatus.unlocked);
-      }
-    } catch (_) {
-      // Biometric unavailable or cancelled — fall through to PIN entry.
+    final authenticated = await ref
+        .read(pinRepositoryProvider)
+        .authenticateBiometric();
+    if (authenticated) {
+      state = state.copyWith(status: PinStatus.unlocked);
     }
   }
 

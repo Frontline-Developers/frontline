@@ -28,4 +28,7 @@ class PinRepositoryImpl implements PinRepository {
   @override
   Future<void> setBiometricEnabled(bool enabled) =>
       _datasource.setBiometricEnabled(enabled);
+
+  @override
+  Future<bool> authenticateBiometric() => _datasource.authenticateBiometric();
 }

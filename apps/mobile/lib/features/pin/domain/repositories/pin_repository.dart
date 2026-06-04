@@ -8,4 +8,5 @@ abstract class PinRepository {
   Future<bool> isBiometricAvailable();
   Future<bool> getBiometricEnabled();
   Future<void> setBiometricEnabled(bool enabled);
+  Future<bool> authenticateBiometric();
 }

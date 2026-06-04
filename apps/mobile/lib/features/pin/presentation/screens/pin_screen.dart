@@ -193,7 +193,7 @@ class _PinScreenState extends ConsumerState<PinScreen>
                                   highlightedDigit: _highlightedDigit,
                                 ),
                               const SizedBox(height: 24),
-                              _ForgotPinButton(status: pin.status),
+                              const _ForgotPinButton(),
                             ],
                           ),
                         ),
@@ -572,8 +572,7 @@ class _BypassWarningBanner extends StatelessWidget {
 // ── Forgot PIN button ─────────────────────────────────────────────────────────
 
 class _ForgotPinButton extends ConsumerWidget {
-  final PinStatus status;
-  const _ForgotPinButton({required this.status});
+  const _ForgotPinButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

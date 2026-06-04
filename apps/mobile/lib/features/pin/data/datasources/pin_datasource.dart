@@ -17,6 +17,7 @@ abstract class PinDatasource {
   Future<bool> isBiometricAvailable();
   Future<bool> getBiometricEnabled();
   Future<void> setBiometricEnabled(bool enabled);
+  Future<bool> authenticateBiometric();
 }
 
 class PinDatasourceImpl implements PinDatasource {
@@ -84,6 +85,18 @@ class PinDatasourceImpl implements PinDatasource {
   Future<void> setBiometricEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(kBiometricEnabledKey, enabled);
+  }
+
+  @override
+  Future<bool> authenticateBiometric() async {
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: 'Unlock Frontline',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   String _hashPin(String pin) => sha256.convert(utf8.encode(pin)).toString();

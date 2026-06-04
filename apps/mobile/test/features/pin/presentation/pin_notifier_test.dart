@@ -48,6 +48,11 @@ class _FakeRepo implements PinRepository {
   Future<void> setBiometricEnabled(bool enabled) async {
     savedBiometricEnabled = enabled;
   }
+
+  bool stubbedBiometricAuth = false;
+
+  @override
+  Future<bool> authenticateBiometric() async => stubbedBiometricAuth;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
