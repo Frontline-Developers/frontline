@@ -68,7 +68,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             _CompareAppBar(onBack: anchor != null ? () => context.pop() : null),
             if (anchor != null) ...[
               _FeaturedItemCard(item: anchor),
-              _RelatedReportsHeader(count: clusters.length),
+              _RelatedReportsHeader(
+                count: clusters.fold(0, (s, c) => s + c.items.length),
+              ),
             ] else
               _CompareHeader(count: allClusters.length),
             const SizedBox(height: 4),
@@ -200,7 +202,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               hasAnchor
                   ? 'No other reports cover this topic yet.\nCheck back as more come in.'
-                  : 'Events appear once two or more reports cover\nthe same incident.',
+                  : 'Events appear once two or more sources cover\nthe same category on the same day.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
@@ -518,25 +520,29 @@ class _ConsensusMeter extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = supports + contradicts;
     if (total == 0) return const SizedBox.shrink();
-    final ratio = supports / total;
-    final supportFlex = (ratio * 100).round().clamp(1, 99);
-    return ClipRRect(
+
+    final bar = ClipRRect(
       borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        height: 4,
-        child: Row(
-          children: [
-            Expanded(
-              flex: supportFlex,
-              child: Container(color: _P.verified),
-            ),
-            Expanded(
-              flex: 100 - supportFlex,
-              child: Container(color: _P.disputed),
-            ),
-          ],
+      child: SizedBox(height: 4, child: _buildBar()),
+    );
+    return bar;
+  }
+
+  Widget _buildBar() {
+    if (contradicts == 0) return Container(color: _P.verified);
+    if (supports == 0) return Container(color: _P.disputed);
+    final supportFlex = ((supports / (supports + contradicts)) * 100).round();
+    return Row(
+      children: [
+        Expanded(
+          flex: supportFlex,
+          child: Container(color: _P.verified),
         ),
-      ),
+        Expanded(
+          flex: 100 - supportFlex,
+          child: Container(color: _P.disputed),
+        ),
+      ],
     );
   }
 }
