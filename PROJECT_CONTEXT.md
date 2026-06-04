@@ -257,8 +257,9 @@ All functions deploy to `asia-southeast1` (Singapore).
 **Target launch: Early June 2026**
 
 ### Implemented as of Jun 4 2026
-- Compare page (`/compare`) — full Clean Architecture feature: event cluster grouping by category+date, timeline UI, SUPPORTS/CONTRADICTS/UNVERIFIED evidence evaluation per report
-- Test suite: 134 tests across 17 files covering auth, feed, map, my_reports, comments, compare, and reporting features
+- Compare page (`/compare`) — full Clean Architecture feature: real-time `watchClusters()` stream groups all citizen + wire items by category+date; timeline UI with SUPPORTS/CONTRADICTS/UNVERIFIED evidence badges; anchor mode (launched from Feed "Compare" button) filters to matching-category clusters and shows FeaturedItemCard
+- `FetchRelatedWireNewsUseCase` — three-tier fallback (location match → category match → recency) for future single-report wire-news lookup; domain layer only, wired into `CompareRepository`
+- Test suite: 153 tests across 21 files covering auth, feed, map, my_reports, comments, compare (4 files), and reporting features
 
 ---
 

@@ -21,6 +21,22 @@ Widget _wrap(CompareState state) => ProviderScope(
   child: const MaterialApp(home: CompareScreen()),
 );
 
+final _anchor = NewsItem(
+  id: 'a1',
+  title: 'Strike near Kyiv',
+  source: NewsSource.citizen,
+  publishedAt: DateTime(2026, 6, 4, 9),
+  category: 'combat',
+  status: ItemStatus.pending,
+);
+
+Widget _wrapWithAnchor(CompareState state, {NewsItem? anchor}) => ProviderScope(
+  overrides: [
+    compareNotifierProvider.overrideWith(() => _FakeCompareNotifier(state)),
+  ],
+  child: MaterialApp(home: CompareScreen(anchorItem: anchor ?? _anchor)),
+);
+
 void main() {
   testWidgets('renders without error', (tester) async {
     await tester.pumpWidget(_wrap(const CompareState()));
@@ -67,6 +83,47 @@ void main() {
     await tester.pumpWidget(_wrap(CompareState(clusters: [cluster])));
     expect(find.text('CONTRADICTS'), findsOneWidget);
   });
+
+  testWidgets('shows UNVERIFIED badge for an unverified item', (tester) async {
+    await tester.pumpWidget(
+      _wrap(CompareState(clusters: [_unverifiedCluster()])),
+    );
+    expect(find.text('UNVERIFIED'), findsWidgets);
+  });
+
+  // ── Anchor (FeaturedItemCard) path ────────────────────────────────────────
+
+  testWidgets('shows anchor title in FeaturedItemCard when anchorItem set', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+    expect(find.text('Strike near Kyiv'), findsOneWidget);
+  });
+
+  testWidgets('shows COMPARING label when anchorItem set', (tester) async {
+    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+    expect(find.text('COMPARING'), findsOneWidget);
+  });
+
+  testWidgets('shows back arrow icon when anchorItem set', (tester) async {
+    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+    expect(find.byIcon(Icons.arrow_back_ios), findsOneWidget);
+  });
+
+  testWidgets(
+    'shows no-related-reports empty state when anchor has no matching clusters',
+    (tester) async {
+      await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+      expect(find.text('No related reports yet'), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows Related reports header when anchorItem set', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+    expect(find.text('Related reports'), findsOneWidget);
+  });
 }
 
 EventCluster _infraCluster() => EventCluster(
@@ -91,6 +148,32 @@ EventCluster _infraCluster() => EventCluster(
       eval: EvidenceEval.supports,
       confirmCount: 0,
       disputeCount: 0,
+    ),
+  ],
+);
+
+EventCluster _unverifiedCluster() => EventCluster(
+  id: 'aid_20260604',
+  category: 'aid',
+  date: DateTime(2026, 6, 4),
+  items: [
+    ClusterItem(
+      id: '1',
+      title: 'Aid convoy status unclear',
+      source: NewsSource.citizen,
+      publishedAt: DateTime(2026, 6, 4, 8),
+      eval: EvidenceEval.unverified,
+      confirmCount: 0,
+      disputeCount: 0,
+    ),
+    ClusterItem(
+      id: '2',
+      title: 'Convoy reported delayed',
+      source: NewsSource.citizen,
+      publishedAt: DateTime(2026, 6, 4, 9),
+      eval: EvidenceEval.unverified,
+      confirmCount: 1,
+      disputeCount: 1,
     ),
   ],
 );
