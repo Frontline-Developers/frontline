@@ -122,14 +122,30 @@ class CompareDatasourceImpl implements CompareDatasource {
         .toList();
   }
 
+  static const _knownCategories = {
+    'combat',
+    'aid',
+    'alert',
+    'displaced',
+    'infra',
+  };
+
+  static String _categoryForItem(NewsItem item) {
+    if (item.category != null) return item.category!;
+    for (final t in item.themes) {
+      if (_knownCategories.contains(t)) return t;
+    }
+    return 'other';
+  }
+
   static List<EventCluster> _cluster(List<NewsItem> items) {
     final Map<String, List<NewsItem>> buckets = {};
 
     for (final item in items) {
-      final category = item.category ?? 'other';
-      final local = item.publishedAt.toLocal();
+      final category = _categoryForItem(item);
+      final utc = item.publishedAt.toUtc();
       final dateStr =
-          '${local.year}${local.month.toString().padLeft(2, '0')}${local.day.toString().padLeft(2, '0')}';
+          '${utc.year}${utc.month.toString().padLeft(2, '0')}${utc.day.toString().padLeft(2, '0')}';
       final key = '${category}_$dateStr';
       buckets.putIfAbsent(key, () => []).add(item);
     }
@@ -178,8 +194,8 @@ class CompareDatasourceImpl implements CompareDatasource {
   }
 
   static DateTime _parseDate(String yyyyMMdd) {
-    if (yyyyMMdd.length != 8) return DateTime.now();
-    return DateTime(
+    if (yyyyMMdd.length != 8) return DateTime.utc(1970);
+    return DateTime.utc(
       int.parse(yyyyMMdd.substring(0, 4)),
       int.parse(yyyyMMdd.substring(4, 6)),
       int.parse(yyyyMMdd.substring(6, 8)),
