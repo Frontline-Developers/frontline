@@ -11,6 +11,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 
+import '../../../../core/constants/storage_keys.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/repositories/reporting_repository.dart';
 import '../models/report_model.dart';
@@ -183,18 +184,15 @@ String _defaultGenerateReportId() =>
 String _defaultGeohash(double lat, double lng) =>
     GeoFirePoint(GeoPoint(lat, lng)).geohash;
 
-// Same key used by MyReportsDatasource to read tokens back.
-const _kTokensStorageKey = 'frontline_report_tokens';
-
 Future<void> _defaultSaveToken(String token) async {
   const storage = FlutterSecureStorage();
-  final raw = await storage.read(key: _kTokensStorageKey);
+  final raw = await storage.read(key: kReportTokensStorageKey);
   final tokens = raw != null
       ? (jsonDecode(raw) as List).cast<String>()
       : <String>[];
   if (!tokens.contains(token)) {
     tokens.add(token);
-    await storage.write(key: _kTokensStorageKey, value: jsonEncode(tokens));
+    await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
   }
 }
 

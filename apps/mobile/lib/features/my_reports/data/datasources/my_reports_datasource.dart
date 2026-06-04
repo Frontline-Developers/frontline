@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/constants/storage_keys.dart';
 import '../../domain/entities/my_report.dart';
 import '../models/my_report_model.dart';
 
@@ -26,9 +27,6 @@ typedef ReportsWatcher =
 
 /// Soft-deletes a report: sets status='deleted' and removes tokenHash.
 typedef ReportSoftDeleter = Future<void> Function(String reportId);
-
-// Storage key must match the key written by ReportingDatasource.
-const _kTokensKey = 'frontline_report_tokens';
 
 // ── Interface ─────────────────────────────────────────────────────────────────
 
@@ -90,19 +88,19 @@ class MyReportsDatasourceImpl implements MyReportsDatasource {
 
 Future<List<String>> _defaultReadTokens() async {
   const storage = FlutterSecureStorage();
-  final raw = await storage.read(key: _kTokensKey);
+  final raw = await storage.read(key: kReportTokensStorageKey);
   if (raw == null) return [];
   return (jsonDecode(raw) as List).cast<String>();
 }
 
 Future<void> _defaultRemoveToken(String token) async {
   const storage = FlutterSecureStorage();
-  final raw = await storage.read(key: _kTokensKey);
+  final raw = await storage.read(key: kReportTokensStorageKey);
   final tokens = raw != null
       ? (jsonDecode(raw) as List).cast<String>()
       : <String>[];
   tokens.remove(token);
-  await storage.write(key: _kTokensKey, value: jsonEncode(tokens));
+  await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
 }
 
 Stream<List<MyReport>> _defaultWatchReports(
