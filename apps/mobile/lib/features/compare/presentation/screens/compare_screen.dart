@@ -25,7 +25,6 @@ class _P {
   static const disputed = AppColors.reportDisputed;
   static const disputedSoft = Color(0xFFFEE2E2);
   static const amber = Color(0xFFF59E0B);
-  static const amberSoft = Color(0xFFFEF3C7);
   static const unverifiedFg = Color(0xFF6B7280);
   static const unverifiedBg = Color(0xFFF3F4F6);
 }
@@ -43,29 +42,23 @@ class CompareScreen extends ConsumerStatefulWidget {
 class _CompareScreenState extends ConsumerState<CompareScreen> {
   int _selectedIndex = 0;
   String? _activeSourceFilter;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _preselectTab());
-  }
-
-  void _preselectTab() {
-    final anchor = widget.anchorItem;
-    if (anchor == null) return;
-    final clusters = ref.read(compareNotifierProvider).clusters;
-    final targetCat = _effectiveCategory(anchor);
-    final idx = clusters.indexWhere((c) => c.category == targetCat);
-    if (idx >= 0 && mounted) {
-      setState(() => _selectedIndex = idx);
-    }
-  }
+  // Guard so we only auto-select the anchor's cluster once, on first load.
+  bool _didPreselect = false;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(compareNotifierProvider);
     final anchor = widget.anchorItem;
     final clusters = state.clusters;
+
+    // Clusters stream in asynchronously; snap to the anchor's cluster the
+    // first time data arrives.
+    if (!_didPreselect && clusters.isNotEmpty && anchor != null) {
+      _didPreselect = true;
+      final cat = _effectiveCategory(anchor);
+      final idx = clusters.indexWhere((c) => c.category == cat);
+      if (idx >= 0) _selectedIndex = idx;
+    }
 
     return ColoredBox(
       color: _P.background,
@@ -335,25 +328,8 @@ class _CompareBody extends StatelessWidget {
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
-        // Timeline section label
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              children: const [
-                Text(
-                  'REPORT TIMELINE · CHRONOLOGICAL',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: _P.inkTertiary,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        // Timeline section label + view toggle
+        const SliverToBoxAdapter(child: _TimelineSectionHeader()),
         // Timeline entries
         SliverPadding(
           padding: const EdgeInsets.only(bottom: 32),
@@ -401,168 +377,207 @@ class _EventCard extends StatelessWidget {
     final advantage = _citizenAdvantage(cluster);
     final groups = _sourceGroups(cluster);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _P.eventCardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Status badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, size: 12, color: statusFg),
-                const SizedBox(width: 4),
-                Text(
-                  statusLabel,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: statusFg,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Title
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: _P.ink,
-              height: 1.25,
-              letterSpacing: -0.4,
-            ),
-          ),
-          if (firstItem != null) ...[
-            const SizedBox(height: 8),
-            // Meta row
-            Row(
-              children: [
-                Icon(
-                  _categoryIcon(cluster.category),
-                  size: 13,
-                  color: _categoryColor(cluster.category),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _categoryLabel(cluster.category),
-                  style: const TextStyle(fontSize: 12, color: _P.inkSecondary),
-                ),
-                const Text(
-                  ' · ',
-                  style: TextStyle(fontSize: 12, color: _P.inkTertiary),
-                ),
-                Text(
-                  _formatDate(cluster.date),
-                  style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
-                ),
-              ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: _P.card,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
-          const SizedBox(height: 12),
-          // Source filter label
-          const Text(
-            'REPORTED BY · TAP TO FILTER',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: _P.inkTertiary,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Source chips
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: groups.map((g) {
-              final isActive = activeSourceFilter == g.key;
-              return GestureDetector(
-                onTap: () => onSourceFilterChanged(isActive ? null : g.key),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? _P.navy
-                        : g.isCitizen
-                        ? _P.amberSoft
-                        : const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    g.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isActive
-                          ? Colors.white
-                          : g.isCitizen
-                          ? const Color(0xFFB54708)
-                          : _P.navy,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          // Citizen advantage insight
-          if (advantage != null) ...[
-            const SizedBox(height: 12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Lavender header (status + title + meta) ─────────────────
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _P.card,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
+              width: double.infinity,
+              color: _P.eventCardBg,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, size: 15, color: _P.navy),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        text: 'A citizen reported this ',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: _P.inkSecondary,
-                          height: 1.4,
+                  // Status: plain icon + bold text, no background pill
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 13, color: statusFg),
+                      const SizedBox(width: 5),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: statusFg,
+                          letterSpacing: 0.4,
                         ),
-                        children: [
-                          TextSpan(
-                            text: advantage,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _P.ink,
+                      height: 1.25,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  if (firstItem != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          _categoryIcon(cluster.category),
+                          size: 13,
+                          color: _categoryColor(cluster.category),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _categoryLabel(cluster.category),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: _P.inkSecondary,
                           ),
-                          const TextSpan(
-                            text: ' before major outlets confirmed.',
+                        ),
+                        const Text(
+                          ' · ',
+                          style: TextStyle(fontSize: 12, color: _P.inkTertiary),
+                        ),
+                        Text(
+                          _formatDate(cluster.date),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: _P.inkTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // ── White body (source chips + insight) ─────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'REPORTED BY · TAP TO FILTER',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: _P.inkTertiary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: groups.map((g) {
+                      final isActive = activeSourceFilter == g.key;
+                      return GestureDetector(
+                        onTap: () =>
+                            onSourceFilterChanged(isActive ? null : g.key),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isActive ? _P.navy : _P.card,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isActive ? _P.navy : _P.hairline,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isActive ? Colors.white70 : g.dotColor,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                g.label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isActive ? Colors.white : _P.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  if (advantage != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F4FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.lightbulb_outline,
+                            size: 15,
+                            color: _P.navy,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                text: 'A citizen reported this ',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _P.inkSecondary,
+                                  height: 1.4,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: advantage,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: _P.navy,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: ' before major outlets confirmed.',
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -574,11 +589,116 @@ class _SourceGroup {
   final String key;
   final String label;
   final bool isCitizen;
+  final Color dotColor;
   const _SourceGroup({
     required this.key,
     required this.label,
     required this.isCitizen,
+    required this.dotColor,
   });
+}
+
+// ── Timeline section header + view toggle ────────────────────────────────────
+
+class _TimelineSectionHeader extends StatefulWidget {
+  const _TimelineSectionHeader();
+
+  @override
+  State<_TimelineSectionHeader> createState() => _TimelineSectionHeaderState();
+}
+
+class _TimelineSectionHeaderState extends State<_TimelineSectionHeader> {
+  bool _isTimeline = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          const Text(
+            'REPORT TIMELINE\n· CHRONOLOGICAL',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: _P.inkTertiary,
+              letterSpacing: 0.6,
+              height: 1.5,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: _P.hairline),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ToggleBtn(
+                  icon: Icons.format_list_bulleted,
+                  label: 'Timeline',
+                  selected: _isTimeline,
+                  onTap: () => setState(() => _isTimeline = true),
+                ),
+                Container(width: 1, height: 28, color: _P.hairline),
+                _ToggleBtn(
+                  icon: Icons.view_column_outlined,
+                  label: 'Side',
+                  selected: !_isTimeline,
+                  onTap: () => setState(() => _isTimeline = false),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ToggleBtn({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? _P.navy.withValues(alpha: 0.07)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: selected ? _P.navy : _P.inkTertiary),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? _P.navy : _P.inkTertiary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ── Timeline entry ────────────────────────────────────────────────────────────
@@ -604,7 +724,7 @@ class _TimelineEntry extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row: time + offset
+          // Header row: time + relative offset (both left-aligned)
           Row(
             children: [
               Text(
@@ -615,12 +735,13 @@ class _TimelineEntry extends StatelessWidget {
                   color: _P.inkSecondary,
                 ),
               ),
-              const Spacer(),
-              if (offset.inMinutes > 0)
+              if (offset.inMinutes > 0) ...[
+                const SizedBox(width: 6),
                 Text(
                   _formatOffset(offset),
                   style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 4),
@@ -744,21 +865,29 @@ List<_SourceGroup> _sourceGroups(EventCluster cluster) {
         key: 'citizen',
         label: 'Citizen report ×$citizenCount',
         isCitizen: true,
+        dotColor: _P.amber,
       ),
     );
   }
-  final wireNames = <String>{};
-  for (final i in cluster.items) {
-    if (i.source == NewsSource.wire) {
-      final name = i.sourceName;
-      if (name != null && wireNames.add(name)) {
-        groups.add(_SourceGroup(key: name, label: name, isCitizen: false));
-      } else if (name == null && wireNames.add('__wire__')) {
-        groups.add(
-          const _SourceGroup(key: '__wire__', label: 'Wire', isCitizen: false),
-        );
-      }
-    }
+  // Track (supports, contradicts) per wire source to derive dot color.
+  final wireEvals = <String, (int sup, int con)>{};
+  for (final item in cluster.items.where((i) => i.source == NewsSource.wire)) {
+    final key = item.sourceName ?? '__wire__';
+    final cur = wireEvals[key] ?? (0, 0);
+    wireEvals[key] = item.eval == EvidenceEval.contradicts
+        ? (cur.$1, cur.$2 + 1)
+        : (cur.$1 + 1, cur.$2);
+  }
+  for (final entry in wireEvals.entries) {
+    final hasContradict = entry.value.$2 > 0;
+    groups.add(
+      _SourceGroup(
+        key: entry.key,
+        label: entry.key == '__wire__' ? 'Wire' : entry.key,
+        isCitizen: false,
+        dotColor: hasContradict ? _P.disputed : _P.amber,
+      ),
+    );
   }
   return groups;
 }
