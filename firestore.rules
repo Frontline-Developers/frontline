@@ -31,10 +31,11 @@ service cloud.firestore {
       // Feed is intentionally public — any signed-in user can list/query reports.
       allow list: if request.auth != null;
 
-      // Individual document get is restricted to the owner. The compare screen
-      // reads another user's report via a list query (FieldPath.documentId filter)
-      // which falls under the list rule above, not this get rule.
-      allow get: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Any authenticated user may get a report by ID. The list rule already
+      // exposes all fields via queries, so this adds no new attack surface.
+      // Required for Firestore transactions (tx.get) to work for non-owners
+      // e.g. casting votes on reports you did not submit.
+      allow get: if request.auth != null;
 
       // Vote transactions only touch confirmCount, disputeCount, isDisputed.
       allow update: if request.auth != null
