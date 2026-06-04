@@ -7,8 +7,7 @@ class SearchRepositoryImpl implements SearchRepository {
   final SearchDatasource _datasource;
 
   @override
-  Future<List<String>> loadRecentSearches() =>
-      _datasource.loadRecentSearches();
+  Future<List<String>> loadRecentSearches() => _datasource.loadRecentSearches();
 
   @override
   Future<void> saveRecentSearch(String term) =>
@@ -19,6 +18,5 @@ class SearchRepositoryImpl implements SearchRepository {
       _datasource.clearRecentSearch(term);
 
   @override
-  Future<void> clearAllRecentSearches() =>
-      _datasource.clearAllRecentSearches();
+  Future<void> clearAllRecentSearches() => _datasource.clearAllRecentSearches();
 }
