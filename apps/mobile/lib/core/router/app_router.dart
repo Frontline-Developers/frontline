@@ -11,14 +11,16 @@ import '../../features/my_reports/presentation/screens/report_detail_screen.dart
 import '../../features/reporting/presentation/screens/report_detail_screen.dart'
     as reporting;
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
 
 const _navy = Color(0xFF1E3A8A);
 const _inkTertiary = Color(0xFF868E96);
 const _hairline = Color(0xFFDEE2E6);
 
 final appRouter = GoRouter(
-  initialLocation: '/feed',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     ShellRoute(
       builder: (context, state, child) => _AppShell(child: child),
       routes: [
