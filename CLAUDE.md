@@ -111,6 +111,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 | `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
 | `splash` | _(no provider — StatefulWidget)_ | Done | Animated radar splash, auto-nav to /feed after 2.8 s |
+| `search` | `searchNotifierProvider` | Done | Full-screen overlay from Feed; AND keyword search; recent searches (SharedPreferences); What's Going On top-5 countries |
 
 ---
 
@@ -251,7 +252,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **429 tests** across 35 test files — all pass, zero analyze issues.
+Total: **478 tests** across 38 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -265,6 +266,7 @@ Total: **429 tests** across 35 test files — all pass, zero analyze issues.
 | `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
 | `pin` | `pin/domain/pin_state_test.dart`, `pin/presentation/pin_notifier_test.dart`, `pin/presentation/pin_screen_test.dart` | `PinState`/`PinStatus` entity + sentinel; `PinNotifier` full flow (createPin→confirmPin→biometricSetup/unlocked, enterPin correct/wrong, bypassWarning, resetAll, biometricEnable/skip); `PinScreen` all states + dot indicator + numpad + Forgot PIN dialog + bypass banner + biometric setup screen |
 | `splash` | `splash/presentation/splash_screen_test.dart` | SplashScreen render + title + subtitle + privacy note + progress indicator + loading label; 6 tests |
+| `search` | `search/domain/search_logic_test.dart`, `search/data/search_datasource_test.dart`, `search/presentation/search_notifier_test.dart`, `search/presentation/search_screen_test.dart` | `searchMatches` AND logic + scope filter + all haystack fields; `SearchDatasourceImpl` save/load/dedup/max-8/clear; `SearchNotifier` all state transitions + trending computation; `SearchScreen` all states (empty/results/no-results) + scope chips + recent pills + Search button |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
