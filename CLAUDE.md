@@ -108,6 +108,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
+| `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
 
 ---
 
@@ -257,7 +258,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **216 tests** across 22 test files — all pass, zero analyze issues.
+Total: **306 tests** across 25 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -268,6 +269,7 @@ Total: **216 tests** across 22 test files — all pass, zero analyze issues.
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
 | `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
+| `pin` | `pin/domain/pin_state_test.dart`, `pin/presentation/pin_notifier_test.dart`, `pin/presentation/pin_screen_test.dart` | `PinState`/`PinStatus` entity + sentinel; `PinNotifier` full flow (createPin→confirmPin→biometricSetup/unlocked, enterPin correct/wrong, bypassWarning, resetAll, biometricEnable/skip); `PinScreen` all states + dot indicator + numpad + Forgot PIN dialog + bypass banner + biometric setup screen |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
