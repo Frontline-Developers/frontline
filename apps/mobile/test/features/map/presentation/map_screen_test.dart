@@ -17,6 +17,9 @@ class _FakeMapNotifier extends MapNotifier {
   MapState build() => initialState;
 
   @override
+  void watchArea(double lat, double lng, double radiusKm) {}
+
+  @override
   void selectPin(MapReport report) =>
       state = state.copyWith(selectedReport: report);
 

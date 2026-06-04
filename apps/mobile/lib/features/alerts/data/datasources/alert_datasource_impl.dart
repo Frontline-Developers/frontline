@@ -10,7 +10,8 @@ import 'alert_datasource.dart';
 class AlertDatasourceImpl implements AlertDatasource {
   final FirebaseFirestore _firestore;
 
-  const AlertDatasourceImpl(this._firestore);
+  AlertDatasourceImpl([FirebaseFirestore? firestore])
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Future<String> save(AlertSubscription subscription) async {

@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../data/datasources/map_datasource.dart';
-import '../../data/datasources/mock_map_datasource.dart';
 import '../../data/repositories/map_repository_impl.dart';
 import '../../data/services/location_service.dart';
 import '../../domain/entities/map_filters.dart';
@@ -79,10 +77,8 @@ const _sentinel = Object();
 // DI
 // ---------------------------------------------------------------------------
 
-// In debug builds, use mock data so the app runs without Firebase.
-// Flip to MapDatasourceImpl() when the emulator / prod is ready.
 final _mapDatasourceProvider = Provider<MapDatasource>(
-  (_) => kDebugMode ? MockMapDatasource() : MapDatasourceImpl(),
+  (_) => MapDatasourceImpl(),
 );
 final _mapRepositoryProvider = Provider(
   (ref) => MapRepositoryImpl(ref.watch(_mapDatasourceProvider)),

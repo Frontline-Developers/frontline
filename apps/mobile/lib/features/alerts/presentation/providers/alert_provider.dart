@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/alert_datasource_impl.dart';
@@ -32,12 +30,10 @@ class AlertState {
 const _sentinel = Object();
 
 // ---------------------------------------------------------------------------
-// DI
+// DI — Firebase SDK is instantiated inside each datasource/service, not here.
 // ---------------------------------------------------------------------------
 
-final _alertDatasourceProvider = Provider(
-  (_) => AlertDatasourceImpl(FirebaseFirestore.instance),
-);
+final _alertDatasourceProvider = Provider((_) => AlertDatasourceImpl());
 
 final _alertRepositoryProvider = Provider(
   (ref) => AlertRepositoryImpl(ref.watch(_alertDatasourceProvider)),
@@ -45,10 +41,7 @@ final _alertRepositoryProvider = Provider(
 
 /// Exported so tests can override with a fake implementation.
 final fcmTokenServiceProvider = Provider<FcmTokenService>(
-  (_) => FcmTokenServiceImpl(
-    FirebaseMessaging.instance,
-    FirebaseFirestore.instance,
-  ),
+  (_) => FcmTokenServiceImpl(),
 );
 
 // ---------------------------------------------------------------------------

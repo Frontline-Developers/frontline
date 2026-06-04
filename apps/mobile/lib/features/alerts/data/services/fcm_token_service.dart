@@ -15,7 +15,11 @@ class FcmTokenServiceImpl implements FcmTokenService {
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _firestore;
 
-  const FcmTokenServiceImpl(this._messaging, this._firestore);
+  FcmTokenServiceImpl([
+    FirebaseMessaging? messaging,
+    FirebaseFirestore? firestore,
+  ]) : _messaging = messaging ?? FirebaseMessaging.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Future<void> registerToken({required String userId}) async {
