@@ -38,6 +38,29 @@ void main() {
       expect(json['createdAt'], isA<FieldValue>());
     });
 
+    test('emits locationLabel field', () {
+      const m = ReportModel(
+        userId: 'u1',
+        category: ReportCategory.combat,
+        description: 'desc',
+        lat: 50.0,
+        lng: 36.0,
+        locationLabel: 'Kharkiv',
+      );
+      expect(m.toJson()['locationLabel'], 'Kharkiv');
+    });
+
+    test('emits empty string for locationLabel when not provided', () {
+      const m = ReportModel(
+        userId: 'u1',
+        category: ReportCategory.combat,
+        description: 'desc',
+        lat: 50.0,
+        lng: 36.0,
+      );
+      expect(m.toJson()['locationLabel'], '');
+    });
+
     test('never emits raw lat/lng fields outside the GeoPoint', () {
       const m = ReportModel(
         userId: 'u1',

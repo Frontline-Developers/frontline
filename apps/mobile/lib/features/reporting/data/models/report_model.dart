@@ -6,6 +6,7 @@ class ReportModel {
   final String userId;
   final ReportCategory category;
   final String description;
+  final String locationLabel;
   final double lat;
   final double lng;
   final String? geohash;
@@ -21,6 +22,7 @@ class ReportModel {
     required this.userId,
     required this.category,
     required this.description,
+    this.locationLabel = '',
     required this.lat,
     required this.lng,
     this.geohash,
@@ -36,6 +38,7 @@ class ReportModel {
     'userId': userId,
     'category': category.name,
     'description': description,
+    'locationLabel': locationLabel,
     'location': GeoPoint(lat, lng),
     if (geohash != null) 'geohash': geohash,
     'mediaUrls': mediaUrls,
