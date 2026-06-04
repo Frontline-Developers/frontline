@@ -215,7 +215,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **134 tests** across 17 test files — all pass, zero analyze issues.
+Total: **153 tests** across 21 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -224,10 +224,12 @@ Total: **134 tests** across 17 test files — all pass, zero analyze issues.
 | `map` | `map/presentation/map_screen_test.dart` | MapScreen render + placeholder; `MapState.copyWith` sentinel |
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
-| `compare` | `compare/domain/event_cluster_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; CompareScreen all states + SUPPORTS/CONTRADICTS badges |
+| `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
 | `reporting` | 9 files (datasource, model, domain, notifier, screen, widgets) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
 - Override `FutureProvider.family` (e.g. `voteProvider`) with `.overrideWith((ref, arg) async => null)` to bypass Firebase
 - `ListView.builder` only renders visible viewport — test single items when asserting off-screen labels
+- Providers exposed publicly (e.g. `compareRepositoryProvider`) can be overridden in notifier unit tests via `ProviderContainer(overrides: [...])`
+- Screens that use `context.pop()` in tap callbacks do NOT need GoRouter in test harness — it's only resolved when tapped
