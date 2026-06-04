@@ -21,7 +21,8 @@ final appRouter = GoRouter(
         GoRoute(path: '/', builder: (context, state) => const MapScreen()),
         GoRoute(
           path: '/compare',
-          builder: (context, state) => const CompareScreen(),
+          builder: (context, state) =>
+              CompareScreen(reportId: state.extra as String?),
         ),
         GoRoute(
           path: '/my-reports',

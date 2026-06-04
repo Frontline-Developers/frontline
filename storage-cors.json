@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["https://frontline-app.web.app", "http://localhost:5173"],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]

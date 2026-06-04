@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183450176988",
+    "project_id": "frontline-549fb",
+    "storage_bucket": "frontline-549fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183450176988:android:4414ae092587c62245d319",
+        "android_client_info": {
+          "package_name": "com.frontlineapp.frontline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQaNsta6mWPmIh1x_z8g9PPChfb4yCeic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
