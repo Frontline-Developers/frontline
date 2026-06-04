@@ -7,7 +7,8 @@ class MyReportsRepositoryImpl implements MyReportsRepository {
   MyReportsRepositoryImpl(this._datasource);
 
   @override
-  Stream<List<MyReport>> watchMyReports() => _datasource.watchMyReports();
+  Stream<({List<MyReport> reports, bool isTruncated})> watchMyReports() =>
+      _datasource.watchMyReports();
 
   @override
   Future<void> deleteReport(String reportId, String token) =>

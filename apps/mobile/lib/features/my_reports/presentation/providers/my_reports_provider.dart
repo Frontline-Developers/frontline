@@ -5,12 +5,15 @@ import '../../domain/entities/my_report.dart';
 
 enum MyReportsFilter { all, verified, pending, disputed }
 
+const _sentinel = Object();
+
 class MyReportsState {
   final List<MyReport> reports;
   final bool isLoading;
   final String? error;
   final MyReportsFilter filter;
   final bool isDeleting;
+  final bool isTruncated;
 
   const MyReportsState({
     this.reports = const [],
@@ -18,6 +21,7 @@ class MyReportsState {
     this.error,
     this.filter = MyReportsFilter.all,
     this.isDeleting = false,
+    this.isTruncated = false,
   });
 
   List<MyReport> get filtered => switch (filter) {
@@ -48,15 +52,17 @@ class MyReportsState {
   MyReportsState copyWith({
     List<MyReport>? reports,
     bool? isLoading,
-    String? error,
+    Object? error = _sentinel,
     MyReportsFilter? filter,
     bool? isDeleting,
+    bool? isTruncated,
   }) => MyReportsState(
     reports: reports ?? this.reports,
     isLoading: isLoading ?? this.isLoading,
-    error: error ?? this.error,
+    error: error == _sentinel ? this.error : error as String?,
     filter: filter ?? this.filter,
     isDeleting: isDeleting ?? this.isDeleting,
+    isTruncated: isTruncated ?? this.isTruncated,
   );
 }
 
@@ -75,8 +81,11 @@ class MyReportsNotifier extends Notifier<MyReportsState> {
         .watch(_myReportsRepositoryProvider)
         .watchMyReports()
         .listen(
-          (reports) =>
-              state = state.copyWith(reports: reports, isLoading: false),
+          (snapshot) => state = state.copyWith(
+            reports: snapshot.reports,
+            isTruncated: snapshot.isTruncated,
+            isLoading: false,
+          ),
           onError: (e) =>
               state = state.copyWith(error: e.toString(), isLoading: false),
         );
@@ -91,11 +100,10 @@ class MyReportsNotifier extends Notifier<MyReportsState> {
       await ref
           .read(_myReportsRepositoryProvider)
           .deleteReport(reportId, token);
-      // Stream will emit updated list automatically.
+      // Clear any previous error on success; stream emits the updated list.
+      state = state.copyWith(error: null, isDeleting: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), isDeleting: false);
-    } finally {
-      state = state.copyWith(isDeleting: false);
     }
   }
 }

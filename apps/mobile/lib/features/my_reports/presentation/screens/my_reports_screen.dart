@@ -64,6 +64,8 @@ class MyReportsScreen extends ConsumerWidget {
                   onChanged: (f) =>
                       ref.read(myReportsNotifierProvider.notifier).setFilter(f),
                 ),
+                if (state.isTruncated)
+                  _TruncationBanner(),
                 const SizedBox(height: 4),
                 Expanded(
                   child: state.isLoading
@@ -130,6 +132,35 @@ class MyReportsScreen extends ConsumerWidget {
               .read(myReportsNotifierProvider.notifier)
               .deleteReport(report.id, report.token);
         },
+      ),
+    );
+  }
+}
+
+// ── Truncation notice ─────────────────────────────────────────────────────────
+
+class _TruncationBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        border: Border.all(color: const Color(0xFFFFDC7C)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: Color(0xFF856404)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Showing your 30 most recent reports. Older reports are not displayed.',
+              style: TextStyle(fontSize: 12, color: const Color(0xFF856404)),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -31,7 +31,7 @@ typedef ReportSoftDeleter = Future<void> Function(String reportId);
 // ── Interface ─────────────────────────────────────────────────────────────────
 
 abstract class MyReportsDatasource {
-  Stream<List<MyReport>> watchMyReports();
+  Stream<({List<MyReport> reports, bool isTruncated})> watchMyReports();
   Future<void> deleteReport(String reportId, String token);
 }
 
@@ -54,21 +54,25 @@ class MyReportsDatasourceImpl implements MyReportsDatasource {
        _softDelete = softDelete ?? _defaultSoftDelete;
 
   @override
-  Stream<List<MyReport>> watchMyReports() async* {
+  Stream<({List<MyReport> reports, bool isTruncated})> watchMyReports() async* {
     final tokens = await _readTokens();
     if (tokens.isEmpty) {
-      yield [];
+      yield (reports: [], isTruncated: false);
       return;
     }
     // Compute SHA-256 hash for each token — matches the tokenHash field written
     // to Firestore by ReportingDatasource at submission time.
     final hashToToken = {for (final t in tokens) _sha256(t): t};
-    // Firestore whereIn is limited to 30 items — sufficient for typical users.
+    // Firestore whereIn is limited to 30 items. Expose the truncation flag so
+    // the UI can warn users who have submitted more than 30 reports.
+    final isTruncated = hashToToken.length > 30;
     final hashes = hashToToken.keys.take(30).toList();
-    yield* _watchReports(
-      hashes,
-      hashToToken,
-    ).map((reports) => reports.where((r) => r.status != 'deleted').toList());
+    yield* _watchReports(hashes, hashToToken).map(
+      (reports) => (
+        reports: reports.where((r) => r.status != 'deleted').toList(),
+        isTruncated: isTruncated,
+      ),
+    );
   }
 
   @override
@@ -99,8 +103,9 @@ Future<void> _defaultRemoveToken(String token) async {
   final tokens = raw != null
       ? (jsonDecode(raw) as List).cast<String>()
       : <String>[];
-  tokens.remove(token);
-  await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
+  if (tokens.remove(token)) {
+    await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
+  }
 }
 
 Stream<List<MyReport>> _defaultWatchReports(

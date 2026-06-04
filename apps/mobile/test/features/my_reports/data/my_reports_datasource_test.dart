@@ -11,7 +11,9 @@ List<String> _store = [];
 
 Future<List<String>> _fakeRead() async => List.of(_store);
 
-Future<void> _fakeRemove(String t) async => _store.remove(t);
+Future<void> _fakeRemove(String t) async {
+  _store.remove(t);
+}
 
 String _hash(String t) => sha256.convert(utf8.encode(t)).toString();
 
@@ -55,9 +57,12 @@ MyReportsDatasourceImpl _buildDs({
 
 void main() {
   group('MyReportsDatasourceImpl.watchMyReports', () {
-    test('emits empty list when no tokens are stored', () async {
+    test('emits empty reports and isTruncated=false when no tokens are stored',
+        () async {
       final ds = _buildDs(initialTokens: []);
-      await expectLater(ds.watchMyReports(), emits(isEmpty));
+      final result = await ds.watchMyReports().first;
+      expect(result.reports, isEmpty);
+      expect(result.isTruncated, false);
     });
 
     test('queries Firestore with SHA-256 hashes of stored tokens', () async {
@@ -104,8 +109,8 @@ void main() {
       );
 
       final result = await ds.watchMyReports().first;
-      expect(result.length, 1);
-      expect(result.single.id, 'rpt-2');
+      expect(result.reports.length, 1);
+      expect(result.reports.single.id, 'rpt-2');
     });
 
     test('caps Firestore whereIn at 30 hashes', () async {
@@ -122,6 +127,30 @@ void main() {
 
       await ds.watchMyReports().first;
       expect(capturedHashes!.length, lessThanOrEqualTo(30));
+    });
+
+    test('exposes isTruncated=true when token count exceeds 30', () async {
+      final manyTokens = List.generate(35, (i) => 'tok-$i-aaaa-bbbb');
+
+      final ds = _buildDs(
+        initialTokens: manyTokens,
+        watcher: (hashes, hashToToken) => Stream.value([]),
+      );
+
+      final result = await ds.watchMyReports().first;
+      expect(result.isTruncated, true);
+    });
+
+    test('isTruncated=false when token count is exactly 30', () async {
+      final tokens = List.generate(30, (i) => 'tok-$i-aaaa-bbbb');
+
+      final ds = _buildDs(
+        initialTokens: tokens,
+        watcher: (hashes, hashToToken) => Stream.value([]),
+      );
+
+      final result = await ds.watchMyReports().first;
+      expect(result.isTruncated, false);
     });
   });
 
