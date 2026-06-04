@@ -11,13 +11,13 @@ abstract class VoteDatasource {
   ); // 'confirm'|'dispute'|null
 }
 
-String _randomToken() {
-  final rng = Random.secure();
-  final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
-  return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-}
-
 class VoteDatasourceImpl implements VoteDatasource {
+  static String _randomToken() {
+    final rng = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   @override
   Future<String?> getUserVote(String reportId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;

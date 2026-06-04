@@ -228,13 +228,14 @@ void main() {
   });
 
   // 18. Confirm button is active when user already confirmed
-  testWidgets('Confirm button is active when user vote is confirm', (
+  testWidgets('Confirm button shows filled icon when user vote is confirm', (
     tester,
   ) async {
     await tester.pumpWidget(_wrap(_citizenItem, userVote: 'confirm'));
     await tester.pump();
-    // The confirm button exists and the screen renders without error
-    expect(find.text('Confirm'), findsOneWidget);
+    // Active state uses check_circle (filled); inactive uses check_circle_outline.
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsNothing);
   });
 
   // 19. Title shown for both source types

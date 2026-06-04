@@ -319,6 +319,7 @@ All functions deploy to `asia-southeast1` (Singapore).
 - [ ] `fetchGdeltNews` must populate `geohash5` field on `wire_news` documents for wire corroboration heuristic to activate
 - [ ] `gdelt.ts` `initializeApp` guard can be removed once it imports from `admin.ts` (safe — both guards use `!admin.apps.length`)
 - [ ] Firestore rules `allow read` on `reports/` is currently owner-only — needs broadening for Event Detail (confirm/dispute) flow (task 5.6) — **EventDetailScreen UI is done; unblocked once rules are updated**
+- [ ] `/report/:id` route relies on GoRouter `extra` to receive `NewsItem` — deep links and process restarts fall back to `_ReportDetailPlaceholder` until a Firestore-backed fetch is wired (task 5.7)
 - [ ] Additional Cloud Functions to be added: `stripExifMetadata`, `withdrawReport`
 - [ ] `drift` dependency to be added to `pubspec.yaml` when implementing task 5.10
 - [ ] Firebase App Check to be initialized in `main.dart` (task 4.8)
