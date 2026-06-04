@@ -131,7 +131,6 @@ reports/{reportId}
   systemDisputes:       number   ← virtual votes from evaluateReportTrust heuristics
   totalEffectiveVolume: number   ← C_eff + D_eff; written by confirmReport/disputeReport CF
   confidenceRatio:      number   ← C_eff / V; written by confirmReport/disputeReport CF
-  isDisputed:           boolean
   exifStripped:         boolean
   isDisputed:           boolean  ← true when disputeCount > 0; written by vote transaction
   createdAt:            Timestamp

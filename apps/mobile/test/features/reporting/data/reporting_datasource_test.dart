@@ -266,7 +266,7 @@ void main() {
       expect(calls.savedTokens, contains(token));
     });
 
-    test('saves token AFTER successful Firestore write, not before', () async {
+    test('saves token BEFORE Firestore write to avoid orphaned reports', () async {
       final order = <String>[];
       final ds = ReportingDatasourceImpl(
         stripExif: (b) async => b,
@@ -288,9 +288,9 @@ void main() {
       );
       await ds.submitReport(draft);
       expect(order, [
-        'write',
         'save',
-      ], reason: 'token must be saved only after Firestore write succeeds');
+        'write',
+      ], reason: 'token must be saved before Firestore write — a stale local token is harmless, an orphaned Firestore doc is not');
     });
 
     test('includes geohash computed from fuzzed coords', () async {

@@ -126,11 +126,13 @@ class ReportingDatasourceImpl implements ReportingDatasource {
       tokenHash: tokenHash,
     );
 
-    // Milestone 4: write to Firestore, then persist the plain token locally.
-    // My Reports queries Firestore by tokenHash — the plain token never leaves
-    // the device after this point.
-    await _writeReport(reportId, model.toJson());
+    // Milestone 4: persist the plain token locally first, then write to Firestore.
+    // Save-before-write is the safer failure order: a stale local token with no
+    // matching Firestore doc is harmless (My Reports returns nothing for it),
+    // whereas a Firestore doc with no local token leaves the report permanently
+    // inaccessible. The plain token never leaves the device after this point.
     await _saveToken(token);
+    await _writeReport(reportId, model.toJson());
     onProgress?.call(4);
 
     return SubmitResult(reportId: reportId, displayToken: token);

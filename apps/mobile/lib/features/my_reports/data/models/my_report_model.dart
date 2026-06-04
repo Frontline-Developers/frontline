@@ -43,10 +43,13 @@ class MyReportModel {
     final photos = (rawUrls is List)
         ? rawUrls.map((e) => e.toString()).toList()
         : <String>[];
+    // Use the first line of the description as the headline title so the
+    // detail screen doesn't render the full text twice.
+    final firstLine = desc.split('\n').first.trim();
 
     return MyReportModel(
       id: id,
-      title: desc,
+      title: firstLine.isNotEmpty ? firstLine : desc,
       body: desc,
       category: (data['category'] as String?) ?? '',
       location: (data['locationLabel'] as String?) ?? '',
