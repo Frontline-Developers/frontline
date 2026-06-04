@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/comments/presentation/providers/comments_provider.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 import 'package:frontline/features/feed/presentation/providers/vote_provider.dart';
-import 'package:frontline/features/reporting/presentation/screens/event_detail_screen.dart';
+import 'package:frontline/features/reporting/presentation/screens/report_detail_screen.dart';
 
 // ── Test doubles ──────────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ Widget _wrap(
     voteProvider.overrideWith((ref, id) async => userVote),
     commentsStreamProvider.overrideWith((ref, id) => Stream.value(comments)),
   ],
-  child: MaterialApp(home: EventDetailScreen(item: item)),
+  child: MaterialApp(home: ReportDetailScreen(item: item)),
 );
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ void main() {
   testWidgets('renders without error for a citizen item', (tester) async {
     await tester.pumpWidget(_wrap(_citizenItem));
     await tester.pump();
-    expect(find.byType(EventDetailScreen), findsOneWidget);
+    expect(find.byType(ReportDetailScreen), findsOneWidget);
   });
 
   // 2. Source label — citizen

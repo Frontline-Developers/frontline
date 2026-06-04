@@ -24,17 +24,17 @@ class _C {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class ReportDetailScreen extends StatefulWidget {
+class MyReportDetailScreen extends StatefulWidget {
   final String reportId;
   final MyReport? report;
 
-  const ReportDetailScreen({super.key, required this.reportId, this.report});
+  const MyReportDetailScreen({super.key, required this.reportId, this.report});
 
   @override
-  State<ReportDetailScreen> createState() => _ReportDetailScreenState();
+  State<MyReportDetailScreen> createState() => _MyReportDetailScreenState();
 }
 
-class _ReportDetailScreenState extends State<ReportDetailScreen> {
+class _MyReportDetailScreenState extends State<MyReportDetailScreen> {
   late final PageController _pageCtrl;
   int _photoIndex = 0;
   bool _bookmarked = false;
