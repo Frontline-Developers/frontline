@@ -4,13 +4,13 @@ import 'package:frontline/features/map/data/models/map_report_model.dart';
 import 'package:frontline/features/map/domain/entities/map_report.dart';
 
 Map<String, dynamic> _baseJson() => {
-      'location': const GeoPoint(50.45, 30.52),
-      'createdAt': Timestamp.fromDate(DateTime(2026, 1, 1)),
-      'description': 'Strike on bridge',
-      'category': 'combat',
-      'status': 'confirmed',
-      'locationLabel': 'Kyiv',
-    };
+  'location': const GeoPoint(50.45, 30.52),
+  'createdAt': Timestamp.fromDate(DateTime(2026, 1, 1)),
+  'description': 'Strike on bridge',
+  'category': 'combat',
+  'status': 'confirmed',
+  'locationLabel': 'Kyiv',
+};
 
 void main() {
   group('MapReportModel.fromJson — standard Firestore document', () {
@@ -33,13 +33,16 @@ void main() {
       expect(model.title, 'Fallback');
     });
 
-    test('title is empty string when both description and title are absent', () {
-      final json = _baseJson()
-        ..remove('description')
-        ..remove('title');
-      final model = MapReportModel.fromJson('doc-1', json);
-      expect(model.title, '');
-    });
+    test(
+      'title is empty string when both description and title are absent',
+      () {
+        final json = _baseJson()
+          ..remove('description')
+          ..remove('title');
+        final model = MapReportModel.fromJson('doc-1', json);
+        expect(model.title, '');
+      },
+    );
 
     test('reads category field', () {
       final model = MapReportModel.fromJson('doc-1', _baseJson());

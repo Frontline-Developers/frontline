@@ -149,7 +149,9 @@ void main() {
     });
 
     test('clears pre-existing error when called', () {
-      container.read(mapNotifierProvider); // initialize notifier before seeding state
+      container.read(
+        mapNotifierProvider,
+      ); // initialize notifier before seeding state
       fake.seedError('old error');
       container.read(mapNotifierProvider.notifier).watchArea(50.45, 30.52, 10);
       expect(container.read(mapNotifierProvider).error, isNull);

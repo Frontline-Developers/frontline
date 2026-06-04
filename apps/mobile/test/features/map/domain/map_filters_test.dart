@@ -87,8 +87,14 @@ void main() {
     });
 
     test('instances with same non-default values are equal', () {
-      const a = MapFilters(timeRange: MapTimeRange.hour, category: MapCategory.combat);
-      const b = MapFilters(timeRange: MapTimeRange.hour, category: MapCategory.combat);
+      const a = MapFilters(
+        timeRange: MapTimeRange.hour,
+        category: MapCategory.combat,
+      );
+      const b = MapFilters(
+        timeRange: MapTimeRange.hour,
+        category: MapCategory.combat,
+      );
       expect(a, equals(b));
     });
 
@@ -105,8 +111,14 @@ void main() {
     });
 
     test('hashCode equals for equal instances', () {
-      const a = MapFilters(timeRange: MapTimeRange.day, category: MapCategory.alert);
-      const b = MapFilters(timeRange: MapTimeRange.day, category: MapCategory.alert);
+      const a = MapFilters(
+        timeRange: MapTimeRange.day,
+        category: MapCategory.alert,
+      );
+      const b = MapFilters(
+        timeRange: MapTimeRange.day,
+        category: MapCategory.alert,
+      );
       expect(a.hashCode, equals(b.hashCode));
     });
   });
@@ -117,12 +129,15 @@ void main() {
     });
 
     test('contains hour, sixHours, day, all', () {
-      expect(MapTimeRange.values, containsAll([
-        MapTimeRange.hour,
-        MapTimeRange.sixHours,
-        MapTimeRange.day,
-        MapTimeRange.all,
-      ]));
+      expect(
+        MapTimeRange.values,
+        containsAll([
+          MapTimeRange.hour,
+          MapTimeRange.sixHours,
+          MapTimeRange.day,
+          MapTimeRange.all,
+        ]),
+      );
     });
   });
 
@@ -132,15 +147,18 @@ void main() {
     });
 
     test('contains all, combat, aid, alert, displaced, infra, other', () {
-      expect(MapCategory.values, containsAll([
-        MapCategory.all,
-        MapCategory.combat,
-        MapCategory.aid,
-        MapCategory.alert,
-        MapCategory.displaced,
-        MapCategory.infra,
-        MapCategory.other,
-      ]));
+      expect(
+        MapCategory.values,
+        containsAll([
+          MapCategory.all,
+          MapCategory.combat,
+          MapCategory.aid,
+          MapCategory.alert,
+          MapCategory.displaced,
+          MapCategory.infra,
+          MapCategory.other,
+        ]),
+      );
     });
   });
 }

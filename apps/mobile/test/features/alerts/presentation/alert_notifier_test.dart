@@ -100,14 +100,16 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      await container.read(alertNotifierProvider.notifier).save(
-        userId: 'uid-1',
-        locationLabel: 'Kyiv',
-        lat: 50.45,
-        lng: 30.52,
-        radiusKm: 5,
-        categories: ['combat'],
-      );
+      await container
+          .read(alertNotifierProvider.notifier)
+          .save(
+            userId: 'uid-1',
+            locationLabel: 'Kyiv',
+            lat: 50.45,
+            lng: 30.52,
+            radiusKm: 5,
+            categories: ['combat'],
+          );
       expect(container.read(alertNotifierProvider).status, AlertStatus.saved);
 
       container.read(alertNotifierProvider.notifier).reset();
@@ -121,14 +123,16 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      await container.read(alertNotifierProvider.notifier).save(
-        userId: 'uid-1',
-        locationLabel: 'Kyiv',
-        lat: 50.45,
-        lng: 30.52,
-        radiusKm: 5,
-        categories: ['combat'],
-      );
+      await container
+          .read(alertNotifierProvider.notifier)
+          .save(
+            userId: 'uid-1',
+            locationLabel: 'Kyiv',
+            lat: 50.45,
+            lng: 30.52,
+            radiusKm: 5,
+            categories: ['combat'],
+          );
       expect(container.read(alertNotifierProvider).status, AlertStatus.error);
 
       container.read(alertNotifierProvider.notifier).reset();
@@ -145,14 +149,16 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final saveFuture = container.read(alertNotifierProvider.notifier).save(
-        userId: 'uid-1',
-        locationLabel: 'Kyiv',
-        lat: 50.45,
-        lng: 30.52,
-        radiusKm: 5,
-        categories: ['combat'],
-      );
+      final saveFuture = container
+          .read(alertNotifierProvider.notifier)
+          .save(
+            userId: 'uid-1',
+            locationLabel: 'Kyiv',
+            lat: 50.45,
+            lng: 30.52,
+            radiusKm: 5,
+            categories: ['combat'],
+          );
 
       // Status is saving synchronously before the completer resolves.
       expect(container.read(alertNotifierProvider).status, AlertStatus.saving);
