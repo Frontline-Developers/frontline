@@ -21,7 +21,7 @@ export const sendAlertNotifications = onDocumentCreated(
 
     const {category, location, description} = report as {
       category: string;
-      location: {_lat: number; _long: number};
+      location: {latitude: number; longitude: number};
       description: string;
     };
 
@@ -50,8 +50,8 @@ export const sendAlertNotifications = onDocumentCreated(
       const distKm = _haversineKm(
         sub.lat,
         sub.lng,
-        location._lat,
-        location._long,
+        location.latitude,
+        location.longitude,
       );
       if (distKm > sub.radiusKm) continue;
 
