@@ -6,7 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
-import '../providers/search_provider.dart';
+import '../providers/search_provider.dart'
+    show TrendingCountry, searchNotifierProvider;
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -21,21 +22,6 @@ class _P {
   static const hairline = AppColors.reportHairline;
   static const citizen = Color(0xFFB54708);
   static const wire = Color(0xFF1D4ED8);
-}
-
-// ── Static trending data (prototype) ─────────────────────────────────────────
-
-const _kTrending = [
-  _TrendingItem('Kharkiv power grid', 142),
-  _TrendingItem('Zaporizhzhia residential', 98),
-  _TrendingItem('Black Sea grain', 67),
-  _TrendingItem('EU military aid', 54),
-];
-
-class _TrendingItem {
-  final String term;
-  final int count;
-  const _TrendingItem(this.term, this.count);
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -56,6 +42,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    // Reset stale state after the first frame so we don't modify a provider
+    // while the widget tree is still building.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(searchNotifierProvider.notifier).clearQuery();
+      ref.read(searchNotifierProvider.notifier).loadRecents();
+    });
     _autoFocus = Timer(const Duration(milliseconds: 350), () {
       if (mounted) _focusNode.requestFocus();
     });
@@ -99,10 +92,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     context.push('/report/${item.id}', extra: item);
   }
 
-  void _cancel() {
-    _controller.clear();
-    ref.read(searchNotifierProvider.notifier).clearQuery();
-    Navigator.pop(context);
+  void _onBack() {
+    if (_controller.text.isNotEmpty) {
+      _controller.clear();
+      ref.read(searchNotifierProvider.notifier).clearQuery();
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -111,52 +107,77 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return Scaffold(
       backgroundColor: _P.surface,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SearchHeader(
-              controller: _controller,
-              focusNode: _focusNode,
-              onChanged: _onQueryChanged,
-              onSubmitted: _onSubmitted,
-              onClear: () {
-                _controller.clear();
-                ref.read(searchNotifierProvider.notifier).clearQuery();
-              },
-              onCancel: _cancel,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // White sheet: extends behind status bar so top area matches header
+          ColoredBox(
+            color: _P.card,
+            child: SafeArea(
+              bottom: false,
+              child: _SearchHeader(
+                controller: _controller,
+                focusNode: _focusNode,
+                onChanged: _onQueryChanged,
+                onSubmitted: _onSubmitted,
+                onBack: _onBack,
+                onClear: () {
+                  _controller.clear();
+                  ref.read(searchNotifierProvider.notifier).clearQuery();
+                },
+                onSearch: () => _onSubmitted(_controller.text),
+              ),
             ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 150),
-              child: state.query.isNotEmpty
-                  ? _ScopeChips(
-                      key: const ValueKey('chips'),
-                      scope: state.scope,
-                      onChanged: (s) =>
-                          ref.read(searchNotifierProvider.notifier).setScope(s),
-                    )
-                  : const SizedBox.shrink(key: ValueKey('no-chips')),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 150),
+                    child: state.query.isNotEmpty
+                        ? _ScopeChips(
+                            key: const ValueKey('chips'),
+                            scope: state.scope,
+                            onChanged: (s) => ref
+                                .read(searchNotifierProvider.notifier)
+                                .setScope(s),
+                          )
+                        : const SizedBox.shrink(key: ValueKey('no-chips')),
+                  ),
+                  const Divider(height: 1, thickness: 0.5, color: _P.hairline),
+                  Expanded(
+                    child: state.query.isEmpty
+                        ? _EmptyView(
+                            recents: state.recentSearches,
+                            trendingCountries: state.trendingCountries,
+                            includeDisputed: state.includeDisputed,
+                            onSelectTerm: _selectTerm,
+                            onRemoveTerm: (term) => ref
+                                .read(searchNotifierProvider.notifier)
+                                .removeSearch(term),
+                            onClearAll: () => ref
+                                .read(searchNotifierProvider.notifier)
+                                .clearAllSearches(),
+                            onToggleDisputed: () => ref
+                                .read(searchNotifierProvider.notifier)
+                                .toggleIncludeDisputed(),
+                          )
+                        : state.results.isEmpty
+                        ? _NoResultsView(query: state.query)
+                        : _ResultsList(
+                            query: state.query,
+                            results: state.results,
+                            onTap: _onResultTap,
+                          ),
+                  ),
+                ],
+              ),
             ),
-            const Divider(height: 1, thickness: 0.5, color: _P.hairline),
-            Expanded(
-              child: state.query.isEmpty
-                  ? _EmptyView(
-                      recents: state.recentSearches,
-                      onSelectTerm: _selectTerm,
-                      onClearAll: () => ref
-                          .read(searchNotifierProvider.notifier)
-                          .clearAllSearches(),
-                    )
-                  : state.results.isEmpty
-                  ? _NoResultsView(query: state.query)
-                  : _ResultsList(
-                      query: state.query,
-                      results: state.results,
-                      onTap: _onResultTap,
-                    ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -169,25 +190,36 @@ class _SearchHeader extends StatelessWidget {
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
+  final VoidCallback onBack;
   final VoidCallback onClear;
-  final VoidCallback onCancel;
+  final VoidCallback onSearch;
 
   const _SearchHeader({
     required this.controller,
     required this.focusNode,
     required this.onChanged,
     required this.onSubmitted,
+    required this.onBack,
     required this.onClear,
-    required this.onCancel,
+    required this.onSearch,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _P.card,
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 12, 12),
       child: Row(
         children: [
+          IconButton(
+            onPressed: onBack,
+            icon: const Icon(
+              Icons.arrow_back,
+              color: _P.inkSecondary,
+              size: 22,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
           Expanded(
             child: Container(
               height: 40,
@@ -242,13 +274,23 @@ class _SearchHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           TextButton(
-            onPressed: onCancel,
+            onPressed: onSearch,
+            style: TextButton.styleFrom(
+              backgroundColor: _P.navy,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text(
-              'Cancel',
+              'Search',
               style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: _P.navy,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ),
@@ -341,13 +383,21 @@ class _Chip extends StatelessWidget {
 
 class _EmptyView extends StatelessWidget {
   final List<String> recents;
+  final List<TrendingCountry> trendingCountries;
+  final bool includeDisputed;
   final ValueChanged<String> onSelectTerm;
+  final ValueChanged<String> onRemoveTerm;
   final VoidCallback onClearAll;
+  final VoidCallback onToggleDisputed;
 
   const _EmptyView({
     required this.recents,
+    required this.trendingCountries,
+    required this.includeDisputed,
     required this.onSelectTerm,
+    required this.onRemoveTerm,
     required this.onClearAll,
+    required this.onToggleDisputed,
   });
 
   @override
@@ -384,17 +434,71 @@ class _EmptyView extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: recents
-                .take(4)
-                .map((t) => _RecentPill(term: t, onTap: onSelectTerm))
+                .take(5)
+                .map(
+                  (t) => _RecentPill(
+                    term: t,
+                    onTap: onSelectTerm,
+                    onRemove: onRemoveTerm,
+                  ),
+                )
                 .toList(),
           ),
         const SizedBox(height: 24),
-        const _SectionLabel('TRENDING NOW'),
-        const SizedBox(height: 12),
-        ..._kTrending.asMap().entries.map(
-          (e) =>
-              _TrendingRow(rank: e.key + 1, item: e.value, onTap: onSelectTerm),
+        Row(
+          children: [
+            const _SectionLabel("WHAT'S GOING ON"),
+            const Spacer(),
+            const Text(
+              'Include disputed',
+              style: TextStyle(fontSize: 12, color: _P.inkTertiary),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: onToggleDisputed,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 36,
+                height: 20,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: includeDisputed ? _P.navy : _P.hairline,
+                ),
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 180),
+                  alignment: includeDisputed
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 12),
+        if (trendingCountries.isEmpty)
+          const Text(
+            'No data yet',
+            style: TextStyle(fontSize: 13, color: _P.inkTertiary),
+          )
+        else
+          ...trendingCountries.asMap().entries.map(
+            (e) => _TrendingRow(
+              rank: e.key + 1,
+              country: e.value,
+              onTap: onSelectTerm,
+            ),
+          ),
       ],
     );
   }
@@ -421,15 +525,20 @@ class _SectionLabel extends StatelessWidget {
 class _RecentPill extends StatelessWidget {
   final String term;
   final ValueChanged<String> onTap;
+  final ValueChanged<String> onRemove;
 
-  const _RecentPill({required this.term, required this.onTap});
+  const _RecentPill({
+    required this.term,
+    required this.onTap,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => onTap(term),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.only(left: 12, right: 6, top: 9, bottom: 9),
         decoration: BoxDecoration(
           color: _P.card,
           borderRadius: BorderRadius.circular(20),
@@ -439,10 +548,19 @@ class _RecentPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.history, size: 14, color: _P.inkTertiary),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
             Text(
               term,
               style: const TextStyle(fontSize: 13, color: _P.inkSecondary),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => onRemove(term),
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 18, color: _P.inkTertiary),
+              ),
             ),
           ],
         ),
@@ -453,19 +571,19 @@ class _RecentPill extends StatelessWidget {
 
 class _TrendingRow extends StatelessWidget {
   final int rank;
-  final _TrendingItem item;
+  final TrendingCountry country;
   final ValueChanged<String> onTap;
 
   const _TrendingRow({
     required this.rank,
-    required this.item,
+    required this.country,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => onTap(item.term),
+      onTap: () => onTap(country.name),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
@@ -484,7 +602,7 @@ class _TrendingRow extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                item.term,
+                country.name,
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -493,7 +611,7 @@ class _TrendingRow extends StatelessWidget {
               ),
             ),
             Text(
-              '${item.count} reports',
+              '${country.count} report${country.count == 1 ? '' : 's'}',
               style: const TextStyle(fontSize: 13, color: _P.inkTertiary),
             ),
             const SizedBox(width: 6),
