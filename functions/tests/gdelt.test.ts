@@ -2,6 +2,8 @@ import * as admin from 'firebase-admin';
 import {
   fetchGdeltNewsHandler,
   deduplicateByTitle,
+  deduplicateByUrl,
+  deduplicateByImageUrl,
   normaliseTitle,
   titleToDocId,
   sourcePriority,
@@ -290,5 +292,39 @@ describe('GDELT helper behavior', () => {
   test('sourcePriority prefers higher-ranked sources for duplicate titles', () => {
     expect(sourcePriority('reuters.com')).toBeGreaterThan(sourcePriority('cnn.com'));
     expect(sourcePriority('unknown.com')).toBe(1);
+  });
+
+  test('deduplicateByUrl removes exact URL duplicates, keeping first occurrence', () => {
+    const a = {url: 'https://reuters.com/story', title: 'A', seendate: '20240101T120000Z', domain: 'reuters.com', language: 'english', sourcecountry: 'US'};
+    const b = {url: 'https://reuters.com/story', title: 'A (updated)', seendate: '20240101T121000Z', domain: 'reuters.com', language: 'english', sourcecountry: 'US'};
+    const c = {url: 'https://bbc.com/story', title: 'B', seendate: '20240101T122000Z', domain: 'bbc.com', language: 'english', sourcecountry: 'GB'};
+    const result = deduplicateByUrl([a, b, c]);
+    expect(result).toHaveLength(2);
+    expect(result[0].url).toBe('https://reuters.com/story');
+    expect(result[1].url).toBe('https://bbc.com/story');
+  });
+
+  test('deduplicateByImageUrl drops articles with the same og:image, keeping highest-priority (first in sorted input)', () => {
+    const articles = [
+      {url: 'https://reuters.com/a', title: 'Reuters story', seendate: '20240101T120000Z', domain: 'reuters.com', language: 'english', sourcecountry: 'US'},
+      {url: 'https://cnn.com/a', title: 'CNN story', seendate: '20240101T120500Z', domain: 'cnn.com', language: 'english', sourcecountry: 'US'},
+    ];
+    // Both articles resolved to the same og:image — they're the same story.
+    const images: (string | null)[] = ['https://example.com/photo.jpg', 'https://example.com/photo.jpg'];
+    const {articles: result, images: resultImages} = deduplicateByImageUrl(articles, images);
+    expect(result).toHaveLength(1);
+    expect(result[0].domain).toBe('reuters.com');
+    expect(resultImages[0]).toBe('https://example.com/photo.jpg');
+  });
+
+  test('deduplicateByImageUrl keeps articles whose imageUrl is null even if a previous article had null', () => {
+    const articles = [
+      {url: 'https://reuters.com/a', title: 'A', seendate: '20240101T120000Z', domain: 'reuters.com', language: 'english', sourcecountry: 'US'},
+      {url: 'https://bbc.com/b', title: 'B', seendate: '20240101T121000Z', domain: 'bbc.com', language: 'english', sourcecountry: 'GB'},
+    ];
+    const images: (string | null)[] = [null, null];
+    const {articles: result} = deduplicateByImageUrl(articles, images);
+    // null imageUrl is not a signal — both articles are kept
+    expect(result).toHaveLength(2);
   });
 });

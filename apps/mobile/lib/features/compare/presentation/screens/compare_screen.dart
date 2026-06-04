@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/time_utils.dart';
 import '../../../feed/domain/entities/news_item.dart';
 import '../providers/compare_provider.dart';
 
@@ -296,17 +297,24 @@ class _TimelineView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = [report, ...wireNews]
+    // Sort wire items by date; the citizen report is always the T+0 anchor
+    // regardless of its position in the sorted list, so the timeline shows
+    // how quickly (or slowly) wire sources followed citizen coverage.
+    final sortedWire = [...wireNews]
       ..sort((a, b) => a.publishedAt.compareTo(b.publishedAt));
-    final first = all.first.publishedAt;
+    final all = [report, ...sortedWire];
+    final baseline = report.publishedAt;
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: all.length,
       itemBuilder: (_, i) {
         final item = all[i];
-        final delta = item.publishedAt.difference(first);
-        return _TimelineItem(item: item, delta: i == 0 ? null : delta);
+        final delta = item.publishedAt.difference(baseline);
+        return _TimelineItem(
+          item: item,
+          delta: item.source == NewsSource.citizen ? null : delta,
+        );
       },
     );
   }
@@ -421,7 +429,7 @@ class _TimelineItem extends StatelessWidget {
                 ],
                 const SizedBox(height: 6),
                 Text(
-                  _timeAgo(item.publishedAt),
+                  timeAgo(item.publishedAt),
                   style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
                 ),
               ],
@@ -594,7 +602,7 @@ class _ColumnCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                _timeAgo(item.publishedAt),
+                timeAgo(item.publishedAt),
                 style: const TextStyle(fontSize: 10, color: _P.inkTertiary),
               ),
               if (item.source == NewsSource.wire && item.tone != 0) ...[
@@ -687,14 +695,4 @@ class _ToneChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-String _timeAgo(DateTime dt) {
-  final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) return '${diff.inHours} hr ago';
-  return '${diff.inDays}d ago';
 }

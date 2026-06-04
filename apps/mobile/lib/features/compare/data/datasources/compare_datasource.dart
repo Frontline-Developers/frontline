@@ -13,21 +13,26 @@ abstract class CompareDatasource {
 class CompareDatasourceImpl implements CompareDatasource {
   @override
   Future<NewsItem> fetchReport(String reportId) async {
-    final doc = await FirebaseFirestore.instance
+    // Use a list query (covered by allow list) rather than a direct .doc().get()
+    // (which requires allow get, restricted to the owner for privacy).
+    final snap = await FirebaseFirestore.instance
         .collection('reports')
-        .doc(reportId)
+        .where(FieldPath.documentId, isEqualTo: reportId)
+        .limit(1)
         .get();
-    if (!doc.exists) throw Exception('Report not found');
-    return ReportFeedModel.fromFirestore(doc).toEntity();
+    if (snap.docs.isEmpty) throw Exception('Report not found');
+    return ReportFeedModel.fromFirestore(snap.docs.first).toEntity();
   }
 
   @override
   Future<List<NewsItem>> fetchWireNewsByLocations(
     List<String> locations,
   ) async {
+    // Firestore arrayContainsAny max is 30; cap here as a hard boundary.
+    final capped = locations.take(30).toList();
     final snap = await FirebaseFirestore.instance
         .collection('wire_news')
-        .where('locations', arrayContainsAny: locations)
+        .where('locations', arrayContainsAny: capped)
         .orderBy('publishedAt', descending: true)
         .limit(10)
         .get();
