@@ -1,10 +1,14 @@
 import '../../../feed/domain/entities/news_item.dart';
+import '../../domain/entities/event_cluster.dart';
 import '../../domain/repositories/compare_repository.dart';
 import '../datasources/compare_datasource.dart';
 
 class CompareRepositoryImpl implements CompareRepository {
   final CompareDatasource _datasource;
   CompareRepositoryImpl(this._datasource);
+
+  @override
+  Stream<List<EventCluster>> watchClusters() => _datasource.watchClusters();
 
   @override
   Future<NewsItem> fetchReport(String reportId) =>

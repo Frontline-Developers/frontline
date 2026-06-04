@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
+import '../../domain/entities/event_cluster.dart';
 import '../providers/compare_provider.dart';
 
-// ── Palette (mirrors feed/reporting light-mode) ───────────────────────────────
+// ── Palette (mirrors feed_screen.dart) ────────────────────────────────────────
+
+const _kMaxWidth = 700.0;
 
 class _P {
   static const surface = Color(0xFFF8F9FA);
@@ -16,592 +19,154 @@ class _P {
   static const inkSecondary = AppColors.reportInkSecondary;
   static const inkTertiary = AppColors.reportInkTertiary;
   static const hairline = AppColors.reportHairline;
-  static const citizen = Color(0xFFB54708);
-  static const citizenSoft = Color(0xFFFEF3C7);
-  static const citizenDot = AppColors.accentCitizen;
-  static const wireDot = AppColors.accentWire;
   static const verified = AppColors.reportVerified;
   static const verifiedSoft = AppColors.reportVerifiedSoft;
   static const disputed = AppColors.reportDisputed;
   static const disputedSoft = Color(0xFFFEE2E2);
-  static const pending = Color(0xFF6B7280);
-  static const pendingSoft = Color(0xFFF3F4F6);
+  static const unverifiedBg = Color(0xFFF3F4F6);
+  static const unverifiedFg = Color(0xFF6B7280);
 }
-
-enum _ViewMode { timeline, columns }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class CompareScreen extends ConsumerStatefulWidget {
-  final String? reportId;
-  const CompareScreen({super.key, this.reportId});
+  final NewsItem? anchorItem;
+  const CompareScreen({super.key, this.anchorItem});
 
   @override
   ConsumerState<CompareScreen> createState() => _CompareScreenState();
 }
 
 class _CompareScreenState extends ConsumerState<CompareScreen> {
-  _ViewMode _mode = _ViewMode.timeline;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.reportId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(compareNotifierProvider.notifier).load(widget.reportId!);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(compareNotifierProvider);
-
-    return Scaffold(
-      backgroundColor: _P.surface,
-      appBar: AppBar(
-        backgroundColor: _P.card,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: context.canPop()
-            ? BackButton(color: _P.ink, onPressed: () => context.pop())
-            : null,
-        title: const Text(
-          'Compare Coverage',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: _P.ink,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: _P.hairline),
-        ),
-      ),
-      body: widget.reportId == null
-          ? const _NoReportHint()
-          : state.isLoading
-          ? const Center(child: CircularProgressIndicator(color: _P.navy))
-          : state.error != null
-          ? _ErrorState(error: state.error!)
-          : state.report == null
-          ? const _NoReportHint()
-          : Column(
-              children: [
-                _HeroCard(
-                  report: state.report!,
-                  wireCount: state.wireNews.length,
+    final anchor = widget.anchorItem;
+    final allClusters = state.clusters;
+    final clusters = anchor == null
+        ? allClusters
+        : allClusters
+              .where((c) => c.category == _effectiveCategory(anchor))
+              .map(
+                (c) => EventCluster(
+                  id: c.id,
+                  category: c.category,
+                  date: c.date,
+                  items: c.items.where((i) => i.id != anchor.id).toList(),
                 ),
-                _ViewToggle(
-                  mode: _mode,
-                  onChanged: (m) => setState(() => _mode = m),
-                ),
-                Expanded(
-                  child: _mode == _ViewMode.timeline
-                      ? _TimelineView(
-                          report: state.report!,
-                          wireNews: state.wireNews,
-                        )
-                      : _ColumnsView(
-                          report: state.report!,
-                          wireNews: state.wireNews,
-                        ),
-                ),
-              ],
-            ),
-    );
-  }
-}
+              )
+              .where((c) => c.items.isNotEmpty)
+              .toList();
 
-// ── Hero card ─────────────────────────────────────────────────────────────────
-
-class _HeroCard extends StatelessWidget {
-  final NewsItem report;
-  final int wireCount;
-  const _HeroCard({required this.report, required this.wireCount});
-
-  @override
-  Widget build(BuildContext context) {
-    final status = report.status ?? ItemStatus.pending;
-    final (statusLabel, statusBg, statusFg) = switch (status) {
-      ItemStatus.verified => ('Report verified', _P.verifiedSoft, _P.verified),
-      ItemStatus.disputed => ('Report disputed', _P.disputedSoft, _P.disputed),
-      ItemStatus.pending => ('Pending review', _P.pendingSoft, _P.pending),
-    };
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _P.card,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _Pill(label: statusLabel, bg: statusBg, fg: statusFg),
-              _Pill(label: '1 citizen', bg: _P.citizenSoft, fg: _P.citizen),
-              _Pill(
-                label: '$wireCount wire source${wireCount == 1 ? '' : 's'}',
-                bg: const Color(0xFFDBEAF5),
-                fg: _P.wireDot,
+    return ColoredBox(
+      color: _P.surface,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CompareAppBar(onBack: anchor != null ? () => context.pop() : null),
+            if (anchor != null) ...[
+              _FeaturedItemCard(item: anchor),
+              _RelatedReportsHeader(
+                count: clusters.fold(0, (s, c) => s + c.items.length),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            report.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: _P.ink,
-              height: 1.35,
+            ] else
+              _CompareHeader(count: allClusters.length),
+            const SizedBox(height: 4),
+            Expanded(
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _P.navy),
+                    )
+                  : state.error != null
+                  ? _ErrorState(error: state.error!)
+                  : clusters.isEmpty
+                  ? _EmptyState(hasAnchor: anchor != null)
+                  : _ClusterList(clusters: clusters),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Citizen report vs. recent wire coverage',
-            style: TextStyle(fontSize: 12, color: _P.inkTertiary),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color bg;
-  final Color fg;
-  const _Pill({required this.label, required this.bg, required this.fg});
+// ── App bar ───────────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
-      ),
-    );
-  }
-}
-
-// ── View toggle ───────────────────────────────────────────────────────────────
-
-class _ViewToggle extends StatelessWidget {
-  final _ViewMode mode;
-  final void Function(_ViewMode) onChanged;
-  const _ViewToggle({required this.mode, required this.onChanged});
+class _CompareAppBar extends StatelessWidget {
+  final VoidCallback? onBack;
+  const _CompareAppBar({this.onBack});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Container(
-        height: 36,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE9ECEF),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            _ToggleBtn(
-              label: 'Timeline',
-              active: mode == _ViewMode.timeline,
-              onTap: () => onChanged(_ViewMode.timeline),
-            ),
-            _ToggleBtn(
-              label: 'Columns',
-              active: mode == _ViewMode.columns,
-              onTap: () => onChanged(_ViewMode.columns),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ToggleBtn extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _ToggleBtn({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: active ? _P.card : Colors.transparent,
-            borderRadius: BorderRadius.circular(7),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                : [],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active ? _P.ink : _P.inkTertiary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Timeline view ─────────────────────────────────────────────────────────────
-
-class _TimelineView extends StatelessWidget {
-  final NewsItem report;
-  final List<NewsItem> wireNews;
-  const _TimelineView({required this.report, required this.wireNews});
-
-  @override
-  Widget build(BuildContext context) {
-    final all = [report, ...wireNews]
-      ..sort((a, b) => a.publishedAt.compareTo(b.publishedAt));
-    final first = all.first.publishedAt;
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      itemCount: all.length,
-      itemBuilder: (_, i) {
-        final item = all[i];
-        final delta = item.publishedAt.difference(first);
-        return _TimelineItem(item: item, delta: i == 0 ? null : delta);
-      },
-    );
-  }
-}
-
-class _TimelineItem extends StatelessWidget {
-  final NewsItem item;
-  final Duration? delta;
-  const _TimelineItem({required this.item, this.delta});
-
-  @override
-  Widget build(BuildContext context) {
-    final isCitizen = item.source == NewsSource.citizen;
-    final accentColor = isCitizen ? _P.citizenDot : _P.wireDot;
-    final sourceLabel = isCitizen
-        ? 'CITIZEN REPORT'
-        : (item.sourceName?.toUpperCase() ?? 'WIRE NEWS');
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 36,
-          child: Column(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.only(top: 14),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accentColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _P.card,
-              borderRadius: BorderRadius.circular(12),
-              border: Border(left: BorderSide(color: accentColor, width: 3)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 6,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      sourceLabel,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: accentColor,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (delta != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _formatDelta(delta!),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: _P.inkTertiary,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _P.ink,
-                    height: 1.3,
-                  ),
-                ),
-                if (item.body != null && item.body!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    item.body!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: _P.inkSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Text(
-                  _timeAgo(item.publishedAt),
-                  style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _formatDelta(Duration d) {
-  if (d.inMinutes < 60) return 'T+${d.inMinutes}m';
-  if (d.inHours < 24) return 'T+${d.inHours}h';
-  return 'T+${d.inDays}d';
-}
-
-// ── Columns view ──────────────────────────────────────────────────────────────
-
-class _ColumnsView extends StatelessWidget {
-  final NewsItem report;
-  final List<NewsItem> wireNews;
-  const _ColumnsView({required this.report, required this.wireNews});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _SourceColumn(
-              label: 'On the ground',
-              color: _P.citizenDot,
-              items: [report],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _SourceColumn(
-              label: 'Wire sources',
-              color: _P.wireDot,
-              items: wireNews,
-              emptyMessage: 'No wire coverage found for this report',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SourceColumn extends StatelessWidget {
-  final String label;
-  final Color color;
-  final List<NewsItem> items;
-  final String? emptyMessage;
-  const _SourceColumn({
-    required this.label,
-    required this.color,
-    required this.items,
-    this.emptyMessage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
+          if (onBack != null)
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_ios, size: 16, color: _P.ink),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            )
+          else ...[
             Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                label.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                  letterSpacing: 0.4,
-                ),
-                overflow: TextOverflow.ellipsis,
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: _P.navy,
               ),
             ),
+            const SizedBox(width: 7),
           ],
-        ),
-        const SizedBox(height: 8),
-        if (items.isEmpty && emptyMessage != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _P.card,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _P.hairline),
+          const Text(
+            'Compare sources',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              letterSpacing: -0.3,
             ),
-            child: Text(
-              emptyMessage!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: _P.inkTertiary,
-                height: 1.4,
-              ),
-            ),
-          )
-        else
-          for (final item in items) ...[
-            _ColumnCard(item: item, accentColor: color),
-            const SizedBox(height: 8),
-          ],
-      ],
+          ),
+          const Spacer(),
+        ],
+      ),
     );
   }
 }
 
-class _ColumnCard extends StatelessWidget {
-  final NewsItem item;
-  final Color accentColor;
-  const _ColumnCard({required this.item, required this.accentColor});
+// ── Header ────────────────────────────────────────────────────────────────────
+
+class _CompareHeader extends StatelessWidget {
+  final int count;
+  const _CompareHeader({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: _P.card,
-        borderRadius: BorderRadius.circular(10),
-        border: Border(left: BorderSide(color: accentColor, width: 3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            item.title,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const Text(
+            'Compare & verify',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
               color: _P.ink,
-              height: 1.35,
+              letterSpacing: -0.8,
+              height: 1.1,
             ),
           ),
-          if (item.body != null && item.body!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              item.body!,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: _P.inkSecondary,
-                height: 1.4,
-              ),
-            ),
-          ],
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                _timeAgo(item.publishedAt),
-                style: const TextStyle(fontSize: 10, color: _P.inkTertiary),
-              ),
-              if (item.source == NewsSource.wire && item.tone != 0) ...[
-                const SizedBox(width: 6),
-                _ToneChip(tone: item.tone),
-              ],
-            ],
+          const SizedBox(height: 5),
+          Text(
+            count > 0
+                ? '$count events tracked · live'
+                : 'Ground truth analysis',
+            style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
           ),
         ],
       ),
@@ -609,26 +174,38 @@ class _ColumnCard extends StatelessWidget {
   }
 }
 
-// ── Empty / error states ──────────────────────────────────────────────────────
+// ── States ────────────────────────────────────────────────────────────────────
 
-class _NoReportHint extends StatelessWidget {
-  const _NoReportHint();
+class _EmptyState extends StatelessWidget {
+  final bool hasAnchor;
+  const _EmptyState({this.hasAnchor = false});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.compare_arrows, size: 48, color: _P.inkTertiary),
-            SizedBox(height: 16),
+            const Icon(Icons.compare_arrows, size: 48, color: _P.inkTertiary),
+            const SizedBox(height: 12),
             Text(
-              'Tap "Compare" on any report in the Feed to see how citizen reporters and wire sources covered the same event.',
+              hasAnchor ? 'No related reports yet' : 'No events to compare yet',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _P.inkSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasAnchor
+                  ? 'No other reports cover this topic yet.\nCheck back as more come in.'
+                  : 'Events appear once two or more sources cover\nthe same category on the same day.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
+              style: const TextStyle(
+                fontSize: 13,
                 color: _P.inkTertiary,
                 height: 1.5,
               ),
@@ -659,30 +236,520 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-// ── Tone chip ─────────────────────────────────────────────────────────────────
+// ── Featured item (anchor) ────────────────────────────────────────────────────
 
-class _ToneChip extends StatelessWidget {
-  final int tone;
-  const _ToneChip({required this.tone});
+class _FeaturedItemCard extends StatelessWidget {
+  final NewsItem item;
+  const _FeaturedItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = tone > 0;
-    final label = isPositive ? '+$tone' : '$tone';
-    final color = isPositive ? _P.verified : _P.disputed;
-    final bg = isPositive ? _P.verifiedSoft : _P.disputedSoft;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _P.navy.withValues(alpha: 0.25),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'COMPARING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _P.navy,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (item.category != null) ...[
+                      _CategoryBadge(category: item.category!),
+                      const SizedBox(width: 6),
+                    ],
+                    _SourceChip(source: item.source),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _P.ink,
+                    height: 1.35,
+                  ),
+                ),
+                if (item.body != null && item.body!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.body!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _P.inkSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      _timeAgo(item.publishedAt),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _P.inkTertiary,
+                      ),
+                    ),
+                    if (item.source == NewsSource.citizen &&
+                        (item.confirmCount + item.disputeCount) > 0)
+                      Text(
+                        ' · ${item.confirmCount} confirmed · ${item.disputeCount} disputed',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: _P.inkTertiary,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Related reports header ────────────────────────────────────────────────────
+
+class _RelatedReportsHeader extends StatelessWidget {
+  final int count;
+  const _RelatedReportsHeader({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+      child: Row(
+        children: [
+          const Text(
+            'Related reports',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              letterSpacing: -0.2,
+            ),
+          ),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _P.navy.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _P.navy,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Cluster list ──────────────────────────────────────────────────────────────
+
+class _ClusterList extends StatelessWidget {
+  final List<EventCluster> clusters;
+  const _ClusterList({required this.clusters});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 4, bottom: 24),
+      itemCount: clusters.length,
+      itemBuilder: (_, i) => _EventClusterCard(cluster: clusters[i]),
+    );
+  }
+}
+
+// ── Event cluster card ────────────────────────────────────────────────────────
+
+class _EventClusterCard extends StatelessWidget {
+  final EventCluster cluster;
+  const _EventClusterCard({required this.cluster});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ClusterHeader(cluster: cluster),
+              const Divider(height: 1, color: Color(0xFFE9ECEF)),
+              _ClusterTimeline(items: cluster.items),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Cluster header ────────────────────────────────────────────────────────────
+
+class _ClusterHeader extends StatelessWidget {
+  final EventCluster cluster;
+  const _ClusterHeader({required this.cluster});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = cluster.supportCount + cluster.contradictCount;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _CategoryBadge(category: cluster.category),
+              const Spacer(),
+              Text(
+                _formatDate(cluster.date),
+                style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${_categoryLabel(cluster.category)} · ${cluster.items.length} sources',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cluster.supportCount > cluster.contradictCount
+                      ? _P.verified
+                      : cluster.contradictCount > 0
+                      ? _P.disputed
+                      : _P.unverifiedFg,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${cluster.supportCount} supporting · ${cluster.contradictCount} contested',
+                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
+              ),
+            ],
+          ),
+          if (total > 0) ...[
+            const SizedBox(height: 8),
+            _ConsensusMeter(
+              supports: cluster.supportCount,
+              contradicts: cluster.contradictCount,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Consensus meter ───────────────────────────────────────────────────────────
+
+class _ConsensusMeter extends StatelessWidget {
+  final int supports;
+  final int contradicts;
+  const _ConsensusMeter({required this.supports, required this.contradicts});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = supports + contradicts;
+    if (total == 0) return const SizedBox.shrink();
+
+    final bar = ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(height: 4, child: _buildBar()),
+    );
+    return bar;
+  }
+
+  Widget _buildBar() {
+    if (contradicts == 0) return Container(color: _P.verified);
+    if (supports == 0) return Container(color: _P.disputed);
+    final supportFlex = ((supports / (supports + contradicts)) * 100).round();
+    return Row(
+      children: [
+        Expanded(
+          flex: supportFlex,
+          child: Container(color: _P.verified),
+        ),
+        Expanded(
+          flex: 100 - supportFlex,
+          child: Container(color: _P.disputed),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+
+class _ClusterTimeline extends StatelessWidget {
+  final List<ClusterItem> items;
+  const _ClusterTimeline({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++)
+            _TimelineRow(item: items[i], isLast: i == items.length - 1),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  final ClusterItem item;
+  final bool isLast;
+  const _TimelineRow({required this.item, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = switch (item.eval) {
+      EvidenceEval.supports => _P.verified,
+      EvidenceEval.contradicts => _P.disputed,
+      EvidenceEval.unverified => _P.unverifiedFg,
+    };
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 46,
+            child: Column(
+              children: [
+                Text(
+                  _formatTime(item.publishedAt),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: _P.inkTertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (!isLast)
+                  Expanded(
+                    child: Center(
+                      child: Container(width: 1, color: _P.hairline),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: 10),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: dotColor,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _EvalBadge(eval: item.eval),
+                      const SizedBox(width: 6),
+                      _SourceChip(source: item.source),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: _P.ink,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (item.source == NewsSource.citizen &&
+                      (item.confirmCount + item.disputeCount) > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.confirmCount} confirmed · ${item.disputeCount} disputed',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _P.inkTertiary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Badges & chips ────────────────────────────────────────────────────────────
+
+class _EvalBadge extends StatelessWidget {
+  final EvidenceEval eval;
+  const _EvalBadge({required this.eval});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, bg, fg) = switch (eval) {
+      EvidenceEval.supports => ('SUPPORTS', _P.verifiedSoft, _P.verified),
+      EvidenceEval.contradicts => ('CONTRADICTS', _P.disputedSoft, _P.disputed),
+      EvidenceEval.unverified => (
+        'UNVERIFIED',
+        _P.unverifiedBg,
+        _P.unverifiedFg,
+      ),
+    };
+    return _Chip(label: label, bgColor: bg, textColor: fg);
+  }
+}
+
+class _SourceChip extends StatelessWidget {
+  final NewsSource source;
+  const _SourceChip({required this.source});
+
+  @override
+  Widget build(BuildContext context) {
+    final isWire = source == NewsSource.wire;
+    return _Chip(
+      label: isWire ? 'WIRE' : 'CITIZEN',
+      bgColor: isWire ? const Color(0xFFEFF6FF) : const Color(0xFFFEF3C7),
+      textColor: isWire ? _P.navy : const Color(0xFFB54708),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+  const _Chip({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w700,
+          color: textColor,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryBadge extends StatelessWidget {
+  final String category;
+  const _CategoryBadge({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _categoryColor(category);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        _categoryLabel(category).toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
           color: color,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -690,6 +757,57 @@ class _ToneChip extends StatelessWidget {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _effectiveCategory(NewsItem item) {
+  if (item.category != null) return item.category!;
+  const knownCategories = {'combat', 'aid', 'alert', 'displaced', 'infra'};
+  for (final t in item.themes) {
+    if (knownCategories.contains(t)) return t;
+  }
+  return 'other';
+}
+
+Color _categoryColor(String category) => switch (category) {
+  'combat' => AppColors.reportCatCombat,
+  'aid' => AppColors.reportCatAid,
+  'alert' => AppColors.reportCatAlert,
+  'displaced' => AppColors.reportCatDisplaced,
+  'infra' => AppColors.reportCatInfra,
+  _ => AppColors.reportCatOther,
+};
+
+String _categoryLabel(String category) => switch (category) {
+  'combat' => 'Combat',
+  'aid' => 'Aid',
+  'alert' => 'Alert',
+  'displaced' => 'Displaced',
+  'infra' => 'Infrastructure',
+  _ => category[0].toUpperCase() + category.substring(1),
+};
+
+String _formatDate(DateTime dt) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[dt.month - 1]} ${dt.day}';
+}
+
+String _formatTime(DateTime dt) {
+  final h = dt.toLocal().hour.toString().padLeft(2, '0');
+  final m = dt.toLocal().minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
 
 String _timeAgo(DateTime dt) {
   final diff = DateTime.now().difference(dt);

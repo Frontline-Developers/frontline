@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontline/features/compare/domain/entities/event_cluster.dart';
 import 'package:frontline/features/compare/domain/repositories/compare_repository.dart';
 import 'package:frontline/features/compare/domain/usecases/fetch_related_wire_news_usecase.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
@@ -14,6 +15,9 @@ class _FakeRepo implements CompareRepository {
   List<NewsItem> byLocations = [];
   List<NewsItem> byCategory = [];
   List<NewsItem> recent = [];
+
+  @override
+  Stream<List<EventCluster>> watchClusters() => const Stream.empty();
 
   @override
   Future<NewsItem> fetchReport(String reportId) => throw UnimplementedError();

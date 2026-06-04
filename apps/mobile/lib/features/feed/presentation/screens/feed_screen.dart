@@ -63,7 +63,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _FeedAppBar(),
+            const _FeedAppBar(),
             _FeedHeader(
               citizenCount: state.items
                   .where((i) => i.source == NewsSource.citizen)
@@ -100,6 +100,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 // ── App bar ───────────────────────────────────────────────────────────────────
 
 class _FeedAppBar extends StatelessWidget {
+  const _FeedAppBar();
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -467,7 +469,7 @@ class _CitizenCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 14),
                         GestureDetector(
-                          onTap: () => context.push('/compare', extra: item.id),
+                          onTap: () => context.push('/compare', extra: item),
                           child: const Padding(
                             padding: EdgeInsets.symmetric(
                               vertical: 4,
@@ -503,6 +505,8 @@ class _CitizenCard extends ConsumerWidget {
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFE9ECEF)),
+              _CompareWithRow(item: item),
             ],
           ),
         ),
@@ -697,8 +701,45 @@ class _WireCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFE9ECEF)),
+              _CompareWithRow(item: item),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Compare with row ──────────────────────────────────────────────────────────
+
+class _CompareWithRow extends StatelessWidget {
+  final NewsItem item;
+  const _CompareWithRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/compare', extra: item),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.compare_arrows, size: 15, color: _P.navy),
+            const SizedBox(width: 6),
+            Text(
+              item.category != null
+                  ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
+                  : 'Compare with other reports',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: _P.navy,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 16, color: _P.inkTertiary),
+          ],
         ),
       ),
     );
