@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/news_item.dart';
 import '../providers/feed_provider.dart';
@@ -61,8 +64,19 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _FeedAppBar(),
-            _FeedHeader(),
+            const _FeedAppBar(),
+            _FeedHeader(
+              citizenCount: state.items
+                  .where((i) => i.source == NewsSource.citizen)
+                  .length,
+              wireSourceCount: state.items
+                  .where(
+                    (i) => i.source == NewsSource.wire && i.sourceName != null,
+                  )
+                  .map((i) => i.sourceName!)
+                  .toSet()
+                  .length,
+            ),
             _FilterChips(
               active: _activeFilter,
               onChanged: (i) => setState(() => _activeFilter = i),
@@ -87,6 +101,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 // ── App bar ───────────────────────────────────────────────────────────────────
 
 class _FeedAppBar extends StatelessWidget {
+  const _FeedAppBar();
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -154,6 +170,13 @@ class _FeedAppBar extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _FeedHeader extends StatelessWidget {
+  final int citizenCount;
+  final int wireSourceCount;
+  const _FeedHeader({
+    required this.citizenCount,
+    required this.wireSourceCount,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -192,9 +215,9 @@ class _FeedHeader extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
-              const Text(
-                ' · 17 citizens reporting · 6 sources active',
-                style: TextStyle(fontSize: 12, color: _P.inkTertiary),
+              Text(
+                ' · $citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
+                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
               ),
             ],
           ),
@@ -383,7 +406,7 @@ class _CitizenCard extends ConsumerWidget {
                       meta: [
                         if (item.category != null)
                           _categoryLabel(item.category!),
-                        _timeAgo(item.publishedAt),
+                        timeAgo(item.publishedAt),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -445,6 +468,35 @@ class _CitizenCard extends ConsumerWidget {
                             title: item.title,
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        GestureDetector(
+                          onTap: () => context.push('/compare', extra: item),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.compare_arrows,
+                                  size: 16,
+                                  color: _P.navy,
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Compare',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),
                         const SizedBox(width: 4),
@@ -454,6 +506,8 @@ class _CitizenCard extends ConsumerWidget {
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFE9ECEF)),
+              _CompareWithRow(item: item),
             ],
           ),
         ),
@@ -552,7 +606,14 @@ class _WireCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Container(color: const Color(0xFF1A3A5C)),
+                    item.imageUrl != null
+                        ? Image.network(
+                            item.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) =>
+                                Container(color: const Color(0xFF1A3A5C)),
+                          )
+                        : Container(color: const Color(0xFF1A3A5C)),
                     Positioned(
                       top: 10,
                       left: 10,
@@ -574,7 +635,7 @@ class _WireCard extends StatelessWidget {
                       dotColor: _P.navy,
                       label: 'WIRE NEWS',
                       labelColor: _P.navy,
-                      meta: [_timeAgo(item.publishedAt)],
+                      meta: [timeAgo(item.publishedAt)],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -603,20 +664,34 @@ class _WireCard extends StatelessWidget {
                     Row(
                       children: [
                         if (item.url != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.open_in_new, size: 14, color: _P.navy),
-                              SizedBox(width: 4),
-                              Text(
-                                'Open source',
-                                style: TextStyle(
-                                  fontSize: 13,
+                          GestureDetector(
+                            onTap: () async {
+                              final uri = Uri.tryParse(item.url!);
+                              if (uri == null) return;
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            },
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
                                   color: _P.navy,
-                                  fontWeight: FontWeight.w500,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'Open source',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),
@@ -627,8 +702,45 @@ class _WireCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFE9ECEF)),
+              _CompareWithRow(item: item),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Compare with row ──────────────────────────────────────────────────────────
+
+class _CompareWithRow extends StatelessWidget {
+  final NewsItem item;
+  const _CompareWithRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/compare', extra: item),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.compare_arrows, size: 15, color: _P.navy),
+            const SizedBox(width: 6),
+            Text(
+              item.category != null
+                  ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
+                  : 'Compare with other reports',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: _P.navy,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 16, color: _P.inkTertiary),
+          ],
         ),
       ),
     );
@@ -766,14 +878,6 @@ class _ActionBtn extends StatelessWidget {
       ),
     );
   }
-}
-
-String _timeAgo(DateTime dt) {
-  final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) return '${diff.inHours} hr ago';
-  return '${diff.inDays}d ago';
 }
 
 String _categoryLabel(String category) {

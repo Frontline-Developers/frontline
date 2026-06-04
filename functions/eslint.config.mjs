@@ -4,13 +4,13 @@ import prettierConfig from "eslint-config-prettier";
 import globals from "globals";
 
 export default [
-  {ignores: ["lib/**/*", "eslint.config.mjs"]},
+  {ignores: ["lib/**/*", "eslint.config.mjs", "jest.config.js"]},
   ...tsPlugin.configs["flat/recommended"],
   importX.flatConfigs.recommended,
   {
     languageOptions: {
       parserOptions: {
-        project: ["tsconfig.json"],
+        project: ["tsconfig.json", "tsconfig.test.json", "tsconfig.eslint.json"],
         sourceType: "module",
       },
       globals: {...globals.es6, ...globals.node},

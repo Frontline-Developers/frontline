@@ -8,6 +8,11 @@ class NewsItemModel {
   final String? url;
   final NewsSource source;
   final DateTime publishedAt;
+  final String? sourceName;
+  final String? imageUrl;
+  final List<String> locations;
+  final List<String> themes;
+  final int tone;
 
   const NewsItemModel({
     required this.id,
@@ -16,17 +21,28 @@ class NewsItemModel {
     this.url,
     required this.source,
     required this.publishedAt,
+    this.sourceName,
+    this.imageUrl,
+    this.locations = const [],
+    this.themes = const [],
+    this.tone = 0,
   });
 
   factory NewsItemModel.fromJson(String id, Map<String, dynamic> json) {
-    final ts = json['publishedAt'] as Timestamp;
+    final raw = json['publishedAt'];
+    final publishedAt = raw is Timestamp ? raw.toDate() : DateTime.now();
     return NewsItemModel(
       id: id,
       title: json['title'] as String,
       body: json['body'] as String?,
       url: json['url'] as String?,
       source: NewsSource.wire,
-      publishedAt: ts.toDate(),
+      publishedAt: publishedAt,
+      sourceName: json['sourceName'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      locations: List<String>.from(json['locations'] as List? ?? []),
+      themes: List<String>.from(json['themes'] as List? ?? []),
+      tone: (json['tone'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -37,6 +53,11 @@ class NewsItemModel {
     url: url,
     source: source,
     publishedAt: publishedAt,
+    sourceName: sourceName,
+    imageUrl: imageUrl,
+    locations: locations,
+    themes: themes,
+    tone: tone,
   );
 }
 
