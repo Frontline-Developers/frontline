@@ -14,16 +14,21 @@ class _FakeRepo implements PinRepository {
   bool resetCalled = false;
   String? savedPin;
   bool? savedBiometricEnabled;
+  bool throwOnGetStatus;
 
   _FakeRepo({
     this.stubbedStatus = PinStatus.createPin,
     this.stubbedVerify = false,
     this.biometricAvailable = false,
     this.biometricEnabled = false,
+    this.throwOnGetStatus = false,
   });
 
   @override
-  Future<PinStatus> getInitialStatus() async => stubbedStatus;
+  Future<PinStatus> getInitialStatus() async {
+    if (throwOnGetStatus) throw StateError('simulated storage failure');
+    return stubbedStatus;
+  }
 
   @override
   Future<bool> verifyPin(String pin) async => stubbedVerify;
@@ -541,5 +546,18 @@ void main() {
         expect(c.read(pinNotifierProvider).status, PinStatus.unlocked);
       },
     );
+  });
+
+  group('PinNotifier — storage failure recovery', () {
+    test('falls back to createPin when storage read throws', () async {
+      final repo = _FakeRepo(throwOnGetStatus: true);
+      final c = _container(repo);
+      addTearDown(c.dispose);
+
+      c.read(pinNotifierProvider);
+      await Future.delayed(Duration.zero);
+
+      expect(c.read(pinNotifierProvider).status, PinStatus.createPin);
+    });
   });
 }

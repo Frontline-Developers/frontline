@@ -1,9 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/alert_datasource_impl.dart';
 import '../../data/repositories/alert_repository_impl.dart';
 import '../../data/services/fcm_token_service.dart';
+import '../../domain/entities/alert_subscription.dart';
 import '../../domain/usecases/save_alert.dart';
 
 export '../../data/services/fcm_token_service.dart' show FcmTokenService;
@@ -97,18 +97,7 @@ class AlertNotifier extends Notifier<AlertState> {
 }
 
 String _friendlyError(Object e) {
-  if (e is FirebaseException) {
-    switch (e.code) {
-      case 'permission-denied':
-        return 'Permission denied. Please try again later.';
-      case 'unavailable':
-        return 'Service unavailable. Check your connection and try again.';
-      case 'not-found':
-        return 'Could not save alert. Please try again.';
-      default:
-        return 'Something went wrong. Please try again.';
-    }
-  }
+  if (e is AlertSaveException) return e.message;
   if (e is ArgumentError) return e.message?.toString() ?? 'Invalid input.';
   return 'Something went wrong. Please try again.';
 }
