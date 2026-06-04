@@ -239,18 +239,35 @@ class _ErrorState extends StatelessWidget {
 
 // ── Featured item (anchor) ────────────────────────────────────────────────────
 
-class _FeaturedItemCard extends ConsumerWidget {
+class _FeaturedItemCard extends ConsumerStatefulWidget {
   final NewsItem item;
   const _FeaturedItemCard({required this.item});
 
-  Future<void> _castVote(WidgetRef ref, String type) async {
-    final ds = ref.read(voteDatasourceProvider);
-    await ds.castVote(item.id, type);
-    ref.invalidate(voteProvider(item.id));
+  @override
+  ConsumerState<_FeaturedItemCard> createState() => _FeaturedItemCardState();
+}
+
+class _FeaturedItemCardState extends ConsumerState<_FeaturedItemCard> {
+  bool _votePending = false;
+
+  Future<void> _castVote(String type) async {
+    if (_votePending) return;
+    setState(() => _votePending = true);
+    try {
+      await ref
+          .read(compareNotifierProvider.notifier)
+          .castVote(widget.item.id, type);
+      ref.invalidate(voteProvider(widget.item.id));
+    } catch (_) {
+      // swallow — button re-enables via finally
+    } finally {
+      if (mounted) setState(() => _votePending = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final item = widget.item;
     final isCitizen = item.source == NewsSource.citizen;
     final userVote = isCitizen
         ? ref
@@ -362,7 +379,7 @@ class _FeaturedItemCard extends ConsumerWidget {
                         count: confirmCount,
                         active: userVote == 'confirm',
                         activeColor: _P.verified,
-                        onTap: () => _castVote(ref, 'confirm'),
+                        onTap: _votePending ? null : () => _castVote('confirm'),
                       ),
                       const SizedBox(width: 12),
                       _ActionBtn(
@@ -372,7 +389,7 @@ class _FeaturedItemCard extends ConsumerWidget {
                         count: disputeCount,
                         active: userVote == 'dispute',
                         activeColor: _P.disputed,
-                        onTap: () => _castVote(ref, 'dispute'),
+                        onTap: _votePending ? null : () => _castVote('dispute'),
                       ),
                     ],
                   ],
@@ -612,19 +629,36 @@ class _ClusterTimeline extends StatelessWidget {
   }
 }
 
-class _TimelineRow extends ConsumerWidget {
+class _TimelineRow extends ConsumerStatefulWidget {
   final ClusterItem item;
   final bool isLast;
   const _TimelineRow({required this.item, required this.isLast});
 
-  Future<void> _castVote(WidgetRef ref, String type) async {
-    final ds = ref.read(voteDatasourceProvider);
-    await ds.castVote(item.id, type);
-    ref.invalidate(voteProvider(item.id));
+  @override
+  ConsumerState<_TimelineRow> createState() => _TimelineRowState();
+}
+
+class _TimelineRowState extends ConsumerState<_TimelineRow> {
+  bool _votePending = false;
+
+  Future<void> _castVote(String type) async {
+    if (_votePending) return;
+    setState(() => _votePending = true);
+    try {
+      await ref
+          .read(compareNotifierProvider.notifier)
+          .castVote(widget.item.id, type);
+      ref.invalidate(voteProvider(widget.item.id));
+    } catch (_) {
+      // swallow — button re-enables via finally
+    } finally {
+      if (mounted) setState(() => _votePending = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final item = widget.item;
     final dotColor = switch (item.eval) {
       EvidenceEval.supports => _P.verified,
       EvidenceEval.contradicts => _P.disputed,
@@ -673,7 +707,7 @@ class _TimelineRow extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                if (!isLast)
+                if (!widget.isLast)
                   Expanded(
                     child: Center(
                       child: Container(width: 1, color: _P.hairline),
@@ -695,7 +729,7 @@ class _TimelineRow extends ConsumerWidget {
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              padding: EdgeInsets.only(bottom: widget.isLast ? 0 : 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -729,7 +763,8 @@ class _TimelineRow extends ConsumerWidget {
                           count: confirmCount,
                           active: userVote == 'confirm',
                           activeColor: _P.verified,
-                          onTap: () => _castVote(ref, 'confirm'),
+                          onTap:
+                              _votePending ? null : () => _castVote('confirm'),
                         ),
                         const SizedBox(width: 12),
                         _ActionBtn(
@@ -739,7 +774,8 @@ class _TimelineRow extends ConsumerWidget {
                           count: disputeCount,
                           active: userVote == 'dispute',
                           activeColor: _P.disputed,
-                          onTap: () => _castVote(ref, 'dispute'),
+                          onTap:
+                              _votePending ? null : () => _castVote('dispute'),
                         ),
                       ],
                     ),

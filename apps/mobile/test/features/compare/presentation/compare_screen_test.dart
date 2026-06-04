@@ -20,17 +20,26 @@ class _FakeCompareNotifier extends CompareNotifier {
 
 class _FakeVoteDatasource implements VoteDatasource {
   final Map<String, String?> _votes;
+  final bool throwOnCast;
   final List<({String reportId, String? type})> castCalls = [];
 
-  _FakeVoteDatasource({Map<String, String?> votes = const {}}) : _votes = votes;
+  _FakeVoteDatasource({
+    Map<String, String?> votes = const {},
+    this.throwOnCast = false,
+  }) : _votes = votes;
 
   @override
   Future<String?> getUserVote(String reportId) async => _votes[reportId];
 
   @override
   Future<void> castVote(String reportId, String? type) async {
+    if (throwOnCast) throw Exception('Network error');
     castCalls.add((reportId: reportId, type: type));
   }
+
+  @override
+  Stream<VoteCounts> watchVoteCounts(String reportId) =>
+      Stream.value((confirm: 0, dispute: 0));
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -515,5 +524,33 @@ void main() {
       expect(ds.castCalls, hasLength(1));
       expect(ds.castCalls.first.type, 'confirm');
     });
+
+    testWidgets(
+      'does not crash and re-enables button when castVote throws',
+      (tester) async {
+        final throwingDs = _FakeVoteDatasource(throwOnCast: true);
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              compareNotifierProvider.overrideWith(
+                () => _FakeCompareNotifier(const CompareState()),
+              ),
+              voteDatasourceProvider.overrideWithValue(throwingDs),
+              voteProvider.overrideWith((ref, id) async => null),
+              voteCountsProvider.overrideWith(
+                (ref, id) => Stream.value((confirm: 2, dispute: 0)),
+              ),
+            ],
+            child: MaterialApp(home: CompareScreen(anchorItem: _citizenAnchor)),
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.byIcon(Icons.check_circle_outline));
+        await tester.pumpAndSettle();
+        // Widget survives the error and button is not permanently disabled
+        expect(find.byType(CompareScreen), findsOneWidget);
+        expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      },
+    );
   });
 }
