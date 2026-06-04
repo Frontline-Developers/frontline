@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
@@ -89,15 +88,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         .read(searchNotifierProvider.notifier)
         .saveSearch(_controller.text.trim());
     if (!mounted) return;
-    Navigator.pop(context);
-    if (item.source == NewsSource.wire && item.url != null) {
-      final uri = Uri.tryParse(item.url!);
-      if (uri != null) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } else {
-      context.push('/report/${item.id}', extra: item);
-    }
+    context.push('/report/${item.id}', extra: item);
   }
 
   void _cancel() {
