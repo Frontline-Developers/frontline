@@ -133,13 +133,17 @@ const SOURCE_PRIORITY: Record<string, number> = {
   "axios.com": 7,
 };
 
-function sourcePriority(domain: string): number {
+const METADATA_COLLECTION = "metadata";
+const METADATA_DOC = "wire_news";
+const DEFAULT_FETCH_INTERVAL_HOURS = 24;
+
+export function sourcePriority(domain: string): number {
   return SOURCE_PRIORITY[domain] ?? 1;
 }
 
 // Normalise a title to a short key for deduplication — strips punctuation,
 // lowercases, and takes the first 60 chars so minor wording differences still match.
-function normaliseTitle(title: string): string {
+export function normaliseTitle(title: string): string {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9 ]/g, " ")
@@ -148,8 +152,15 @@ function normaliseTitle(title: string): string {
     .slice(0, 60);
 }
 
+export function titleToDocId(title: string): string {
+  return Buffer.from(normaliseTitle(title))
+    .toString("base64")
+    .replace(/[/+=]/g, "")
+    .slice(0, 32);
+}
+
 // Keep only the highest-priority source when multiple articles share a title.
-function deduplicateByTitle(articles: GdeltArticle[]): GdeltArticle[] {
+export function deduplicateByTitle(articles: GdeltArticle[]): GdeltArticle[] {
   const best = new Map<string, GdeltArticle>();
   for (const article of articles) {
     const key = normaliseTitle(article.title);
@@ -208,11 +219,6 @@ function parseSeenDate(seendate: string): Date {
   return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
 }
 
-// Stable doc ID from URL for deduplication — base64 then trim to 20 chars.
-function urlToDocId(url: string): string {
-  return Buffer.from(url).toString("base64").replace(/[/+=]/g, "").slice(0, 20);
-}
-
 // Fetch the og:image meta tag from an article URL. Returns null on any failure.
 async function fetchOgImage(url: string): Promise<string | null> {
   const controller = new AbortController();
@@ -260,123 +266,171 @@ async function fetchOgImages(urls: string[]): Promise<(string | null)[]> {
   return results;
 }
 
-export const fetchGdeltNews = onSchedule(
-  {schedule: "every 30 minutes", region: "asia-southeast1"},
-  async () => {
-    const params = new URLSearchParams({
-      query: "Ukraine conflict sourcelang:english",
-      mode: "ArtList",
-      maxrecords: "50",
-      format: "json",
-      sortby: "datedesc",
-    });
+export async function fetchGdeltNewsHandler() {
+  const db = admin.firestore();
+  const metaRef = db.collection(METADATA_COLLECTION).doc(METADATA_DOC);
+  const metaSnap = await metaRef.get();
+  const metaData = metaSnap.exists ? metaSnap.data() : undefined;
+  const intervalHours =
+    Number(metaData?.fetchIntervalHours) || DEFAULT_FETCH_INTERVAL_HOURS;
+  const lastFetchedAt = metaData?.lastFetchedAt as
+    | admin.firestore.Timestamp
+    | undefined;
+  const now = new Date();
 
-    const headers = {"User-Agent": "Frontline-NewsAggregator/1.0"};
-
-    let articles: GdeltArticle[] = [];
-    try {
-      let res = await fetch(`${GDELT_API}?${params}`, {headers});
-
-      // GDELT returns HTTP 200 with a plain-text rate limit message instead of JSON.
-      // Detect this by checking Content-Type, and retry after 6s if hit.
-      const contentType = res.headers.get("content-type") ?? "";
-      if (!contentType.includes("json")) {
-        const body = await res.text();
-        logger.warn(
-          "fetchGdeltNews: non-JSON response (likely rate limit), retrying in 6s:",
-          body.slice(0, 120),
-        );
-        await new Promise((r) => setTimeout(r, 6000));
-        res = await fetch(`${GDELT_API}?${params}`, {headers});
-      }
-
-      if (!res.ok) {
-        logger.error("fetchGdeltNews: GDELT API returned", res.status);
-        return;
-      }
-
-      const ct2 = res.headers.get("content-type") ?? "";
-      if (!ct2.includes("json")) {
-        const body = await res.text();
-        logger.error(
-          "fetchGdeltNews: still non-JSON after retry:",
-          body.slice(0, 120),
-        );
-        return;
-      }
-
-      const data = (await res.json()) as GdeltResponse;
-      articles = data.articles ?? [];
-      logger.info(
-        `fetchGdeltNews: GDELT returned ${articles.length} total articles`,
-      );
-    } catch (err) {
-      logger.error("fetchGdeltNews: fetch failed", err);
-      return;
-    }
-
-    if (articles.length > 0) {
-      logger.info(
-        "fetchGdeltNews: sample language values:",
-        articles.slice(0, 3).map((a) => a.language),
-      );
-    }
-    const english = articles.filter(
-      (a) => !a.language || a.language.toLowerCase() === "english",
+  if (lastFetchedAt) {
+    const nextFetch = new Date(
+      lastFetchedAt.toDate().getTime() + intervalHours * 3600000,
     );
-    if (english.length === 0) {
+    if (now < nextFetch) {
       logger.info(
-        "fetchGdeltNews: no English articles — languages seen:",
-        [...new Set(articles.map((a) => a.language))].join(", "),
+        "fetchGdeltNews: skipping fetch until",
+        nextFetch.toISOString(),
+        `(${intervalHours}h interval)`,
+      );
+      return;
+    }
+  }
+
+  const params = new URLSearchParams({
+    query: "Ukraine conflict sourcelang:english",
+    mode: "ArtList",
+    maxrecords: "50",
+    format: "json",
+    sortby: "datedesc",
+  });
+
+  const headers = {"User-Agent": "Frontline-NewsAggregator/1.0"};
+
+  let articles: GdeltArticle[] = [];
+  try {
+    let res = await fetch(`${GDELT_API}?${params}`, {headers});
+
+    // GDELT returns HTTP 200 with a plain-text rate limit message instead of JSON.
+    // Detect this by checking Content-Type, and retry after 6s if hit.
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("json")) {
+      const body = await res.text();
+      logger.warn(
+        "fetchGdeltNews: non-JSON response (likely rate limit), retrying in 6s:",
+        body.slice(0, 120),
+      );
+      await new Promise((r) => setTimeout(r, 6000));
+      res = await fetch(`${GDELT_API}?${params}`, {headers});
+    }
+
+    if (!res.ok) {
+      logger.error("fetchGdeltNews: GDELT API returned", res.status);
+      return;
+    }
+
+    const ct2 = res.headers.get("content-type") ?? "";
+    if (!ct2.includes("json")) {
+      const body = await res.text();
+      logger.error(
+        "fetchGdeltNews: still non-JSON after retry:",
+        body.slice(0, 120),
       );
       return;
     }
 
-    // Drop articles that are the same story syndicated across many sources.
-    const unique = deduplicateByTitle(english);
+    const data = (await res.json()) as GdeltResponse;
+    articles = data.articles ?? [];
     logger.info(
-      `fetchGdeltNews: ${english.length} English → ${unique.length} unique stories after dedup`,
+      `fetchGdeltNews: GDELT returned ${articles.length} total articles`,
     );
+  } catch (err) {
+    logger.error("fetchGdeltNews: fetch failed", err);
+    return;
+  }
 
-    // Fetch og:images in parallel (capped concurrency) before writing to Firestore.
-    const imageUrls = await fetchOgImages(unique.map((a) => a.url));
+  if (articles.length > 0) {
+    logger.info(
+      "fetchGdeltNews: sample language values:",
+      articles.slice(0, 3).map((a) => a.language),
+    );
+  }
+  const english = articles.filter(
+    (a) => !a.language || a.language.toLowerCase() === "english",
+  );
+  if (english.length === 0) {
+    logger.info(
+      "fetchGdeltNews: no English articles — languages seen:",
+      [...new Set(articles.map((a) => a.language))].join(", "),
+    );
+    await metaRef.set(
+      {
+        lastFetchedAt: admin.firestore.Timestamp.now(),
+        fetchIntervalHours: intervalHours,
+        updatedAt: admin.firestore.Timestamp.now(),
+      },
+      {merge: true},
+    );
+    return;
+  }
 
-    const db = admin.firestore();
-    const batch = db.batch();
-    let written = 0;
+  // Drop articles that are the same story syndicated across many sources.
+  const unique = deduplicateByTitle(english);
+  logger.info(
+    `fetchGdeltNews: ${english.length} English → ${unique.length} unique stories after dedup`,
+  );
 
-    for (let i = 0; i < unique.length; i++) {
-      const article = unique[i];
-      const text = article.title;
-      const docId = urlToDocId(article.url);
-      const ref = db.collection("wire_news").doc(docId);
+  // Fetch og:images in parallel (capped concurrency) before writing to Firestore.
+  const imageUrls = await fetchOgImages(unique.map((a) => a.url));
 
-      // New article — write full document.
-      const doc: Record<string, unknown> = {
-        title: text,
-        url: article.url,
-        source: "wire",
-        sourceName: SOURCE_NAMES[article.domain] ?? article.domain,
-        sourceDomain: article.domain,
-        locations: extractLocations(text),
-        themes: extractThemes(text),
-        tone: computeTone(text),
-        publishedAt: admin.firestore.Timestamp.fromDate(
-          parseSeenDate(article.seendate),
-        ),
-      };
-      if (imageUrls[i]) doc["imageUrl"] = imageUrls[i];
+  const batch = db.batch();
+  let written = 0;
 
-      // merge:true — updates the provided fields without deleting unspecified ones.
-      // Note: existing values for provided fields can still be overwritten.
-      batch.set(ref, doc, {merge: true});
-      written++;
-    }
+  for (let i = 0; i < unique.length; i++) {
+    const article = unique[i];
+    const text = article.title;
+    const docId = titleToDocId(article.title);
+    const ref = db.collection("wire_news").doc(docId);
+    const priority = sourcePriority(article.domain);
 
+    const doc: Record<string, unknown> = {
+      title: text,
+      url: article.url,
+      source: "wire",
+      sourceName: SOURCE_NAMES[article.domain] ?? article.domain,
+      sourceDomain: article.domain,
+      sourcePriority: priority,
+      storyKey: normaliseTitle(text),
+      locations: extractLocations(text),
+      themes: extractThemes(text),
+      tone: computeTone(text),
+      publishedAt: admin.firestore.Timestamp.fromDate(
+        parseSeenDate(article.seendate),
+      ),
+    };
+    if (imageUrls[i]) doc["imageUrl"] = imageUrls[i];
+
+    batch.set(ref, doc, {merge: true});
+    written++;
+  }
+
+  if (written > 0) {
     await batch.commit();
-    const withImages = imageUrls.filter(Boolean).length;
-    logger.info(
-      `fetchGdeltNews: wrote ${written} unique articles (${withImages} with images)`,
-    );
-  },
+  }
+
+  const withImages = imageUrls.filter(Boolean).length;
+  const fetchTime = admin.firestore.Timestamp.now();
+  await metaRef.set(
+    {
+      lastFetchedAt: fetchTime,
+      fetchIntervalHours: intervalHours,
+      sourceDomains: [...new Set(unique.map((a) => a.domain))],
+      updatedAt: fetchTime,
+    },
+    {merge: true},
+  );
+
+  logger.info(
+    `fetchGdeltNews: wrote ${written} unique articles (${withImages} with images)`,
+  );
+}
+
+export const fetchGdeltNews = onSchedule(
+  {schedule: "every 60 minutes", region: "asia-southeast1"},
+  fetchGdeltNewsHandler,
 );
