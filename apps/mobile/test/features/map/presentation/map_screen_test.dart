@@ -74,7 +74,8 @@ void main() {
 
     testWidgets('shows crosshair icon button in AppBar', (tester) async {
       await tester.pumpWidget(_wrap(const MapState()));
-      expect(find.byIcon(Icons.gps_fixed), findsOneWidget);
+      // gps_not_fixed when marker hidden, gps_fixed when showing
+      expect(find.byIcon(Icons.gps_not_fixed), findsOneWidget);
     });
 
     testWidgets('shows filter icon button in AppBar', (tester) async {
@@ -84,12 +85,16 @@ void main() {
   });
 
   group('MapScreen — loading state', () {
-    testWidgets('shows loading indicator when isLoading is true', (tester) async {
+    testWidgets('shows loading indicator when isLoading is true', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const MapState(isLoading: true)));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('does not show loading indicator in idle state', (tester) async {
+    testWidgets('does not show loading indicator in idle state', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const MapState()));
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
@@ -110,9 +115,9 @@ void main() {
       expect(find.text('All'), findsOneWidget);
     });
 
-    testWidgets('shows Combat/strike chip', (tester) async {
+    testWidgets('shows Combat / strike chip', (tester) async {
       await tester.pumpWidget(_wrap(const MapState()));
-      expect(find.text('Combat/strike'), findsOneWidget);
+      expect(find.text('Combat / strike'), findsOneWidget);
     });
 
     testWidgets('shows Humanitarian aid chip', (tester) async {
@@ -120,9 +125,9 @@ void main() {
       expect(find.text('Humanitarian aid'), findsOneWidget);
     });
 
-    testWidgets('shows Air alert/siren chip', (tester) async {
+    testWidgets('shows Air alert / siren chip', (tester) async {
       await tester.pumpWidget(_wrap(const MapState()));
-      expect(find.text('Air alert/siren'), findsOneWidget);
+      expect(find.text('Air alert / siren'), findsOneWidget);
     });
 
     testWidgets('shows Displaced persons chip', (tester) async {
@@ -130,15 +135,20 @@ void main() {
       expect(find.text('Displaced persons'), findsOneWidget);
     });
 
-    testWidgets('shows Diplomatic chip', (tester) async {
+    testWidgets('shows Infrastructure chip', (tester) async {
       await tester.pumpWidget(_wrap(const MapState()));
-      expect(find.text('Diplomatic'), findsOneWidget);
+      expect(find.text('Infrastructure'), findsOneWidget);
+    });
+
+    testWidgets('shows Other chip', (tester) async {
+      await tester.pumpWidget(_wrap(const MapState()));
+      expect(find.text('Other'), findsOneWidget);
     });
 
     testWidgets('tapping a category chip calls updateFilters', (tester) async {
       final fake = _FakeMapNotifier();
       await tester.pumpWidget(_wrapWith(fake));
-      await tester.tap(find.text('Combat/strike'));
+      await tester.tap(find.text('Combat / strike'));
       await tester.pump();
       expect(fake.state.filters.category, MapCategory.combat);
     });
@@ -162,45 +172,30 @@ void main() {
       expect(find.text('Last hour'), findsNothing);
     });
 
-    testWidgets('filter panel shows when showFiltersPanel is true', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
+    testWidgets('filter panel shows when showFiltersPanel is true', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(const MapState(showFiltersPanel: true)));
       expect(find.text('Last hour'), findsOneWidget);
     });
 
     testWidgets('filter panel shows 6 hours option', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
+      await tester.pumpWidget(_wrap(const MapState(showFiltersPanel: true)));
       expect(find.text('6 hours'), findsOneWidget);
     });
 
     testWidgets('filter panel shows 24 hours option', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
+      await tester.pumpWidget(_wrap(const MapState(showFiltersPanel: true)));
       expect(find.text('24 hours'), findsOneWidget);
     });
 
     testWidgets('filter panel shows All time option', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
+      await tester.pumpWidget(_wrap(const MapState(showFiltersPanel: true)));
       expect(find.text('All time'), findsOneWidget);
     });
 
-    testWidgets('filter panel shows Show city labels toggle', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
-      expect(find.text('Show city labels'), findsOneWidget);
-    });
-
     testWidgets('filter panel shows Reset button', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const MapState(showFiltersPanel: true)),
-      );
+      await tester.pumpWidget(_wrap(const MapState(showFiltersPanel: true)));
       expect(find.text('Reset'), findsOneWidget);
     });
 
@@ -225,34 +220,29 @@ void main() {
       expect(fake.state.filters, const MapFilters());
     });
 
-    testWidgets('filter badge shown when non-default filter active', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const MapState(
-            filters: MapFilters(timeRange: MapTimeRange.hour),
-          ),
-        ),
-      );
-      expect(find.byKey(const Key('filter_active_badge')), findsOneWidget);
-    });
-
-    testWidgets('no filter badge when filters are default', (tester) async {
+    testWidgets('no filter badge shown (badge removed from design)', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const MapState()));
       expect(find.byKey(const Key('filter_active_badge')), findsNothing);
     });
   });
 
   group('MapScreen — recent activity (no pin selected)', () {
-    testWidgets('shows "Recent activity" header when no pin selected', (tester) async {
+    testWidgets('shows "RECENT ACTIVITY" header when no pin selected', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const MapState()));
-      expect(find.text('Recent activity'), findsOneWidget);
+      expect(find.text('RECENT ACTIVITY'), findsOneWidget);
     });
 
-    testWidgets('hides "Recent activity" when a pin is selected', (tester) async {
+    testWidgets('hides "RECENT ACTIVITY" when a pin is selected', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(MapState(selectedReport: _makeReport('r1'))),
       );
-      expect(find.text('Recent activity'), findsNothing);
+      expect(find.text('RECENT ACTIVITY'), findsNothing);
     });
   });
 

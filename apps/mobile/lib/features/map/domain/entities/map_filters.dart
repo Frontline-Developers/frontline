@@ -1,6 +1,6 @@
 enum MapTimeRange { hour, sixHours, day, all }
 
-enum MapCategory { all, combat, aid, alert, displaced, diplomatic }
+enum MapCategory { all, combat, aid, alert, displaced, infra, other }
 
 class MapFilters {
   final MapTimeRange timeRange;
