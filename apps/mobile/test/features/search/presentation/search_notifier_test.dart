@@ -17,6 +17,7 @@ class _FakeFeedNotifier extends FeedNotifier {
 class _FakeSearchRepository implements SearchRepository {
   final List<String> saved = [];
   final List<String> cleared = [];
+  bool clearedAll = false;
 
   @override
   Future<List<String>> loadRecentSearches() async => ['old-term'];
@@ -26,6 +27,9 @@ class _FakeSearchRepository implements SearchRepository {
 
   @override
   Future<void> clearRecentSearch(String term) async => cleared.add(term);
+
+  @override
+  Future<void> clearAllRecentSearches() async => clearedAll = true;
 }
 
 ProviderContainer _container({

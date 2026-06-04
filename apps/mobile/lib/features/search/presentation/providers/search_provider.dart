@@ -89,6 +89,11 @@ class SearchNotifier extends Notifier<SearchState> {
         .loadRecentSearches();
     state = state.copyWith(recentSearches: recents.take(4).toList());
   }
+
+  Future<void> clearAllSearches() async {
+    await ref.read(searchRepositoryProvider).clearAllRecentSearches();
+    state = state.copyWith(recentSearches: []);
+  }
 }
 
 // ── Async provider helper for main.dart ──────────────────────────────────────
