@@ -51,9 +51,13 @@ class FeedDatasourceImpl implements FeedDatasource {
             .limit(25)
             .snapshots()
             .map(
-              (snap) => snap.docs
-                  .map((d) => NewsItemModel.fromJson(d.id, d.data()).toEntity())
-                  .toList(),
+              (snap) => _deduplicateWire(
+                snap.docs
+                    .map(
+                      (d) => NewsItemModel.fromJson(d.id, d.data()).toEntity(),
+                    )
+                    .toList(),
+              ),
             )
             .listen((items) {
               wire = items;
@@ -68,4 +72,26 @@ class FeedDatasourceImpl implements FeedDatasource {
 
     return ctrl.stream;
   }
+}
+
+// Client-side safety net: deduplicate wire items by normalized title and
+// by imageUrl. Handles anything that slips through server-side dedup (e.g.
+// same story from different GDELT fetch windows, stale seed data).
+// Input is assumed to be sorted newest-first; the first occurrence is kept.
+List<NewsItem> _deduplicateWire(List<NewsItem> items) {
+  final seenTitles = <String>{};
+  final seenImages = <String>{};
+  final result = <NewsItem>[];
+  for (final item in items) {
+    final titleKey = item.title
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (!seenTitles.add(titleKey)) continue;
+    final img = item.imageUrl;
+    if (img != null && !seenImages.add(img)) continue;
+    result.add(item);
+  }
+  return result;
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/news_item.dart';
 import '../providers/feed_provider.dart';
@@ -405,7 +406,7 @@ class _CitizenCard extends ConsumerWidget {
                       meta: [
                         if (item.category != null)
                           _categoryLabel(item.category!),
-                        _timeAgo(item.publishedAt),
+                        timeAgo(item.publishedAt),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -634,7 +635,7 @@ class _WireCard extends StatelessWidget {
                       dotColor: _P.navy,
                       label: 'WIRE NEWS',
                       labelColor: _P.navy,
-                      meta: [_timeAgo(item.publishedAt)],
+                      meta: [timeAgo(item.publishedAt)],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -877,14 +878,6 @@ class _ActionBtn extends StatelessWidget {
       ),
     );
   }
-}
-
-String _timeAgo(DateTime dt) {
-  final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) return '${diff.inHours} hr ago';
-  return '${diff.inDays}d ago';
 }
 
 String _categoryLabel(String category) {
