@@ -48,10 +48,15 @@ class CompareNotifier extends Notifier<CompareState> {
         .watch(compareRepositoryProvider)
         .watchClusters()
         .listen(
-          (clusters) =>
-              state = state.copyWith(clusters: clusters, isLoading: false),
-          onError: (e) =>
-              state = state.copyWith(isLoading: false, error: e.toString()),
+          (clusters) => state = state.copyWith(
+            clusters: clusters,
+            isLoading: false,
+            error: null,
+          ),
+          onError: (_) => state = state.copyWith(
+            isLoading: false,
+            error: 'Could not load compare data. Please try again.',
+          ),
         );
     ref.onDispose(sub.cancel);
     return const CompareState(isLoading: true);
