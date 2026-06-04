@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -46,12 +47,27 @@ class PinDatasourceImpl implements PinDatasource {
   Future<bool> verifyPin(String pin) async {
     final stored = await _storage.read(key: kPinHashStorageKey);
     if (stored == null) return false;
-    return _hashPin(pin) == stored;
+
+    final salt = await _storage.read(key: kPinSaltStorageKey);
+    if (salt != null) {
+      // Salted path (current).
+      return _hashPin(pin, salt) == stored;
+    }
+
+    // Legacy path — hash stored without a salt (migration).
+    // If the PIN matches, re-save it with a salt before returning.
+    if (_hashPin(pin, null) == stored) {
+      await savePin(pin);
+      return true;
+    }
+    return false;
   }
 
   @override
   Future<void> savePin(String pin) async {
-    await _storage.write(key: kPinHashStorageKey, value: _hashPin(pin));
+    final salt = _generateSalt();
+    await _storage.write(key: kPinSaltStorageKey, value: salt);
+    await _storage.write(key: kPinHashStorageKey, value: _hashPin(pin, salt));
     await _storage.write(key: kAppSetupCompleteKey, value: 'true');
   }
 
@@ -99,5 +115,16 @@ class PinDatasourceImpl implements PinDatasource {
     }
   }
 
-  String _hashPin(String pin) => sha256.convert(utf8.encode(pin)).toString();
+  String _generateSalt() {
+    final rng = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    return base64Url.encode(bytes);
+  }
+
+  /// Hashes [pin] with an optional [salt].
+  /// Pass null for [salt] only when checking a legacy unsalted hash.
+  String _hashPin(String pin, String? salt) {
+    final input = salt != null ? '$salt:$pin' : pin;
+    return sha256.convert(utf8.encode(input)).toString();
+  }
 }
