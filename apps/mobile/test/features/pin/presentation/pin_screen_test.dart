@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/pin/domain/entities/pin_state.dart';
@@ -381,6 +382,52 @@ void main() {
         ),
       );
       expect(find.byKey(const Key('pin_biometric_btn')), findsOneWidget);
+    });
+  });
+
+  group('PinScreen — keyboard input', () {
+    testWidgets('pressing number row key appends digit', (tester) async {
+      final fake = _FakePinNotifier(const PinState(status: PinStatus.enterPin));
+      await tester.pumpWidget(_wrapWith(fake));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit5);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(fake.state.digits, [5]);
+    });
+
+    testWidgets('pressing numpad key appends digit', (tester) async {
+      final fake = _FakePinNotifier(const PinState(status: PinStatus.enterPin));
+      await tester.pumpWidget(_wrapWith(fake));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.numpad3);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(fake.state.digits, [3]);
+    });
+
+    testWidgets('pressing Backspace calls backspace', (tester) async {
+      final fake = _FakePinNotifier(
+        const PinState(status: PinStatus.enterPin, digits: [1, 2]),
+      );
+      await tester.pumpWidget(_wrapWith(fake));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pump();
+
+      expect(fake.state.digits, [1]);
+    });
+
+    testWidgets('keyboard input works in createPin state', (tester) async {
+      final fake = _FakePinNotifier(
+        const PinState(status: PinStatus.createPin),
+      );
+      await tester.pumpWidget(_wrapWith(fake));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(fake.state.digits, [1]);
     });
   });
 }
