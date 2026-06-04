@@ -215,14 +215,13 @@ function urlToDocId(url: string): string {
 
 // Fetch the og:image meta tag from an article URL. Returns null on any failure.
 async function fetchOgImage(url: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {"User-Agent": "Frontline-NewsAggregator/1.0"},
     });
-    clearTimeout(timeout);
     if (!res.ok) return null;
     const html = await res.text();
     // Match both attribute orders: property then content, or content then property
@@ -233,9 +232,17 @@ async function fetchOgImage(url: string): Promise<string | null> {
       html.match(
         /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
       );
-    return match?.[1] ?? null;
+    const raw = match?.[1];
+    if (!raw) return null;
+    try {
+      return new URL(raw, url).toString();
+    } catch {
+      return raw;
+    }
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -360,8 +367,8 @@ export const fetchGdeltNews = onSchedule(
       };
       if (imageUrls[i]) doc["imageUrl"] = imageUrls[i];
 
-      // merge:true — never overwrites existing content, only fills in new fields
-      // (e.g. imageUrl being added to a doc that was written before we had og:image).
+      // merge:true — updates the provided fields without deleting unspecified ones.
+      // Note: existing values for provided fields can still be overwritten.
       batch.set(ref, doc, {merge: true});
       written++;
     }

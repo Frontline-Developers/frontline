@@ -125,9 +125,9 @@ class _HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = report.status ?? ItemStatus.pending;
     final (statusLabel, statusBg, statusFg) = switch (status) {
-      ItemStatus.verified => ('Sources align', _P.verifiedSoft, _P.verified),
-      ItemStatus.disputed => ('Sources conflict', _P.disputedSoft, _P.disputed),
-      ItemStatus.pending => ('Under review', _P.pendingSoft, _P.pending),
+      ItemStatus.verified => ('Report verified', _P.verifiedSoft, _P.verified),
+      ItemStatus.disputed => ('Report disputed', _P.disputedSoft, _P.disputed),
+      ItemStatus.pending => ('Pending review', _P.pendingSoft, _P.pending),
     };
 
     return Container(
@@ -174,7 +174,7 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Citizen report vs. wire coverage within 48 hours',
+            'Citizen report vs. recent wire coverage',
             style: TextStyle(fontSize: 12, color: _P.inkTertiary),
           ),
         ],
