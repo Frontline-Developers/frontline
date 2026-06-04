@@ -77,6 +77,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  Future<void> _onSubmitted(String value) async {
+    final term = value.trim();
+    if (term.isEmpty) return;
+    _debounce?.cancel();
+    ref.read(searchNotifierProvider.notifier).setQuery(term);
+    await ref.read(searchNotifierProvider.notifier).saveSearch(term);
+  }
+
   void _selectTerm(String term) {
     _controller.text = term;
     ref.read(searchNotifierProvider.notifier).setQuery(term);
@@ -111,6 +119,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               controller: _controller,
               focusNode: _focusNode,
               onChanged: _onQueryChanged,
+              onSubmitted: _onSubmitted,
               onClear: () {
                 _controller.clear();
                 ref.read(searchNotifierProvider.notifier).clearQuery();
@@ -134,6 +143,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ? _EmptyView(
                       recents: state.recentSearches,
                       onSelectTerm: _selectTerm,
+                      onClearAll: () => ref
+                          .read(searchNotifierProvider.notifier)
+                          .clearAllSearches(),
                     )
                   : state.results.isEmpty
                   ? _NoResultsView(query: state.query)
@@ -156,6 +168,7 @@ class _SearchHeader extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
   final VoidCallback onCancel;
 
@@ -163,6 +176,7 @@ class _SearchHeader extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.onChanged,
+    required this.onSubmitted,
     required this.onClear,
     required this.onCancel,
   });
@@ -191,6 +205,8 @@ class _SearchHeader extends StatelessWidget {
                       controller: controller,
                       focusNode: focusNode,
                       onChanged: onChanged,
+                      onSubmitted: onSubmitted,
+                      textInputAction: TextInputAction.search,
                       style: const TextStyle(fontSize: 15, color: _P.ink),
                       decoration: const InputDecoration(
                         hintText: 'Search reports, places, sources…',
@@ -326,15 +342,37 @@ class _Chip extends StatelessWidget {
 class _EmptyView extends StatelessWidget {
   final List<String> recents;
   final ValueChanged<String> onSelectTerm;
+  final VoidCallback onClearAll;
 
-  const _EmptyView({required this.recents, required this.onSelectTerm});
+  const _EmptyView({
+    required this.recents,
+    required this.onSelectTerm,
+    required this.onClearAll,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       children: [
-        const _SectionLabel('RECENT'),
+        Row(
+          children: [
+            const _SectionLabel('RECENT'),
+            const Spacer(),
+            if (recents.isNotEmpty)
+              GestureDetector(
+                onTap: onClearAll,
+                child: const Text(
+                  'Clear all',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _P.navy,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 10),
         if (recents.isEmpty)
           const Text(

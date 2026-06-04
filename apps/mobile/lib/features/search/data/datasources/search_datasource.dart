@@ -28,4 +28,9 @@ class SearchDatasourceImpl implements SearchRepository {
     recents.remove(term);
     await _prefs.setStringList(_key, recents);
   }
+
+  @override
+  Future<void> clearAllRecentSearches() async {
+    await _prefs.remove(_key);
+  }
 }

@@ -31,6 +31,8 @@ class _FakeSearchNotifier extends SearchNotifier {
   Future<void> saveSearch(String term) async {}
   @override
   Future<void> loadRecents() async {}
+  @override
+  Future<void> clearAllSearches() async {}
 }
 
 class _FakeSearchRepository implements SearchRepository {
@@ -40,6 +42,8 @@ class _FakeSearchRepository implements SearchRepository {
   Future<void> saveRecentSearch(String term) async {}
   @override
   Future<void> clearRecentSearch(String term) async {}
+  @override
+  Future<void> clearAllRecentSearches() async {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
