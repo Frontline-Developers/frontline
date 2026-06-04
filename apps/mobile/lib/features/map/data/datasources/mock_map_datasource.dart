@@ -268,13 +268,13 @@ class MockMapDatasource implements MapDatasource {
       -140,
     ),
 
-    // ── Odessa — 1 diplomatic ────────────────────────────────────────
+    // ── Odessa — 1 infra ─────────────────────────────────────────────
     _r(
       'odessa-1',
       46.48,
       30.72,
-      'diplomatic',
-      'Grain corridor negotiations reported in Odessa port',
+      'infra',
+      'Grain corridor operations reported in Odessa port',
       'Odessa',
       'verified',
       -300,
