@@ -10,7 +10,7 @@ export default [
   {
     languageOptions: {
       parserOptions: {
-        project: ["tsconfig.json"],
+        project: ["tsconfig.json", "tsconfig.eslint.json"],
         sourceType: "module",
       },
       globals: {...globals.es6, ...globals.node},
