@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/alert_datasource_impl.dart';
@@ -85,9 +86,29 @@ class AlertNotifier extends Notifier<AlertState> {
 
       state = state.copyWith(status: AlertStatus.saved, error: null);
     } catch (e) {
-      state = state.copyWith(status: AlertStatus.error, error: e.toString());
+      state = state.copyWith(
+        status: AlertStatus.error,
+        error: _friendlyError(e),
+      );
     }
   }
 
   void reset() => state = const AlertState();
+}
+
+String _friendlyError(Object e) {
+  if (e is FirebaseException) {
+    switch (e.code) {
+      case 'permission-denied':
+        return 'Permission denied. Please try again later.';
+      case 'unavailable':
+        return 'Service unavailable. Check your connection and try again.';
+      case 'not-found':
+        return 'Could not save alert. Please try again.';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
+  }
+  if (e is ArgumentError) return e.message?.toString() ?? 'Invalid input.';
+  return 'Something went wrong. Please try again.';
 }
