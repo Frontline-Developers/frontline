@@ -4,7 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 import 'package:frontline/features/feed/presentation/providers/feed_provider.dart';
 import 'package:frontline/features/search/domain/repositories/search_repository.dart';
-import 'package:frontline/features/search/presentation/providers/search_provider.dart';
+import 'package:frontline/features/search/presentation/providers/search_provider.dart'
+    show
+        SearchNotifier,
+        SearchState,
+        searchNotifierProvider,
+        searchRepositoryProvider;
 import 'package:frontline/features/search/presentation/screens/search_screen.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -32,7 +37,11 @@ class _FakeSearchNotifier extends SearchNotifier {
   @override
   Future<void> loadRecents() async {}
   @override
+  Future<void> removeSearch(String term) async {}
+  @override
   Future<void> clearAllSearches() async {}
+  @override
+  void toggleIncludeDisputed() {}
 }
 
 class _FakeSearchRepository implements SearchRepository {
@@ -94,9 +103,9 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
     });
 
-    testWidgets('shows Cancel button', (tester) async {
+    testWidgets('shows Search button', (tester) async {
       await tester.pumpWidget(_wrap(_emptyState));
-      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Search'), findsOneWidget);
     });
   });
 
@@ -106,9 +115,9 @@ void main() {
       expect(find.text('RECENT'), findsOneWidget);
     });
 
-    testWidgets('shows TRENDING NOW section label', (tester) async {
+    testWidgets("shows WHAT'S GOING ON section label", (tester) async {
       await tester.pumpWidget(_wrap(_emptyState));
-      expect(find.text('TRENDING NOW'), findsOneWidget);
+      expect(find.textContaining("WHAT'S GOING ON"), findsOneWidget);
     });
 
     testWidgets('scope chips are NOT visible when query is empty', (
@@ -211,38 +220,16 @@ void main() {
     });
   });
 
-  group('SearchScreen — Cancel action', () {
-    testWidgets('Cancel button is tappable without throwing', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            feedNotifierProvider.overrideWith(
-              () => _FakeFeedNotifier(const FeedState()),
-            ),
-            searchRepositoryProvider.overrideWithValue(_FakeSearchRepository()),
-            searchNotifierProvider.overrideWith(
-              () => _FakeSearchNotifier(_emptyState),
-            ),
-          ],
-          child: MaterialApp(
-            home: Builder(
-              builder: (ctx) => TextButton(
-                onPressed: () => Navigator.push(
-                  ctx,
-                  MaterialPageRoute(builder: (_) => const SearchScreen()),
-                ),
-                child: const Text('open'),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      expect(find.text('Cancel'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('Cancel'), findsNothing);
+  group('SearchScreen — Search button', () {
+    testWidgets('Search button is present', (tester) async {
+      await tester.pumpWidget(_wrap(_emptyState));
+      expect(find.text('Search'), findsOneWidget);
+    });
+
+    testWidgets('Search button is tappable without throwing', (tester) async {
+      await tester.pumpWidget(_wrap(_emptyState));
+      await tester.tap(find.text('Search'));
+      await tester.pump();
     });
   });
 }
