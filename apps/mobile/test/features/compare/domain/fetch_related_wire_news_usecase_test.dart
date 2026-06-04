@@ -37,7 +37,7 @@ class _FakeRepo implements CompareRepository {
 
 void main() {
   group('FetchRelatedWireNewsUseCase.extractLocations', () {
-    test('matches known Ukraine city names in text', () {
+    test('matches known location names in text', () {
       final locs = FetchRelatedWireNewsUseCase.extractLocations(
         'Fighting near Kyiv and Kharkiv',
       );
@@ -127,7 +127,7 @@ void main() {
         // A description mentioning many cities should not pass > 10 to the repo.
         final repo = _FakeRepo()..byLocations = [_wire('f')];
         final usecase = FetchRelatedWireNewsUseCase(repo);
-        // All 22 _ukraineLocations appear in this text.
+        // Mentions many known locations to stress-test the cap.
         const bigText =
             'kyiv kharkiv odesa zaporizhzhia lviv mariupol donetsk luhansk '
             'kherson mykolaiv dnipro sumy chernihiv kramatorsk bakhmut '
