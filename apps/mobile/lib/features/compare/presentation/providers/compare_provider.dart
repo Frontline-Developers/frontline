@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../feed/domain/entities/news_item.dart';
 import '../../data/datasources/compare_datasource.dart';
 import '../../data/repositories/compare_repository_impl.dart';
+import '../../domain/repositories/compare_repository.dart';
+import '../../domain/usecases/fetch_related_wire_news_usecase.dart';
 
 class CompareState {
   final NewsItem? report;
@@ -35,8 +37,13 @@ class CompareState {
 const _sentinel = Object();
 
 final _compareDatasourceProvider = Provider((_) => CompareDatasourceImpl());
-final _compareRepositoryProvider = Provider(
+
+final compareRepositoryProvider = Provider<CompareRepository>(
   (ref) => CompareRepositoryImpl(ref.watch(_compareDatasourceProvider)),
+);
+
+final _fetchRelatedWireNewsUsecaseProvider = Provider(
+  (ref) => FetchRelatedWireNewsUseCase(ref.watch(compareRepositoryProvider)),
 );
 
 final compareNotifierProvider = NotifierProvider<CompareNotifier, CompareState>(
@@ -50,9 +57,10 @@ class CompareNotifier extends Notifier<CompareState> {
   Future<void> load(String reportId) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final repo = ref.read(_compareRepositoryProvider);
+      final repo = ref.read(compareRepositoryProvider);
+      final usecase = ref.read(_fetchRelatedWireNewsUsecaseProvider);
       final report = await repo.fetchReport(reportId);
-      final wireNews = await repo.fetchRelatedWireNews(
+      final wireNews = await usecase(
         description: '${report.title} ${report.body ?? ''}',
         category: report.category ?? 'other',
       );
@@ -62,7 +70,10 @@ class CompareNotifier extends Notifier<CompareState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Could not load compare data. Please try again.',
+      );
     }
   }
 }
