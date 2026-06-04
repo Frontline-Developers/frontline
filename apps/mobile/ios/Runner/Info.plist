@@ -53,6 +53,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Frontline uses your location to show nearby events on the map. Your exact location is never uploaded or stored.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Frontline uses your location to show nearby events on the map. Your exact location is never uploaded or stored.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
