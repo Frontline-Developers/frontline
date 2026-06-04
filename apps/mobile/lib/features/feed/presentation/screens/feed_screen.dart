@@ -451,14 +451,14 @@ class _CitizenCard extends ConsumerWidget {
                           const SizedBox(width: 14),
                           GestureDetector(
                             onTap: () => context.push('/compare', extra: item),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
                                 vertical: 4,
                                 horizontal: 2,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.compare_arrows,
                                     size: 16,
@@ -477,17 +477,17 @@ class _CitizenCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                        ),
-                        const Spacer(),
-                        _BookmarkBtn(itemId: item.id),
-                        const SizedBox(width: 4),
-                        _ActionBtn(
-                          icon: Icons.share_outlined,
-                          onTap: () => _share(item),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const Spacer(),
+                          _BookmarkBtn(itemId: item.id),
+                          const SizedBox(width: 4),
+                          _ActionBtn(
+                            icon: Icons.share_outlined,
+                            onTap: () => _share(item),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(height: 1, color: Color(0xFFE9ECEF)),
                 _CompareWithRow(item: item),
@@ -659,9 +659,9 @@ class _WireCard extends StatelessWidget {
                                   mode: LaunchMode.externalApplication,
                                 );
                               },
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.open_in_new,
                                     size: 14,
@@ -679,17 +679,17 @@ class _WireCard extends StatelessWidget {
                                 ],
                               ),
                             ),
+                          const Spacer(),
+                          _BookmarkBtn(itemId: item.id),
+                          const SizedBox(width: 4),
+                          _ActionBtn(
+                            icon: Icons.share_outlined,
+                            onTap: () => _share(item),
                           ),
-                        const Spacer(),
-                        _BookmarkBtn(itemId: item.id),
-                        const SizedBox(width: 4),
-                        _ActionBtn(
-                          icon: Icons.share_outlined,
-                          onTap: () => _share(item),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(height: 1, color: Color(0xFFE9ECEF)),
                 _CompareWithRow(item: item),
