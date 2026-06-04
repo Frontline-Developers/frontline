@@ -5,7 +5,9 @@ import '../../features/compare/presentation/screens/compare_screen.dart';
 import '../../features/feed/domain/entities/news_item.dart';
 import '../../features/feed/presentation/screens/feed_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
+import '../../features/my_reports/domain/entities/my_report.dart';
 import '../../features/my_reports/presentation/screens/my_reports_screen.dart';
+import '../../features/my_reports/presentation/screens/report_detail_screen.dart';
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
 
 const _navy = Color(0xFF1E3A8A);
@@ -40,8 +42,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/report/:id',
-      builder: (context, state) =>
-          _ReportDetailPlaceholder(id: state.pathParameters['id']!),
+      builder: (context, state) => ReportDetailScreen(
+        reportId: state.pathParameters['id']!,
+        report: state.extra as MyReport?,
+      ),
     ),
   ],
 );
@@ -236,21 +240,6 @@ class _ReportTab extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Placeholder ───────────────────────────────────────────────────────────────
-
-class _ReportDetailPlaceholder extends StatelessWidget {
-  final String id;
-  const _ReportDetailPlaceholder({required this.id});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Report')),
-      body: Center(child: Text('Report $id — coming soon')),
     );
   }
 }

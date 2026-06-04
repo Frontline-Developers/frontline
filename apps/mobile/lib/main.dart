@@ -3,10 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/my_reports/presentation/providers/my_reports_mock.dart';
+import 'features/my_reports/presentation/providers/my_reports_provider.dart';
 import 'firebase_options.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
@@ -40,7 +43,15 @@ Future<void> main() async {
     }
   }
 
-  runApp(const ProviderScope(child: FrontlineApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        // TODO: remove before production — shows mock My Reports data
+        myReportsNotifierProvider.overrideWith(FakeMyReportsNotifier.new),
+      ],
+      child: const FrontlineApp(),
+    ),
+  );
 }
 
 class FrontlineApp extends StatelessWidget {
@@ -53,6 +64,18 @@ class FrontlineApp extends StatelessWidget {
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
+      scrollBehavior: _AppScrollBehavior(),
     );
   }
+}
+
+/// Enables mouse-drag scrolling on web/desktop in addition to touch.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
 }
