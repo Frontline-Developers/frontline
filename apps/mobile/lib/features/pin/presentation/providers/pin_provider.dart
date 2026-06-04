@@ -30,23 +30,29 @@ class PinNotifier extends Notifier<PinState> {
   }
 
   Future<void> _initialize() async {
-    final repo = ref.read(pinRepositoryProvider);
-    final status = await repo.getInitialStatus();
-    final biometricAvailable = await repo.isBiometricAvailable();
-    final biometricEnabled = biometricAvailable
-        ? await repo.getBiometricEnabled()
-        : false;
+    try {
+      final repo = ref.read(pinRepositoryProvider);
+      final status = await repo.getInitialStatus();
+      final biometricAvailable = await repo.isBiometricAvailable();
+      final biometricEnabled = biometricAvailable
+          ? await repo.getBiometricEnabled()
+          : false;
 
-    state = state.copyWith(
-      status: status,
-      biometricAvailable: biometricAvailable,
-      biometricEnabled: biometricEnabled,
-    );
+      state = state.copyWith(
+        status: status,
+        biometricAvailable: biometricAvailable,
+        biometricEnabled: biometricEnabled,
+      );
 
-    if (status == PinStatus.enterPin &&
-        biometricAvailable &&
-        biometricEnabled) {
-      promptBiometrics();
+      if (status == PinStatus.enterPin &&
+          biometricAvailable &&
+          biometricEnabled) {
+        promptBiometrics();
+      }
+    } catch (_) {
+      // Storage read failed (corrupted keystore, revoked permissions, etc.).
+      // Fall back to PIN creation so the user is never permanently locked out.
+      state = state.copyWith(status: PinStatus.createPin);
     }
   }
 
