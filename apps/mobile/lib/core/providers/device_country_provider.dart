@@ -1,6 +1,10 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
 final deviceCountryProvider = FutureProvider<String>(
   (ref) => _resolveCountry(),
@@ -20,19 +24,46 @@ Future<String> _resolveCountry() async {
       return 'Local Reports';
     }
 
-    // Prefer cached position — instant. Only do a live fix if no cache exists,
-    // and cap it at 8 seconds so the header never hangs.
-    Position? pos = await Geolocator.getLastKnownPosition();
+    // getLastKnownPosition is mobile-only — instant when cached.
+    Position? pos;
+    if (!kIsWeb) pos = await Geolocator.getLastKnownPosition();
+
     pos ??= await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 10));
 
-    final placemarks = await placemarkFromCoordinates(
-      pos.latitude,
-      pos.longitude,
-    );
-    return placemarks.firstOrNull?.country ?? 'Local Reports';
+    return await _countryFromCoords(pos.latitude, pos.longitude);
   } catch (_) {
     return 'Local Reports';
   }
+}
+
+Future<String> _countryFromCoords(double lat, double lng) async {
+  // Native geocoding works on Android/iOS; on web it is not supported.
+  if (!kIsWeb) {
+    try {
+      final marks = await placemarkFromCoordinates(lat, lng);
+      final name = marks.firstOrNull?.country;
+      if (name != null && name.isNotEmpty) return name;
+    } catch (_) {}
+  }
+
+  // Web fallback: Nominatim reverse-geocode (same OSM stack as the map tiles).
+  try {
+    final uri = Uri.parse(
+      'https://nominatim.openstreetmap.org/reverse'
+      '?lat=$lat&lon=$lng&format=json',
+    );
+    final res = await http
+        .get(uri, headers: {'Accept-Language': 'en', 'User-Agent': 'Frontline'})
+        .timeout(const Duration(seconds: 6));
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final address = body['address'] as Map<String, dynamic>?;
+      final name = address?['country'] as String?;
+      if (name != null && name.isNotEmpty) return name;
+    }
+  } catch (_) {}
+
+  return 'Local Reports';
 }
