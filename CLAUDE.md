@@ -115,13 +115,21 @@ npm install && npm run build && npm test   # npm test requires emulators
 
 ```
 reports/{reportId}
-  userId:      string   ← anonymous Firebase UID
-  location:    GeoPoint ← fuzzed by fuzzReportLocation CF (never raw)
-  category:    string
-  description: string
-  mediaUrls:   string[]
-  status:      string   ← 'pending' | 'reviewed' | 'rejected'
-  createdAt:   Timestamp
+  userId:               string   ← anonymous Firebase UID
+  location:             GeoPoint ← fuzzed by fuzzReportLocation CF (never raw)
+  geohash:              string   ← GeoFire geohash of fuzzed location
+  category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
+  description:          string
+  mediaUrls:            string[]
+  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn'
+  confirmCount:         number   ← human confirm votes
+  disputeCount:         number   ← human dispute votes
+  systemConfirms:       number   ← virtual votes from evaluateReportTrust heuristics
+  systemDisputes:       number   ← virtual votes from evaluateReportTrust heuristics
+  totalEffectiveVolume: number   ← C_eff + D_eff; written by confirmReport/disputeReport CF
+  confidenceRatio:      number   ← C_eff / V; written by confirmReport/disputeReport CF
+  exifStripped:         boolean
+  createdAt:            Timestamp
 
 wire_news/{articleId}
   title:       string
@@ -129,6 +137,7 @@ wire_news/{articleId}
   url:         string?
   source:      'wire'
   publishedAt: Timestamp
+  geohash5:    string?  ← required by wire corroboration heuristic; populated when fetchGdeltNews is implemented
   ← written only by fetchGdeltNews CF; client read-only
 ```
 
@@ -140,8 +149,15 @@ wire_news/{articleId}
 |---|---|---|
 | `fuzzReportLocation` | `onCall` | Applies ±3km randomization to submitted lat/lng |
 | `fetchGdeltNews` | `onSchedule` (every 30 min) | Fetches GDELT feed, writes to `wire_news/` |
+| `evaluateReportTrust` | `onDocumentCreated` (`reports/`) | Runs 4 heuristics (EXIF, wire news, spatial spike, impossible travel) to apply system trust scores |
+| `confirmReport` | `onCall` (authenticated) | Increments confirm vote; recalculates consensus status atomically |
+| `disputeReport` | `onCall` (authenticated) | Increments dispute vote; recalculates consensus status atomically |
 
 `fuzzReportLocation` must validate `request.auth` before processing. Unauthenticated calls → `HttpsError('unauthenticated')`.
+
+**Consensus math** (used by `confirmReport`/`disputeReport`):
+- `C_eff = confirmCount + systemConfirms`, `D_eff = disputeCount + systemDisputes`, `V = C_eff + D_eff`
+- V < 5 → `pending`; V ≥ 5 && C_eff/V ≥ 0.75 → `confirmed`; V ≥ 5 && D_eff/V ≥ 0.60 → `disputed`
 
 ---
 
