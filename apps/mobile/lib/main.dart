@@ -73,10 +73,15 @@ class FrontlineApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       scrollBehavior: _AppScrollBehavior(),
       builder: (context, child) {
-        if (pin.status != PinStatus.unlocked) {
-          return const PinScreen();
-        }
-        return child ?? const SizedBox.shrink();
+        // Always keep child (GoRouter's navigator) in the tree so its
+        // GlobalKey is never orphaned. PinScreen is stacked on top when
+        // locked — removing it on unlock avoids the duplicate-key crash.
+        return Stack(
+          children: [
+            child ?? const SizedBox.shrink(),
+            if (pin.status != PinStatus.unlocked) const PinScreen(),
+          ],
+        );
       },
     );
   }
