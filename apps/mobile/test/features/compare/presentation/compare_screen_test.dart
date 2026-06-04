@@ -525,32 +525,31 @@ void main() {
       expect(ds.castCalls.first.type, 'confirm');
     });
 
-    testWidgets(
-      'does not crash and re-enables button when castVote throws',
-      (tester) async {
-        final throwingDs = _FakeVoteDatasource(throwOnCast: true);
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              compareNotifierProvider.overrideWith(
-                () => _FakeCompareNotifier(const CompareState()),
-              ),
-              voteDatasourceProvider.overrideWithValue(throwingDs),
-              voteProvider.overrideWith((ref, id) async => null),
-              voteCountsProvider.overrideWith(
-                (ref, id) => Stream.value((confirm: 2, dispute: 0)),
-              ),
-            ],
-            child: MaterialApp(home: CompareScreen(anchorItem: _citizenAnchor)),
-          ),
-        );
-        await tester.pump();
-        await tester.tap(find.byIcon(Icons.check_circle_outline));
-        await tester.pumpAndSettle();
-        // Widget survives the error and button is not permanently disabled
-        expect(find.byType(CompareScreen), findsOneWidget);
-        expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
-      },
-    );
+    testWidgets('does not crash and re-enables button when castVote throws', (
+      tester,
+    ) async {
+      final throwingDs = _FakeVoteDatasource(throwOnCast: true);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            compareNotifierProvider.overrideWith(
+              () => _FakeCompareNotifier(const CompareState()),
+            ),
+            voteDatasourceProvider.overrideWithValue(throwingDs),
+            voteProvider.overrideWith((ref, id) async => null),
+            voteCountsProvider.overrideWith(
+              (ref, id) => Stream.value((confirm: 2, dispute: 0)),
+            ),
+          ],
+          child: MaterialApp(home: CompareScreen(anchorItem: _citizenAnchor)),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.check_circle_outline));
+      await tester.pumpAndSettle();
+      // Widget survives the error and button is not permanently disabled
+      expect(find.byType(CompareScreen), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    });
   });
 }

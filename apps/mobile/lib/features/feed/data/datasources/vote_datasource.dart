@@ -87,15 +87,15 @@ class VoteDatasourceImpl implements VoteDatasource {
   }
 
   @override
-  Stream<VoteCounts> watchVoteCounts(String reportId) =>
-      FirebaseFirestore.instance
-          .collection('reports')
-          .doc(reportId)
-          .snapshots()
-          .map(
-            (snap) => (
-              confirm: (snap.data()?['confirmCount'] as int?) ?? 0,
-              dispute: (snap.data()?['disputeCount'] as int?) ?? 0,
-            ),
-          );
+  Stream<VoteCounts> watchVoteCounts(String reportId) => FirebaseFirestore
+      .instance
+      .collection('reports')
+      .doc(reportId)
+      .snapshots()
+      .map(
+        (snap) => (
+          confirm: (snap.data()?['confirmCount'] as int?) ?? 0,
+          dispute: (snap.data()?['disputeCount'] as int?) ?? 0,
+        ),
+      );
 }

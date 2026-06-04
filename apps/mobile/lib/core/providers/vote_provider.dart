@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/feed/data/datasources/vote_datasource.dart';
 
-export '../../features/feed/data/datasources/vote_datasource.dart' show VoteCounts;
+export '../../features/feed/data/datasources/vote_datasource.dart'
+    show VoteCounts;
 
 final voteDatasourceProvider = Provider<VoteDatasource>(
   (_) => VoteDatasourceImpl(),

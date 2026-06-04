@@ -763,8 +763,9 @@ class _TimelineRowState extends ConsumerState<_TimelineRow> {
                           count: confirmCount,
                           active: userVote == 'confirm',
                           activeColor: _P.verified,
-                          onTap:
-                              _votePending ? null : () => _castVote('confirm'),
+                          onTap: _votePending
+                              ? null
+                              : () => _castVote('confirm'),
                         ),
                         const SizedBox(width: 12),
                         _ActionBtn(
@@ -774,8 +775,9 @@ class _TimelineRowState extends ConsumerState<_TimelineRow> {
                           count: disputeCount,
                           active: userVote == 'dispute',
                           activeColor: _P.disputed,
-                          onTap:
-                              _votePending ? null : () => _castVote('dispute'),
+                          onTap: _votePending
+                              ? null
+                              : () => _castVote('dispute'),
                         ),
                       ],
                     ),
