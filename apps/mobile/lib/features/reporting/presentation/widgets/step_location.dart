@@ -235,6 +235,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
                               'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'app.frontline.mobile',
                           maxNativeZoom: 19,
+                          tileProvider: NetworkTileProvider(),
                         ),
                         CircleLayer(
                           circles: [
