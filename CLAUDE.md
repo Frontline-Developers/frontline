@@ -110,6 +110,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `alerts` | `alertNotifierProvider` | Active | Save alert subscriptions to Firestore; `sendAlertNotifications` CF dispatches FCM push |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 | `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
+| `splash` | _(no provider — StatefulWidget)_ | Done | Animated radar splash, auto-nav to /feed after 2.8 s |
 
 ---
 
@@ -250,7 +251,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **423 tests** across 34 test files — all pass, zero analyze issues.
+Total: **429 tests** across 35 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -263,6 +264,7 @@ Total: **423 tests** across 34 test files — all pass, zero analyze issues.
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
 | `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
 | `pin` | `pin/domain/pin_state_test.dart`, `pin/presentation/pin_notifier_test.dart`, `pin/presentation/pin_screen_test.dart` | `PinState`/`PinStatus` entity + sentinel; `PinNotifier` full flow (createPin→confirmPin→biometricSetup/unlocked, enterPin correct/wrong, bypassWarning, resetAll, biometricEnable/skip); `PinScreen` all states + dot indicator + numpad + Forgot PIN dialog + bypass banner + biometric setup screen |
+| `splash` | `splash/presentation/splash_screen_test.dart` | SplashScreen render + title + subtitle + privacy note + progress indicator + loading label; 6 tests |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks
