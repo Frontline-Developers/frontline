@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
@@ -144,6 +146,10 @@ class ReportingDatasourceImpl implements ReportingDatasource {
 // ── Default seam implementations (real Firebase) ────────────────────────────
 
 Future<Uint8List> _defaultStripExif(Uint8List bytes) async {
+  // flutter_image_compress has no web implementation — skip compression on web.
+  // The stripExifMetadata Cloud Function handles EXIF removal server-side for
+  // all platforms, so skipping client-side compression here is safe.
+  if (kIsWeb) return bytes;
   final out = await FlutterImageCompress.compressWithList(
     bytes,
     quality: 88,

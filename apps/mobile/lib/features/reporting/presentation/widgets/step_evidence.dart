@@ -145,7 +145,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
         const SizedBox(height: 10),
         if (!hasPhoto) _dropzone() else _preview(draft.mediaBytes.first),
         const SizedBox(height: 22),
-        const Text('CONTEXT', style: ReportTextStyles.sectionLabel),
+        const Text('OPTIONAL CONTEXT', style: ReportTextStyles.sectionLabel),
         const SizedBox(height: 8),
         TextField(
           onChanged: (v) => ref
@@ -199,7 +199,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
             ),
             SizedBox(height: 8),
             Text(
-              'Add photo (required)',
+              'Add photo',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -208,7 +208,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
             ),
             SizedBox(height: 4),
             Text(
-              'A photo is required to submit. EXIF metadata (GPS, device, timestamps) is stripped before upload.',
+              'EXIF metadata (GPS, device, timestamps) is removed before upload',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11.5,
