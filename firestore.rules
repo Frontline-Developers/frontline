@@ -31,9 +31,8 @@ service cloud.firestore {
       // Feed is intentionally public — any signed-in user can list reports.
       allow list: if request.auth != null;
 
-      // Individual report detail / My Reports — owner only.
-      allow get: if request.auth != null
-        && resource.data.userId == request.auth.uid;
+      // Reports are public — any signed-in user can read individual reports.
+      allow get: if request.auth != null;
 
       // Vote transactions only touch confirmCount, disputeCount, isDisputed.
       allow update: if request.auth != null

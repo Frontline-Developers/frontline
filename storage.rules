@@ -12,8 +12,8 @@ service firebase.storage {
     match /reports/{userId}/{reportId}/{fileName} {
       allow write: if request.auth != null
         && request.auth.uid == userId;
-      allow read: if request.auth != null
-        && request.auth.uid == userId;
+      // Any signed-in user can read report media — reports are public in the feed.
+      allow read: if request.auth != null;
     }
   }
 }
