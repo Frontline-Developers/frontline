@@ -28,12 +28,21 @@ class _P {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class CompareScreen extends ConsumerWidget {
+// TODO: DELETE — mock toggle is for visualization only; remove before shipping
+class CompareScreen extends ConsumerStatefulWidget {
   const CompareScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompareScreen> createState() => _CompareScreenState();
+}
+
+class _CompareScreenState extends ConsumerState<CompareScreen> {
+  bool _useMockData = false;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(compareNotifierProvider);
+    final clusters = _useMockData ? _kMockClusters : state.clusters;
 
     return ColoredBox(
       color: _P.surface,
@@ -42,19 +51,24 @@ class CompareScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _CompareAppBar(),
-            _CompareHeader(count: state.clusters.length),
+            _CompareAppBar(
+              useMockData: _useMockData,
+              onToggleMock: () => setState(() => _useMockData = !_useMockData),
+            ),
+            _CompareHeader(count: clusters.length),
             const SizedBox(height: 4),
             Expanded(
-              child: state.isLoading
+              child: _useMockData
+                  ? _ClusterList(clusters: clusters)
+                  : state.isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: _P.navy),
                     )
                   : state.error != null
                   ? _ErrorState(error: state.error!)
-                  : state.clusters.isEmpty
+                  : clusters.isEmpty
                   ? _EmptyState()
-                  : _ClusterList(clusters: state.clusters),
+                  : _ClusterList(clusters: clusters),
             ),
           ],
         ),
@@ -66,6 +80,12 @@ class CompareScreen extends ConsumerWidget {
 // ── App bar ───────────────────────────────────────────────────────────────────
 
 class _CompareAppBar extends StatelessWidget {
+  // TODO: DELETE — mock toggle props; remove with _kMockClusters before shipping
+  final bool useMockData;
+  final VoidCallback onToggleMock;
+
+  const _CompareAppBar({required this.useMockData, required this.onToggleMock});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -90,6 +110,30 @@ class _CompareAppBar extends StatelessWidget {
               letterSpacing: -0.3,
             ),
           ),
+          const Spacer(),
+          // TODO: DELETE — mock data toggle button for visualization only
+          GestureDetector(
+            onTap: onToggleMock,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: useMockData
+                    ? const Color(0xFFFF6B00)
+                    : const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                useMockData ? 'MOCK ON' : 'MOCK',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: useMockData ? Colors.white : const Color(0xFF6B7280),
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
     );
@@ -600,3 +644,129 @@ String _formatTime(DateTime dt) {
   final m = dt.toLocal().minute.toString().padLeft(2, '0');
   return '$h:$m';
 }
+
+// TODO: DELETE — mock clusters for UI visualization only; remove before shipping
+final _kMockClusters = [
+  EventCluster(
+    id: 'mock-1',
+    category: 'combat',
+    date: DateTime(2026, 6, 3),
+    items: [
+      ClusterItem(
+        id: 'mock-1a',
+        title: 'Artillery exchange reported near northern border crossing',
+        source: NewsSource.wire,
+        publishedAt: DateTime(2026, 6, 3, 6, 14),
+        eval: EvidenceEval.supports,
+        confirmCount: 0,
+        disputeCount: 0,
+      ),
+      ClusterItem(
+        id: 'mock-1b',
+        title:
+            'Heavy shelling heard throughout the night — residents fleeing south',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 6, 3, 7, 42),
+        eval: EvidenceEval.supports,
+        confirmCount: 12,
+        disputeCount: 2,
+      ),
+      ClusterItem(
+        id: 'mock-1c',
+        title:
+            'No unusual activity observed, roads remain open as of this morning',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 6, 3, 9, 5),
+        eval: EvidenceEval.contradicts,
+        confirmCount: 1,
+        disputeCount: 7,
+      ),
+    ],
+  ),
+  EventCluster(
+    id: 'mock-2',
+    category: 'aid',
+    date: DateTime(2026, 6, 2),
+    items: [
+      ClusterItem(
+        id: 'mock-2a',
+        title: 'UN convoy delivers food supplies to 3,000 displaced families',
+        source: NewsSource.wire,
+        publishedAt: DateTime(2026, 6, 2, 11, 0),
+        eval: EvidenceEval.supports,
+        confirmCount: 0,
+        disputeCount: 0,
+      ),
+      ClusterItem(
+        id: 'mock-2b',
+        title:
+            'Aid trucks arrived but distribution is still ongoing — lines very long',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 6, 2, 14, 23),
+        eval: EvidenceEval.unverified,
+        confirmCount: 1,
+        disputeCount: 0,
+      ),
+    ],
+  ),
+  EventCluster(
+    id: 'mock-3',
+    category: 'infra',
+    date: DateTime(2026, 6, 1),
+    items: [
+      ClusterItem(
+        id: 'mock-3a',
+        title:
+            'Main bridge on Route 7 reportedly destroyed — verified by satellite imagery',
+        source: NewsSource.wire,
+        publishedAt: DateTime(2026, 6, 1, 8, 30),
+        eval: EvidenceEval.supports,
+        confirmCount: 0,
+        disputeCount: 0,
+      ),
+      ClusterItem(
+        id: 'mock-3b',
+        title: 'Bridge is damaged but still passable for light vehicles',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 6, 1, 10, 15),
+        eval: EvidenceEval.contradicts,
+        confirmCount: 2,
+        disputeCount: 5,
+      ),
+      ClusterItem(
+        id: 'mock-3c',
+        title: 'Saw the bridge collapse myself — nobody can cross now',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 6, 1, 11, 48),
+        eval: EvidenceEval.supports,
+        confirmCount: 8,
+        disputeCount: 1,
+      ),
+    ],
+  ),
+  EventCluster(
+    id: 'mock-4',
+    category: 'displaced',
+    date: DateTime(2026, 5, 31),
+    items: [
+      ClusterItem(
+        id: 'mock-4a',
+        title: 'Thousands evacuating eastern districts as fighting intensifies',
+        source: NewsSource.wire,
+        publishedAt: DateTime(2026, 5, 31, 15, 0),
+        eval: EvidenceEval.supports,
+        confirmCount: 0,
+        disputeCount: 0,
+      ),
+      ClusterItem(
+        id: 'mock-4b',
+        title: 'Evacuation route via Highway 4 is blocked — families stranded',
+        source: NewsSource.citizen,
+        publishedAt: DateTime(2026, 5, 31, 16, 37),
+        eval: EvidenceEval.unverified,
+        confirmCount: 0,
+        disputeCount: 1,
+      ),
+    ],
+  ),
+];
