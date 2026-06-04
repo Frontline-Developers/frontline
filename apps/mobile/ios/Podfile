@@ -39,5 +39,19 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+
+  # Flutter 3.x generates FlutterGeneratedPluginSwiftPackage/Package.swift with
+  # a hardcoded .iOS("13.0") minimum, which conflicts with Firebase SPM packages
+  # that require 15.0. Patch the file after every pod install.
+  spm_pkg = File.join(File.dirname(__FILE__),
+    'Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift')
+  if File.exist?(spm_pkg)
+    content = File.read(spm_pkg, encoding: 'UTF-8')
+    patched = content.gsub('.iOS("13.0")', '.iOS("15.0")')
+    File.write(spm_pkg, patched, encoding: 'UTF-8') if patched != content
   end
 end
