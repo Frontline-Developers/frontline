@@ -104,7 +104,10 @@ Future<void> _defaultRemoveToken(String token) async {
       ? (jsonDecode(raw) as List).cast<String>()
       : <String>[];
   if (tokens.remove(token)) {
-    await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
+    await storage.write(
+      key: kReportTokensStorageKey,
+      value: jsonEncode(tokens),
+    );
   }
 }
 

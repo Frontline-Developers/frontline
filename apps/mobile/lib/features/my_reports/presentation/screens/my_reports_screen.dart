@@ -64,8 +64,7 @@ class MyReportsScreen extends ConsumerWidget {
                   onChanged: (f) =>
                       ref.read(myReportsNotifierProvider.notifier).setFilter(f),
                 ),
-                if (state.isTruncated)
-                  _TruncationBanner(),
+                if (state.isTruncated) _TruncationBanner(),
                 const SizedBox(height: 4),
                 Expanded(
                   child: state.isLoading

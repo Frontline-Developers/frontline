@@ -266,32 +266,37 @@ void main() {
       expect(calls.savedTokens, contains(token));
     });
 
-    test('saves token BEFORE Firestore write to avoid orphaned reports', () async {
-      final order = <String>[];
-      final ds = ReportingDatasourceImpl(
-        stripExif: (b) async => b,
-        fuzzLocation: (lat, lng) async => (lat: lat, lng: lng),
-        uploadMedia: (p, b) async => 'https://storage.test/$p',
-        writeReport: (id, json) async => order.add('write'),
-        currentUserId: () => 'uid-1',
-        generateReportId: () => 'rep-1',
-        generateDisplayToken: () => 'abcd-1234-efgh-5678',
-        geohashFor: (lat, lng) => 'g123',
-        saveToken: (t) async => order.add('save'),
-      );
-      const draft = ReportDraft(
-        description: 'a drone hit the substation',
-        category: ReportCategory.combat,
-        locationLabel: 'Kharkiv',
-        lat: 50.0,
-        lng: 36.2,
-      );
-      await ds.submitReport(draft);
-      expect(order, [
-        'save',
-        'write',
-      ], reason: 'token must be saved before Firestore write — a stale local token is harmless, an orphaned Firestore doc is not');
-    });
+    test(
+      'saves token BEFORE Firestore write to avoid orphaned reports',
+      () async {
+        final order = <String>[];
+        final ds = ReportingDatasourceImpl(
+          stripExif: (b) async => b,
+          fuzzLocation: (lat, lng) async => (lat: lat, lng: lng),
+          uploadMedia: (p, b) async => 'https://storage.test/$p',
+          writeReport: (id, json) async => order.add('write'),
+          currentUserId: () => 'uid-1',
+          generateReportId: () => 'rep-1',
+          generateDisplayToken: () => 'abcd-1234-efgh-5678',
+          geohashFor: (lat, lng) => 'g123',
+          saveToken: (t) async => order.add('save'),
+        );
+        const draft = ReportDraft(
+          description: 'a drone hit the substation',
+          category: ReportCategory.combat,
+          locationLabel: 'Kharkiv',
+          lat: 50.0,
+          lng: 36.2,
+        );
+        await ds.submitReport(draft);
+        expect(
+          order,
+          ['save', 'write'],
+          reason:
+              'token must be saved before Firestore write — a stale local token is harmless, an orphaned Firestore doc is not',
+        );
+      },
+    );
 
     test('includes geohash computed from fuzzed coords', () async {
       final calls = _Calls();

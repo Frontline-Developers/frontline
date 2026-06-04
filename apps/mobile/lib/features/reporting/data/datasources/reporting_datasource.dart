@@ -192,7 +192,10 @@ Future<void> _defaultSaveToken(String token) async {
       : <String>[];
   if (!tokens.contains(token)) {
     tokens.add(token);
-    await storage.write(key: kReportTokensStorageKey, value: jsonEncode(tokens));
+    await storage.write(
+      key: kReportTokensStorageKey,
+      value: jsonEncode(tokens),
+    );
   }
 }
 

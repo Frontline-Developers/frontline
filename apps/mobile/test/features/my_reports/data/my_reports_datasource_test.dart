@@ -57,13 +57,15 @@ MyReportsDatasourceImpl _buildDs({
 
 void main() {
   group('MyReportsDatasourceImpl.watchMyReports', () {
-    test('emits empty reports and isTruncated=false when no tokens are stored',
-        () async {
-      final ds = _buildDs(initialTokens: []);
-      final result = await ds.watchMyReports().first;
-      expect(result.reports, isEmpty);
-      expect(result.isTruncated, false);
-    });
+    test(
+      'emits empty reports and isTruncated=false when no tokens are stored',
+      () async {
+        final ds = _buildDs(initialTokens: []);
+        final result = await ds.watchMyReports().first;
+        expect(result.reports, isEmpty);
+        expect(result.isTruncated, false);
+      },
+    );
 
     test('queries Firestore with SHA-256 hashes of stored tokens', () async {
       const token = 'abcd-1234-efgh-5678';
