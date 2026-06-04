@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontline/core/providers/device_country_provider.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 import 'package:frontline/features/feed/presentation/providers/feed_provider.dart';
 import 'package:frontline/features/feed/presentation/providers/vote_provider.dart';
@@ -18,6 +19,7 @@ Widget _wrap(FeedState state) => ProviderScope(
   overrides: [
     feedNotifierProvider.overrideWith(() => _FakeFeedNotifier(state)),
     voteProvider.overrideWith((ref, reportId) async => null),
+    deviceCountryProvider.overrideWith((ref) async => 'Test Country'),
   ],
   child: const MaterialApp(home: FeedScreen()),
 );

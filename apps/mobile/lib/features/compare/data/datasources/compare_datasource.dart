@@ -143,7 +143,27 @@ class CompareDatasourceImpl implements CompareDatasource {
     return 'other';
   }
 
-  static List<EventCluster> _cluster(List<NewsItem> items) {
+  static List<NewsItem> _deduplicateItems(List<NewsItem> items) {
+    final seenIds = <String>{};
+    final seenWireTitles = <String>{};
+    final result = <NewsItem>[];
+    for (final item in items) {
+      if (!seenIds.add(item.id)) continue;
+      if (item.source == NewsSource.wire) {
+        final titleKey = item.title
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        if (!seenWireTitles.add(titleKey)) continue;
+      }
+      result.add(item);
+    }
+    return result;
+  }
+
+  static List<EventCluster> _cluster(List<NewsItem> rawItems) {
+    final items = _deduplicateItems(rawItems);
     final Map<String, List<NewsItem>> buckets = {};
 
     for (final item in items) {
@@ -177,6 +197,7 @@ class CompareDatasourceImpl implements CompareDatasource {
           title: item.title,
           body: item.body,
           source: item.source,
+          sourceName: item.sourceName,
           publishedAt: item.publishedAt,
           eval: eval,
           confirmCount: item.confirmCount,
