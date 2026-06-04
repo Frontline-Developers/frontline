@@ -15,9 +15,7 @@ Widget _wrap(
 }) => ProviderScope(
   overrides: [
     voteProvider.overrideWith((ref, id) async => userVote),
-    commentsStreamProvider.overrideWith(
-      (ref, id) => Stream.value(comments),
-    ),
+    commentsStreamProvider.overrideWith((ref, id) => Stream.value(comments)),
   ],
   child: MaterialApp(home: EventDetailScreen(item: item)),
 );
@@ -27,7 +25,8 @@ Widget _wrap(
 final _citizenItem = NewsItem(
   id: 'r1',
   title: 'Strike on substation, Saltivka district',
-  body: 'Heard the impact at 03:42. Transformer building on Pavlova is on fire.',
+  body:
+      'Heard the impact at 03:42. Transformer building on Pavlova is on fire.',
   source: NewsSource.citizen,
   publishedAt: DateTime(2026, 6, 4, 9),
   category: 'combat',
@@ -124,10 +123,7 @@ void main() {
   testWidgets('shows body description text for citizen item', (tester) async {
     await tester.pumpWidget(_wrap(_citizenItem));
     await tester.pump();
-    expect(
-      find.textContaining('Heard the impact at 03:42'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Heard the impact at 03:42'), findsOneWidget);
   });
 
   // 7. Confirm count in verification panel
@@ -212,9 +208,7 @@ void main() {
   });
 
   // 16. Discussion section shows preview comment
-  testWidgets('shows first comment text in discussion preview', (
-    tester,
-  ) async {
+  testWidgets('shows first comment text in discussion preview', (tester) async {
     final comments = [_comment(text: 'I can confirm from two streets over.')];
     await tester.pumpWidget(_wrap(_citizenItem, comments: comments));
     await tester.pump();
@@ -237,9 +231,7 @@ void main() {
   testWidgets('Confirm button is active when user vote is confirm', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      _wrap(_citizenItem, userVote: 'confirm'),
-    );
+    await tester.pumpWidget(_wrap(_citizenItem, userVote: 'confirm'));
     await tester.pump();
     // The confirm button exists and the screen renders without error
     expect(find.text('Confirm'), findsOneWidget);
@@ -258,9 +250,6 @@ void main() {
   testWidgets('shows item title for wire item', (tester) async {
     await tester.pumpWidget(_wrap(_wireItem));
     await tester.pump();
-    expect(
-      find.text('Reuters: Substation attack confirmed'),
-      findsOneWidget,
-    );
+    expect(find.text('Reuters: Substation attack confirmed'), findsOneWidget);
   });
 }

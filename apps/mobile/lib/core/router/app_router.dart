@@ -42,8 +42,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/report/:id',
       builder: (context, state) {
-        final item =
-            state.extra is NewsItem ? state.extra as NewsItem : null;
+        final item = state.extra is NewsItem ? state.extra as NewsItem : null;
         if (item != null) return EventDetailScreen(item: item);
         return _ReportDetailPlaceholder(id: state.pathParameters['id']!);
       },

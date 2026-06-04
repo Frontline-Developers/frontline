@@ -80,8 +80,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 _TopBar(
                   item: item,
                   bookmarked: _bookmarked,
-                  onBookmark: () =>
-                      setState(() => _bookmarked = !_bookmarked),
+                  onBookmark: () => setState(() => _bookmarked = !_bookmarked),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -92,8 +91,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         _HeroSection(
                           item: item,
                           imageIndex: _imageIndex,
-                          onImageTap: (i) =>
-                              setState(() => _imageIndex = i),
+                          onImageTap: (i) => setState(() => _imageIndex = i),
                         ),
                         _MetaRow(item: item),
                         _TitleBody(item: item),
@@ -107,10 +105,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             onFlag: () => _castVote('dispute'),
                           ),
                         _CompareCTA(item: item),
-                        _DiscussionSection(
-                          item: item,
-                          comments: comments,
-                        ),
+                        _DiscussionSection(item: item, comments: comments),
                       ],
                     ),
                   ),
@@ -153,7 +148,9 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCitizen = item.source == NewsSource.citizen;
     final dotColor = isCitizen ? _P.citizen : _P.navy;
-    final sourceLabel = isCitizen ? 'CITIZEN REPORT' : (item.sourceName ?? 'WIRE NEWS');
+    final sourceLabel = isCitizen
+        ? 'CITIZEN REPORT'
+        : (item.sourceName ?? 'WIRE NEWS');
 
     return Container(
       padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
@@ -173,10 +170,7 @@ class _TopBar extends StatelessWidget {
           Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: dotColor,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
           ),
           const SizedBox(width: 5),
           Expanded(
@@ -233,8 +227,9 @@ class _HeroSection extends StatelessWidget {
     final imageUrls = isCitizen
         ? item.mediaUrls
         : (item.imageUrl != null ? [item.imageUrl!] : <String>[]);
-    final placeholderColor =
-        isCitizen ? const Color(0xFF5C3317) : const Color(0xFF1A3A5C);
+    final placeholderColor = isCitizen
+        ? const Color(0xFF5C3317)
+        : const Color(0xFF1A3A5C);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -606,9 +601,7 @@ class _VoteButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? activeColor : _P.raised,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: active ? activeColor : _P.hairline,
-          ),
+          border: Border.all(color: active ? activeColor : _P.hairline),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -651,9 +644,7 @@ class _CompareCTA extends StatelessWidget {
           decoration: BoxDecoration(
             color: _P.navySoft,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _P.navy.withValues(alpha: 0.15),
-            ),
+            border: Border.all(color: _P.navy.withValues(alpha: 0.15)),
           ),
           child: Row(
             children: [
@@ -992,16 +983,8 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
-      ItemStatus.verified => (
-        'VERIFIED',
-        const Color(0xFFDCFCE7),
-        _P.verified,
-      ),
-      ItemStatus.disputed => (
-        'DISPUTED',
-        _P.disputedSoft,
-        _P.disputed,
-      ),
+      ItemStatus.verified => ('VERIFIED', const Color(0xFFDCFCE7), _P.verified),
+      ItemStatus.disputed => ('DISPUTED', _P.disputedSoft, _P.disputed),
       ItemStatus.pending => (
         'PENDING',
         const Color(0xFFF3F4F6),

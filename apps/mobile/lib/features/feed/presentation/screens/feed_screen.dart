@@ -348,171 +348,171 @@ class _CitizenCard extends ConsumerWidget {
         child: GestureDetector(
           onTap: () => context.push('/report/${item.id}', extra: item),
           child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: _P.card,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    item.mediaUrls.isNotEmpty
-                        ? Image.network(
-                            item.mediaUrls.first,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, err, stack) =>
-                                const _CitizenPlaceholder(),
-                          )
-                        : const _CitizenPlaceholder(),
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Wrap(
-                        spacing: 6,
-                        children: [
-                          _Badge(
-                            label: 'ON THE GROUND',
-                            bgColor: _P.citizenSoft,
-                            textColor: _P.citizen,
-                          ),
-                          if (item.status != null)
-                            _StatusBadge(status: item.status!),
-                        ],
-                      ),
-                    ),
-                  ],
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: _P.card,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SourceLine(
-                      dotColor: _P.citizen,
-                      label: 'CITIZEN REPORT',
-                      labelColor: _P.citizen,
-                      meta: [
-                        if (item.category != null)
-                          _categoryLabel(item.category!),
-                        timeAgo(item.publishedAt),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _P.ink,
-                        height: 1.35,
-                      ),
-                    ),
-                    if (item.body != null && item.body!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        item.body!,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          color: _P.inkSecondary,
-                          height: 1.5,
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      item.mediaUrls.isNotEmpty
+                          ? Image.network(
+                              item.mediaUrls.first,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, err, stack) =>
+                                  const _CitizenPlaceholder(),
+                            )
+                          : const _CitizenPlaceholder(),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Wrap(
+                          spacing: 6,
+                          children: [
+                            _Badge(
+                              label: 'ON THE GROUND',
+                              bgColor: _P.citizenSoft,
+                              textColor: _P.citizen,
+                            ),
+                            if (item.status != null)
+                              _StatusBadge(status: item.status!),
+                          ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    _VerifyMeter(
-                      confirms: item.confirmCount,
-                      disputes: item.disputeCount,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _ActionBtn(
-                          icon: userVote == 'confirm'
-                              ? Icons.check_circle
-                              : Icons.check_circle_outline,
-                          count: item.confirmCount,
-                          active: userVote == 'confirm',
-                          activeColor: _P.verified,
-                          onTap: () => _castVote(ref, 'confirm'),
-                        ),
-                        const SizedBox(width: 14),
-                        _ActionBtn(
-                          icon: userVote == 'dispute'
-                              ? Icons.flag
-                              : Icons.flag_outlined,
-                          count: item.disputeCount,
-                          active: userVote == 'dispute',
-                          activeColor: _P.disputed,
-                          onTap: () => _castVote(ref, 'dispute'),
-                        ),
-                        const SizedBox(width: 14),
-                        _ActionBtn(
-                          icon: Icons.chat_bubble_outline,
-                          onTap: () => showCommentsSheet(
-                            context,
-                            reportId: item.id,
-                            title: item.title,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        GestureDetector(
-                          onTap: () => context.push('/compare', extra: item),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 4,
-                              horizontal: 2,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.compare_arrows,
-                                  size: 16,
-                                  color: _P.navy,
-                                ),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Compare',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: _P.navy,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        _ActionBtn(icon: Icons.bookmark_border),
-                        const SizedBox(width: 4),
-                        _ActionBtn(icon: Icons.share_outlined),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const Divider(height: 1, color: Color(0xFFE9ECEF)),
-              _CompareWithRow(item: item),
-            ],
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SourceLine(
+                        dotColor: _P.citizen,
+                        label: 'CITIZEN REPORT',
+                        labelColor: _P.citizen,
+                        meta: [
+                          if (item.category != null)
+                            _categoryLabel(item.category!),
+                          timeAgo(item.publishedAt),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _P.ink,
+                          height: 1.35,
+                        ),
+                      ),
+                      if (item.body != null && item.body!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          item.body!,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: _P.inkSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      _VerifyMeter(
+                        confirms: item.confirmCount,
+                        disputes: item.disputeCount,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _ActionBtn(
+                            icon: userVote == 'confirm'
+                                ? Icons.check_circle
+                                : Icons.check_circle_outline,
+                            count: item.confirmCount,
+                            active: userVote == 'confirm',
+                            activeColor: _P.verified,
+                            onTap: () => _castVote(ref, 'confirm'),
+                          ),
+                          const SizedBox(width: 14),
+                          _ActionBtn(
+                            icon: userVote == 'dispute'
+                                ? Icons.flag
+                                : Icons.flag_outlined,
+                            count: item.disputeCount,
+                            active: userVote == 'dispute',
+                            activeColor: _P.disputed,
+                            onTap: () => _castVote(ref, 'dispute'),
+                          ),
+                          const SizedBox(width: 14),
+                          _ActionBtn(
+                            icon: Icons.chat_bubble_outline,
+                            onTap: () => showCommentsSheet(
+                              context,
+                              reportId: item.id,
+                              title: item.title,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          GestureDetector(
+                            onTap: () => context.push('/compare', extra: item),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 2,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.compare_arrows,
+                                    size: 16,
+                                    color: _P.navy,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Compare',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: _P.navy,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          _ActionBtn(icon: Icons.bookmark_border),
+                          const SizedBox(width: 4),
+                          _ActionBtn(icon: Icons.share_outlined),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE9ECEF)),
+                _CompareWithRow(item: item),
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -590,128 +590,128 @@ class _WireCard extends StatelessWidget {
         child: GestureDetector(
           onTap: () => context.push('/report/${item.id}', extra: item),
           child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: _P.card,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    item.imageUrl != null
-                        ? Image.network(
-                            item.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) =>
-                                Container(color: const Color(0xFF1A3A5C)),
-                          )
-                        : Container(color: const Color(0xFF1A3A5C)),
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: _Badge(
-                        label: 'WIRE',
-                        bgColor: Colors.white,
-                        textColor: _P.navy,
-                      ),
-                    ),
-                  ],
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: _P.card,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SourceLine(
-                      dotColor: _P.navy,
-                      label: 'WIRE NEWS',
-                      labelColor: _P.navy,
-                      meta: [timeAgo(item.publishedAt)],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _P.ink,
-                        height: 1.35,
-                      ),
-                    ),
-                    if (item.body != null && item.body!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        item.body!,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          color: _P.inkSecondary,
-                          height: 1.5,
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      item.imageUrl != null
+                          ? Image.network(
+                              item.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stack) =>
+                                  Container(color: const Color(0xFF1A3A5C)),
+                            )
+                          : Container(color: const Color(0xFF1A3A5C)),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: _Badge(
+                          label: 'WIRE',
+                          bgColor: Colors.white,
+                          textColor: _P.navy,
                         ),
                       ),
                     ],
-                    const Divider(height: 20, color: Color(0xFFE9ECEF)),
-                    Row(
-                      children: [
-                        if (item.url != null)
-                          GestureDetector(
-                            onTap: () async {
-                              final uri = Uri.tryParse(item.url!);
-                              if (uri == null) return;
-                              await launchUrl(
-                                uri,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            },
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.open_in_new,
-                                  size: 14,
-                                  color: _P.navy,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Open source',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: _P.navy,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        const Spacer(),
-                        _ActionBtn(icon: Icons.bookmark_border),
-                        const SizedBox(width: 4),
-                        _ActionBtn(icon: Icons.share_outlined),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const Divider(height: 1, color: Color(0xFFE9ECEF)),
-              _CompareWithRow(item: item),
-            ],
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SourceLine(
+                        dotColor: _P.navy,
+                        label: 'WIRE NEWS',
+                        labelColor: _P.navy,
+                        meta: [timeAgo(item.publishedAt)],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _P.ink,
+                          height: 1.35,
+                        ),
+                      ),
+                      if (item.body != null && item.body!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          item.body!,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: _P.inkSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                      const Divider(height: 20, color: Color(0xFFE9ECEF)),
+                      Row(
+                        children: [
+                          if (item.url != null)
+                            GestureDetector(
+                              onTap: () async {
+                                final uri = Uri.tryParse(item.url!);
+                                if (uri == null) return;
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.open_in_new,
+                                    size: 14,
+                                    color: _P.navy,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Open source',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: _P.navy,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const Spacer(),
+                          _ActionBtn(icon: Icons.bookmark_border),
+                          const SizedBox(width: 4),
+                          _ActionBtn(icon: Icons.share_outlined),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE9ECEF)),
+                _CompareWithRow(item: item),
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
