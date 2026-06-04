@@ -1,5 +1,3 @@
-import 'dart:ui' show PlatformDispatcher;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/bookmark_provider.dart';
+import '../../../../core/providers/device_country_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -60,6 +59,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(feedNotifierProvider);
+    final country = ref.watch(deviceCountryProvider).asData?.value ?? '';
 
     return ColoredBox(
       color: _P.surface,
@@ -70,7 +70,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           children: [
             const _FeedAppBar(),
             _FeedHeader(
-              country: _deviceCountry(),
+              country: country,
               citizenCount: state.items
                   .where((i) => i.source == NewsSource.citizen)
                   .length,
@@ -174,16 +174,26 @@ class _FeedHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            country,
-            style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: _P.ink,
-              letterSpacing: -0.8,
-              height: 1.1,
+          if (country.isEmpty)
+            Container(
+              width: 160,
+              height: 34,
+              decoration: BoxDecoration(
+                color: _P.hairline,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            )
+          else
+            Text(
+              country,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: _P.ink,
+                letterSpacing: -0.8,
+                height: 1.1,
+              ),
             ),
-          ),
           const SizedBox(height: 5),
           Text(
             '$citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
@@ -873,57 +883,6 @@ class _BookmarkBtn extends ConsumerWidget {
       onTap: () => ref.read(bookmarkNotifierProvider.notifier).toggle(itemId),
     );
   }
-}
-
-String _deviceCountry() {
-  final code = PlatformDispatcher.instance.locale.countryCode;
-  return _countryName(code);
-}
-
-String _countryName(String? code) {
-  if (code == null) return 'Local Reports';
-  const names = {
-    'UA': 'Ukraine',
-    'RU': 'Russia',
-    'US': 'United States',
-    'GB': 'United Kingdom',
-    'DE': 'Germany',
-    'FR': 'France',
-    'PL': 'Poland',
-    'IL': 'Israel',
-    'PS': 'Palestine',
-    'SY': 'Syria',
-    'IQ': 'Iraq',
-    'AF': 'Afghanistan',
-    'YE': 'Yemen',
-    'ET': 'Ethiopia',
-    'SD': 'Sudan',
-    'MM': 'Myanmar',
-    'NG': 'Nigeria',
-    'SO': 'Somalia',
-    'LY': 'Libya',
-    'ML': 'Mali',
-    'CF': 'Central African Republic',
-    'CD': 'DR Congo',
-    'SS': 'South Sudan',
-    'LB': 'Lebanon',
-    'VE': 'Venezuela',
-    'HT': 'Haiti',
-    'MX': 'Mexico',
-    'BI': 'Burundi',
-    'MZ': 'Mozambique',
-    'KE': 'Kenya',
-    'CA': 'Canada',
-    'AU': 'Australia',
-    'IN': 'India',
-    'PK': 'Pakistan',
-    'CN': 'China',
-    'JP': 'Japan',
-    'BR': 'Brazil',
-    'ZA': 'South Africa',
-    'EG': 'Egypt',
-  };
-  return names[code] ?? code;
 }
 
 String _categoryLabel(String category) {
