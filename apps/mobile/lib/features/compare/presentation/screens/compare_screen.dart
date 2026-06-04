@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers/vote_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
 import '../../domain/entities/event_cluster.dart';
@@ -238,12 +239,24 @@ class _ErrorState extends StatelessWidget {
 
 // ── Featured item (anchor) ────────────────────────────────────────────────────
 
-class _FeaturedItemCard extends StatelessWidget {
+class _FeaturedItemCard extends ConsumerWidget {
   final NewsItem item;
   const _FeaturedItemCard({required this.item});
 
+  Future<void> _castVote(WidgetRef ref, String type) async {
+    final ds = ref.read(voteDatasourceProvider);
+    await ds.castVote(item.id, type);
+    ref.invalidate(voteProvider(item.id));
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userVote = item.source == NewsSource.citizen
+        ? ref
+              .watch(voteProvider(item.id))
+              .when(data: (v) => v, loading: () => null, error: (e, s) => null)
+        : null;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: _kMaxWidth),
@@ -321,15 +334,28 @@ class _FeaturedItemCard extends StatelessWidget {
                         color: _P.inkTertiary,
                       ),
                     ),
-                    if (item.source == NewsSource.citizen &&
-                        (item.confirmCount + item.disputeCount) > 0)
-                      Text(
-                        ' · ${item.confirmCount} confirmed · ${item.disputeCount} disputed',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: _P.inkTertiary,
-                        ),
+                    if (item.source == NewsSource.citizen) ...[
+                      const SizedBox(width: 12),
+                      _ActionBtn(
+                        icon: userVote == 'confirm'
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
+                        count: item.confirmCount,
+                        active: userVote == 'confirm',
+                        activeColor: _P.verified,
+                        onTap: () => _castVote(ref, 'confirm'),
                       ),
+                      const SizedBox(width: 12),
+                      _ActionBtn(
+                        icon: userVote == 'dispute'
+                            ? Icons.flag
+                            : Icons.flag_outlined,
+                        count: item.disputeCount,
+                        active: userVote == 'dispute',
+                        activeColor: _P.disputed,
+                        onTap: () => _castVote(ref, 'dispute'),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -567,18 +593,30 @@ class _ClusterTimeline extends StatelessWidget {
   }
 }
 
-class _TimelineRow extends StatelessWidget {
+class _TimelineRow extends ConsumerWidget {
   final ClusterItem item;
   final bool isLast;
   const _TimelineRow({required this.item, required this.isLast});
 
+  Future<void> _castVote(WidgetRef ref, String type) async {
+    final ds = ref.read(voteDatasourceProvider);
+    await ds.castVote(item.id, type);
+    ref.invalidate(voteProvider(item.id));
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dotColor = switch (item.eval) {
       EvidenceEval.supports => _P.verified,
       EvidenceEval.contradicts => _P.disputed,
       EvidenceEval.unverified => _P.unverifiedFg,
     };
+
+    final userVote = item.source == NewsSource.citizen
+        ? ref
+              .watch(voteProvider(item.id))
+              .when(data: (v) => v, loading: () => null, error: (e, s) => null)
+        : null;
 
     return IntrinsicHeight(
       child: Row(
@@ -642,15 +680,30 @@ class _TimelineRow extends StatelessWidget {
                       height: 1.35,
                     ),
                   ),
-                  if (item.source == NewsSource.citizen &&
-                      (item.confirmCount + item.disputeCount) > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '${item.confirmCount} confirmed · ${item.disputeCount} disputed',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: _P.inkTertiary,
-                      ),
+                  if (item.source == NewsSource.citizen) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _ActionBtn(
+                          icon: userVote == 'confirm'
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          count: item.confirmCount,
+                          active: userVote == 'confirm',
+                          activeColor: _P.verified,
+                          onTap: () => _castVote(ref, 'confirm'),
+                        ),
+                        const SizedBox(width: 12),
+                        _ActionBtn(
+                          icon: userVote == 'dispute'
+                              ? Icons.flag
+                              : Icons.flag_outlined,
+                          count: item.disputeCount,
+                          active: userVote == 'dispute',
+                          activeColor: _P.disputed,
+                          onTap: () => _castVote(ref, 'dispute'),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -751,6 +804,52 @@ class _CategoryBadge extends StatelessWidget {
           color: color,
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+}
+
+// ── Vote button ───────────────────────────────────────────────────────────────
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final int? count;
+  final bool active;
+  final Color? activeColor;
+  final VoidCallback? onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    this.count,
+    this.active = false,
+    this.activeColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? (activeColor ?? _P.navy) : _P.inkTertiary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
+        child: count != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              )
+            : Icon(icon, size: 16, color: color),
       ),
     );
   }
