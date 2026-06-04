@@ -67,9 +67,9 @@ void main() {
 
   group('MapNotifier.updateFilters', () {
     test('updates time range', () {
-      container.read(mapNotifierProvider.notifier).updateFilters(
-        const MapFilters(timeRange: MapTimeRange.hour),
-      );
+      container
+          .read(mapNotifierProvider.notifier)
+          .updateFilters(const MapFilters(timeRange: MapTimeRange.hour));
       expect(
         container.read(mapNotifierProvider).filters.timeRange,
         MapTimeRange.hour,
@@ -77,9 +77,9 @@ void main() {
     });
 
     test('updates category', () {
-      container.read(mapNotifierProvider.notifier).updateFilters(
-        const MapFilters(category: MapCategory.combat),
-      );
+      container
+          .read(mapNotifierProvider.notifier)
+          .updateFilters(const MapFilters(category: MapCategory.combat));
       expect(
         container.read(mapNotifierProvider).filters.category,
         MapCategory.combat,
@@ -87,12 +87,14 @@ void main() {
     });
 
     test('preserves other filter fields when updating one', () {
-      container.read(mapNotifierProvider.notifier).updateFilters(
-        const MapFilters(
-          timeRange: MapTimeRange.day,
-          category: MapCategory.aid,
-        ),
-      );
+      container
+          .read(mapNotifierProvider.notifier)
+          .updateFilters(
+            const MapFilters(
+              timeRange: MapTimeRange.day,
+              category: MapCategory.aid,
+            ),
+          );
       final filters = container.read(mapNotifierProvider).filters;
       expect(filters.timeRange, MapTimeRange.day);
       expect(filters.category, MapCategory.aid);
@@ -101,12 +103,14 @@ void main() {
 
   group('MapNotifier.resetFilters', () {
     test('restores default filters after a change', () {
-      container.read(mapNotifierProvider.notifier).updateFilters(
-        const MapFilters(
-          timeRange: MapTimeRange.hour,
-          category: MapCategory.combat,
-        ),
-      );
+      container
+          .read(mapNotifierProvider.notifier)
+          .updateFilters(
+            const MapFilters(
+              timeRange: MapTimeRange.hour,
+              category: MapCategory.combat,
+            ),
+          );
       container.read(mapNotifierProvider.notifier).resetFilters();
       expect(container.read(mapNotifierProvider).filters, const MapFilters());
     });
