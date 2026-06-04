@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -66,6 +68,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           children: [
             const _FeedAppBar(),
             _FeedHeader(
+              country: _deviceCountry(),
               citizenCount: state.items
                   .where((i) => i.source == NewsSource.citizen)
                   .length,
@@ -170,9 +173,11 @@ class _FeedAppBar extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _FeedHeader extends StatelessWidget {
+  final String country;
   final int citizenCount;
   final int wireSourceCount;
   const _FeedHeader({
+    required this.country,
     required this.citizenCount,
     required this.wireSourceCount,
   });
@@ -184,9 +189,9 @@ class _FeedHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ukraine · live',
-            style: TextStyle(
+          Text(
+            country,
+            style: const TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w800,
               color: _P.ink,
@@ -195,31 +200,9 @@ class _FeedHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
-          Row(
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _P.disputed,
-                ),
-              ),
-              const SizedBox(width: 5),
-              const Text(
-                'LIVE',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _P.disputed,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                ' · $citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
-                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
-              ),
-            ],
+          Text(
+            '$citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
+            style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
           ),
         ],
       ),
@@ -878,6 +861,57 @@ class _ActionBtn extends StatelessWidget {
       ),
     );
   }
+}
+
+String _deviceCountry() {
+  final code = PlatformDispatcher.instance.locale.countryCode;
+  return _countryName(code);
+}
+
+String _countryName(String? code) {
+  if (code == null) return 'Local Reports';
+  const names = {
+    'UA': 'Ukraine',
+    'RU': 'Russia',
+    'US': 'United States',
+    'GB': 'United Kingdom',
+    'DE': 'Germany',
+    'FR': 'France',
+    'PL': 'Poland',
+    'IL': 'Israel',
+    'PS': 'Palestine',
+    'SY': 'Syria',
+    'IQ': 'Iraq',
+    'AF': 'Afghanistan',
+    'YE': 'Yemen',
+    'ET': 'Ethiopia',
+    'SD': 'Sudan',
+    'MM': 'Myanmar',
+    'NG': 'Nigeria',
+    'SO': 'Somalia',
+    'LY': 'Libya',
+    'ML': 'Mali',
+    'CF': 'Central African Republic',
+    'CD': 'DR Congo',
+    'SS': 'South Sudan',
+    'LB': 'Lebanon',
+    'VE': 'Venezuela',
+    'HT': 'Haiti',
+    'MX': 'Mexico',
+    'BI': 'Burundi',
+    'MZ': 'Mozambique',
+    'KE': 'Kenya',
+    'CA': 'Canada',
+    'AU': 'Australia',
+    'IN': 'India',
+    'PK': 'Pakistan',
+    'CN': 'China',
+    'JP': 'Japan',
+    'BR': 'Brazil',
+    'ZA': 'South Africa',
+    'EG': 'Egypt',
+  };
+  return names[code] ?? code;
 }
 
 String _categoryLabel(String category) {
