@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -41,8 +42,6 @@ class FeedScreen extends ConsumerStatefulWidget {
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   int _activeFilter = 0;
-  // TODO: DELETE — mock toggle for visualization only
-  bool _useMockData = false;
 
   List<NewsItem> _applyFilter(List<NewsItem> items) {
     return switch (_activeFilter) {
@@ -56,8 +55,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(feedNotifierProvider);
-    // TODO: DELETE — mock data substitution for visualization
-    final items = _useMockData ? _kMockItems : state.items;
+    final items = state.items;
 
     return ColoredBox(
       color: _P.surface,
@@ -66,21 +64,26 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _FeedAppBar(
-              // TODO: DELETE — mock toggle props
-              useMockData: _useMockData,
-              onToggleMock: () => setState(() => _useMockData = !_useMockData),
+            _FeedAppBar(),
+            _FeedHeader(
+              citizenCount: state.items
+                  .where((i) => i.source == NewsSource.citizen)
+                  .length,
+              wireSourceCount: state.items
+                  .where(
+                    (i) => i.source == NewsSource.wire && i.sourceName != null,
+                  )
+                  .map((i) => i.sourceName!)
+                  .toSet()
+                  .length,
             ),
-            _FeedHeader(),
             _FilterChips(
               active: _activeFilter,
               onChanged: (i) => setState(() => _activeFilter = i),
             ),
             const SizedBox(height: 4),
             Expanded(
-              child: _useMockData
-                  ? _FeedList(items: _applyFilter(items))
-                  : state.isLoading
+              child: state.isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: _P.navy),
                     )
@@ -98,11 +101,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 // ── App bar ───────────────────────────────────────────────────────────────────
 
 class _FeedAppBar extends StatelessWidget {
-  // TODO: DELETE — mock toggle props; remove before shipping
-  final bool useMockData;
-  final VoidCallback onToggleMock;
-
-  const _FeedAppBar({required this.useMockData, required this.onToggleMock});
+  const _FeedAppBar();
 
   @override
   Widget build(BuildContext context) {
@@ -163,29 +162,6 @@ class _FeedAppBar extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 4),
-          // TODO: DELETE — mock data toggle button for visualization only
-          GestureDetector(
-            onTap: onToggleMock,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: useMockData
-                    ? const Color(0xFFFF6B00)
-                    : const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                useMockData ? 'MOCK ON' : 'MOCK',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: useMockData ? Colors.white : const Color(0xFF6B7280),
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
         ],
       ),
     );
@@ -195,6 +171,13 @@ class _FeedAppBar extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _FeedHeader extends StatelessWidget {
+  final int citizenCount;
+  final int wireSourceCount;
+  const _FeedHeader({
+    required this.citizenCount,
+    required this.wireSourceCount,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -233,9 +216,9 @@ class _FeedHeader extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
-              const Text(
-                ' · 17 citizens reporting · 6 sources active',
-                style: TextStyle(fontSize: 12, color: _P.inkTertiary),
+              Text(
+                ' · $citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
+                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
               ),
             ],
           ),
@@ -486,6 +469,35 @@ class _CitizenCard extends ConsumerWidget {
                             title: item.title,
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        GestureDetector(
+                          onTap: () => context.push('/compare', extra: item),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.compare_arrows,
+                                  size: 16,
+                                  color: _P.navy,
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Compare',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),
                         const SizedBox(width: 4),
@@ -595,7 +607,14 @@ class _WireCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Container(color: const Color(0xFF1A3A5C)),
+                    item.imageUrl != null
+                        ? Image.network(
+                            item.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) =>
+                                Container(color: const Color(0xFF1A3A5C)),
+                          )
+                        : Container(color: const Color(0xFF1A3A5C)),
                     Positioned(
                       top: 10,
                       left: 10,
@@ -646,20 +665,34 @@ class _WireCard extends StatelessWidget {
                     Row(
                       children: [
                         if (item.url != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.open_in_new, size: 14, color: _P.navy),
-                              SizedBox(width: 4),
-                              Text(
-                                'Open source',
-                                style: TextStyle(
-                                  fontSize: 13,
+                          GestureDetector(
+                            onTap: () async {
+                              final uri = Uri.tryParse(item.url!);
+                              if (uri == null) return;
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            },
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
                                   color: _P.navy,
-                                  fontWeight: FontWeight.w500,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'Open source',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),
@@ -866,73 +899,3 @@ String _categoryLabel(String category) {
     _ => category,
   };
 }
-
-// TODO: DELETE — mock feed items for UI visualization only; remove before shipping
-final _kMockItems = [
-  NewsItem(
-    id: 'mock-feed-1',
-    title: 'Heavy shelling reported near northern border crossing at dawn',
-    body:
-        'Multiple witnesses report sustained artillery fire beginning at approximately 05:30 local time. Civilian evacuation of surrounding villages is reportedly underway.',
-    source: NewsSource.citizen,
-    publishedAt: DateTime(2026, 6, 4, 7, 42),
-    category: 'combat',
-    status: ItemStatus.verified,
-    confirmCount: 18,
-    disputeCount: 3,
-  ),
-  NewsItem(
-    id: 'mock-feed-2',
-    title: 'UN confirms emergency food convoy reached displaced camp',
-    body:
-        'A convoy of 12 trucks carrying food aid for approximately 4,000 displaced persons arrived at the Kharkiv reception centre Wednesday morning.',
-    source: NewsSource.wire,
-    publishedAt: DateTime(2026, 6, 4, 9, 15),
-    category: 'aid',
-    url: 'https://example.com',
-  ),
-  NewsItem(
-    id: 'mock-feed-3',
-    title:
-        'Main road bridge on Route 7 destroyed — alternate routes overwhelmed',
-    source: NewsSource.citizen,
-    publishedAt: DateTime(2026, 6, 3, 22, 5),
-    category: 'infra',
-    status: ItemStatus.verified,
-    confirmCount: 11,
-    disputeCount: 1,
-  ),
-  NewsItem(
-    id: 'mock-feed-4',
-    title: 'Thousands flee eastern districts as fighting intensifies overnight',
-    body:
-        'Eyewitnesses describe streams of families moving south on foot after roads became congested. Local authorities have opened two additional shelter sites.',
-    source: NewsSource.wire,
-    publishedAt: DateTime(2026, 6, 3, 18, 30),
-    category: 'displaced',
-    url: 'https://example.com',
-  ),
-  NewsItem(
-    id: 'mock-feed-5',
-    title:
-        'Unusual smell reported near industrial district — unconfirmed alert',
-    body:
-        'A citizen reporter claims an unusual odor was detected in the vicinity of the eastern industrial zone. Emergency services have not confirmed.',
-    source: NewsSource.citizen,
-    publishedAt: DateTime(2026, 6, 3, 14, 55),
-    category: 'alert',
-    status: ItemStatus.pending,
-    confirmCount: 2,
-    disputeCount: 8,
-  ),
-  NewsItem(
-    id: 'mock-feed-6',
-    title: 'Aid distribution halted at northern checkpoint — cause unclear',
-    source: NewsSource.citizen,
-    publishedAt: DateTime(2026, 6, 3, 11, 20),
-    category: 'aid',
-    status: ItemStatus.disputed,
-    confirmCount: 3,
-    disputeCount: 9,
-  ),
-];

@@ -25,12 +25,12 @@ Future<void> main() async {
       region: 'asia-southeast1',
     ).useFunctionsEmulator('localhost', 5001);
     await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+  }
 
-    // Sign in anonymously up front so the FAB → /report/new flow always has
-    // a uid available for the submit pipeline (matches firestore.rules).
-    if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-    }
+  // Sign in anonymously so all Firestore rules (request.auth != null) pass.
+  // Required in both emulator and prod — without this the feed gets permission-denied.
+  if (FirebaseAuth.instance.currentUser == null) {
+    await FirebaseAuth.instance.signInAnonymously();
   }
 
   runApp(const ProviderScope(child: FrontlineApp()));

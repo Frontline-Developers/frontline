@@ -1,12 +1,28 @@
+import '../../../feed/domain/entities/news_item.dart';
 import '../../domain/entities/event_cluster.dart';
 import '../../domain/repositories/compare_repository.dart';
 import '../datasources/compare_datasource.dart';
 
 class CompareRepositoryImpl implements CompareRepository {
-  CompareRepositoryImpl(this._datasource);
-
   final CompareDatasource _datasource;
+  CompareRepositoryImpl(this._datasource);
 
   @override
   Stream<List<EventCluster>> watchClusters() => _datasource.watchClusters();
+
+  @override
+  Future<NewsItem> fetchReport(String reportId) =>
+      _datasource.fetchReport(reportId);
+
+  @override
+  Future<List<NewsItem>> fetchWireNewsByLocations(List<String> locations) =>
+      _datasource.fetchWireNewsByLocations(locations);
+
+  @override
+  Future<List<NewsItem>> fetchWireNewsByCategory(String category) =>
+      _datasource.fetchWireNewsByCategory(category);
+
+  @override
+  Future<List<NewsItem>> fetchRecentWireNews() =>
+      _datasource.fetchRecentWireNews();
 }

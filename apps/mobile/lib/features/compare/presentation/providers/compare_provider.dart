@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/compare_datasource.dart';
 import '../../data/repositories/compare_repository_impl.dart';
 import '../../domain/entities/event_cluster.dart';
+import '../../domain/repositories/compare_repository.dart';
 
 class CompareState {
   final List<EventCluster> clusters;
@@ -31,7 +32,8 @@ class CompareState {
 const _sentinel = Object();
 
 final _compareDatasourceProvider = Provider((_) => CompareDatasourceImpl());
-final _compareRepositoryProvider = Provider(
+
+final compareRepositoryProvider = Provider<CompareRepository>(
   (ref) => CompareRepositoryImpl(ref.watch(_compareDatasourceProvider)),
 );
 
@@ -43,7 +45,7 @@ class CompareNotifier extends Notifier<CompareState> {
   @override
   CompareState build() {
     final sub = ref
-        .watch(_compareRepositoryProvider)
+        .watch(compareRepositoryProvider)
         .watchClusters()
         .listen(
           (clusters) =>
