@@ -105,7 +105,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
 | `map` | `mapNotifierProvider` | Stub | flutter_map + geoflutterfire_plus geo queries |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
-| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `EventDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
+| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 
@@ -121,13 +121,17 @@ reports/{reportId}
   category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
   description:          string
   mediaUrls:            string[]
-  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn'
+  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn' | 'deleted'
+  tokenHash:            string   ← SHA-256(displayToken); written at submit time; deleted on report delete
   confirmCount:         number   ← human confirm votes
   disputeCount:         number   ← human dispute votes
+  viewCount:            number   ← total views (denormalized by CF)
+  commentCount:         number   ← total comments (denormalized by CF)
   systemConfirms:       number   ← virtual votes from evaluateReportTrust heuristics
   systemDisputes:       number   ← virtual votes from evaluateReportTrust heuristics
   totalEffectiveVolume: number   ← C_eff + D_eff; written by confirmReport/disputeReport CF
   confidenceRatio:      number   ← C_eff / V; written by confirmReport/disputeReport CF
+  isDisputed:           boolean
   exifStripped:         boolean
   isDisputed:           boolean  ← true when disputeCount > 0; written by vote transaction
   createdAt:            Timestamp
@@ -264,7 +268,7 @@ Total: **176 tests** across 22 test files — all pass, zero analyze issues.
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
-| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, event_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `EventDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
+| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks

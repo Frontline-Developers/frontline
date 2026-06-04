@@ -3,35 +3,77 @@ import '../../domain/entities/my_report.dart';
 
 class MyReportModel {
   final String id;
+  final String title;
+  final String body;
   final String category;
-  final String description;
-  final DateTime createdAt;
+  final String location;
+  final List<String> photos;
   final String status;
+  final int confirms;
+  final int flags;
+  final int views;
+  final String token;
+  final DateTime submittedAt;
+  final int commentCount;
 
   const MyReportModel({
     required this.id,
+    required this.title,
+    required this.body,
     required this.category,
-    required this.description,
-    required this.createdAt,
+    required this.location,
+    required this.photos,
     required this.status,
+    required this.confirms,
+    required this.flags,
+    required this.views,
+    required this.token,
+    required this.submittedAt,
+    required this.commentCount,
   });
 
-  factory MyReportModel.fromJson(String id, Map<String, dynamic> json) {
-    final ts = json['createdAt'] as Timestamp;
+  factory MyReportModel.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+    String localToken,
+  ) {
+    final ts = data['createdAt'] as Timestamp? ?? Timestamp.now();
+    final desc = (data['description'] as String?) ?? '';
+    final rawUrls = data['mediaUrls'];
+    final photos = (rawUrls is List)
+        ? rawUrls.map((e) => e.toString()).toList()
+        : <String>[];
+
     return MyReportModel(
       id: id,
-      category: json['category'] as String,
-      description: json['description'] as String,
-      createdAt: ts.toDate(),
-      status: json['status'] as String? ?? 'pending',
+      title: desc,
+      body: desc,
+      category: (data['category'] as String?) ?? '',
+      location: (data['locationLabel'] as String?) ?? '',
+      photos: photos,
+      status: (data['status'] as String?) ?? 'pending',
+      confirms: (data['confirmCount'] as num?)?.toInt() ?? 0,
+      flags: (data['disputeCount'] as num?)?.toInt() ?? 0,
+      views: (data['viewCount'] as num?)?.toInt() ?? 0,
+      token: localToken,
+      submittedAt: ts.toDate(),
+      commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
     );
   }
 
   MyReport toEntity() => MyReport(
     id: id,
+    title: title,
+    body: body,
     category: category,
-    description: description,
-    createdAt: createdAt,
+    location: location,
+    photos: photos,
     status: status,
+    confirms: confirms,
+    flags: flags,
+    views: views,
+    token: token,
+    submittedAt: submittedAt,
+    commentCount: commentCount,
   );
 }
