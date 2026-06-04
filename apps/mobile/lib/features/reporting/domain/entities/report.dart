@@ -74,7 +74,8 @@ class ReportDraft {
 
   static const int maxPhotos = 5;
 
-  bool get isEvidenceValid => mediaBytes.length <= maxPhotos;
+  bool get isEvidenceValid =>
+      mediaBytes.isNotEmpty && mediaBytes.length <= maxPhotos;
 
   ReportDraft copyWith({
     String? description,

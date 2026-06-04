@@ -71,7 +71,7 @@ class _FormShell extends ConsumerWidget {
       case ReportingStage.location:
         return 'Where, roughly?';
       case ReportingStage.evidence:
-        return 'Evidence (optional)';
+        return 'Evidence';
       default:
         return '';
     }

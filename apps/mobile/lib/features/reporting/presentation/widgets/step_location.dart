@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:latlong2/latlong.dart';
 
@@ -19,6 +23,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   late final MapController _mapController;
   bool _locating = false;
   LatLng _displayCenter = _defaultCenter;
+  Timer? _geocodeTimer;
 
   // Default global view when the user hasn't picked yet.
   static const LatLng _defaultCenter = LatLng(20.0, 0.0);
@@ -32,10 +37,17 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     final draft = ref.read(reportingNotifierProvider).draft;
     _labelController = TextEditingController(text: draft.locationLabel);
     _mapController = MapController();
+    // Auto-detect user location the first time this step is opened.
+    // Runs silently (no spinner) so the UI settles before the async work starts.
+    if (draft.lat == null) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _useMyLocation(silent: true));
+    }
   }
 
   @override
   void dispose() {
+    _geocodeTimer?.cancel();
     _labelController.dispose();
     _mapController.dispose();
     super.dispose();
@@ -48,15 +60,27 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     ref
         .read(reportingNotifierProvider.notifier)
         .updateDraft(lat: camera.center.latitude, lng: camera.center.longitude);
+    // Debounce reverse-geocoding so we don't fire on every pixel of a pan.
+    if (!kIsWeb) {
+      _geocodeTimer?.cancel();
+      _geocodeTimer = Timer(const Duration(milliseconds: 700), () {
+        if (mounted) {
+          _reverseGeocode(camera.center.latitude, camera.center.longitude);
+        }
+      });
+    }
   }
 
-  Future<void> _useMyLocation() async {
+  // [silent] = true for auto-trigger: no spinner shown, failures are swallowed.
+  Future<void> _useMyLocation({bool silent = false}) async {
     if (_locating) return;
-    setState(() => _locating = true);
+    if (!silent) setState(() => _locating = true);
     try {
       final allowed = await _ensureLocationPermission();
       if (!allowed) {
-        _showSnack('Location permission denied. Pan the map to pick a spot.');
+        if (!silent) {
+          _showSnack('Location permission denied. Pan the map to pick a spot.');
+        }
         return;
       }
       final pos = await geo.Geolocator.getCurrentPosition(
@@ -69,10 +93,11 @@ class _StepLocationState extends ConsumerState<StepLocation> {
       ref
           .read(reportingNotifierProvider.notifier)
           .updateDraft(lat: pos.latitude, lng: pos.longitude);
+      if (!kIsWeb) await _reverseGeocode(pos.latitude, pos.longitude);
     } catch (e) {
-      _showSnack('Could not get your location: $e');
+      if (!silent) _showSnack('Could not get your location: $e');
     } finally {
-      if (mounted) setState(() => _locating = false);
+      if (mounted && !silent) setState(() => _locating = false);
     }
   }
 
@@ -85,6 +110,29 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     }
     return permission == geo.LocationPermission.always ||
         permission == geo.LocationPermission.whileInUse;
+  }
+
+  // Reverse-geocodes [lat]/[lng] and auto-fills the location label with
+  // "Locality, Country" so there is always a country in the stored label.
+  // Silently no-ops on failure — the user can still type manually.
+  Future<void> _reverseGeocode(double lat, double lng) async {
+    try {
+      final placemarks = await geocoding.placemarkFromCoordinates(lat, lng);
+      if (!mounted || placemarks.isEmpty) return;
+      final p = placemarks.first;
+      final parts = <String>[
+        if ((p.locality ?? '').trim().isNotEmpty) p.locality!.trim(),
+        if ((p.country ?? '').trim().isNotEmpty) p.country!.trim(),
+      ];
+      if (parts.isEmpty) return;
+      final label = parts.join(', ');
+      _labelController.text = label;
+      ref
+          .read(reportingNotifierProvider.notifier)
+          .updateDraft(locationLabel: label);
+    } catch (_) {
+      // Geocoding failure is non-fatal; user can type the label manually.
+    }
   }
 
   void _showSnack(String msg) {
@@ -115,7 +163,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
               .read(reportingNotifierProvider.notifier)
               .updateDraft(locationLabel: v),
           decoration: InputDecoration(
-            hintText: 'City, district, neighborhood...',
+            hintText: 'City, Country (e.g. Kyiv, Ukraine)',
             hintStyle: const TextStyle(
               color: ReportPalette.inkTertiary,
               fontSize: 14,

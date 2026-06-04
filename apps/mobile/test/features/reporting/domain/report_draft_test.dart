@@ -58,9 +58,14 @@ void main() {
   });
 
   group('ReportDraft.isEvidenceValid', () {
-    test('true when no photos attached', () {
+    test('false when no photos attached', () {
       const empty = ReportDraft();
-      expect(empty.isEvidenceValid, true);
+      expect(empty.isEvidenceValid, false);
+    });
+
+    test('true when one photo attached', () {
+      final d = ReportDraft(mediaBytes: [Uint8List.fromList([1])]);
+      expect(d.isEvidenceValid, true);
     });
 
     test('true when exactly maxPhotos photos attached', () {
