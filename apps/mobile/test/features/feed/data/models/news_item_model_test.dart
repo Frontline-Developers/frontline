@@ -4,6 +4,62 @@ import 'package:frontline/features/feed/data/models/news_item_model.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 
 void main() {
+  group('ReportFeedModel.toEntity', () {
+    test('maps locationLabel to locations when present', () {
+      final model = ReportFeedModel(
+        id: 'r1',
+        title: 'Shelling reported in Kharkiv',
+        category: 'combat',
+        status: ItemStatus.pending,
+        mediaUrls: const [],
+        confirmCount: 0,
+        disputeCount: 0,
+        publishedAt: DateTime.utc(2025, 1, 1),
+        locationLabel: 'Kharkiv',
+      );
+
+      final entity = model.toEntity();
+
+      expect(entity.source, NewsSource.citizen);
+      expect(entity.locations, ['Kharkiv']);
+    });
+
+    test('locations is empty when locationLabel is absent', () {
+      final model = ReportFeedModel(
+        id: 'r2',
+        title: 'Aid convoy spotted',
+        category: 'aid',
+        status: ItemStatus.pending,
+        mediaUrls: const [],
+        confirmCount: 0,
+        disputeCount: 0,
+        publishedAt: DateTime.utc(2025, 1, 1),
+      );
+
+      final entity = model.toEntity();
+
+      expect(entity.locations, isEmpty);
+    });
+
+    test('locations is empty when locationLabel is empty string', () {
+      final model = ReportFeedModel(
+        id: 'r3',
+        title: 'Infrastructure damage',
+        category: 'infra',
+        status: ItemStatus.pending,
+        mediaUrls: const [],
+        confirmCount: 0,
+        disputeCount: 0,
+        publishedAt: DateTime.utc(2025, 1, 1),
+        locationLabel: '',
+      );
+
+      final entity = model.toEntity();
+
+      expect(entity.locations, isEmpty);
+    });
+  });
+
   group('NewsItemModel.fromJson', () {
     test('maps wire_news Firestore document data to a NewsItem entity', () {
       final data = {
