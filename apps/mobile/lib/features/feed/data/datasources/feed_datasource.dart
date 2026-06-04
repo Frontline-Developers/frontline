@@ -31,7 +31,7 @@ class FeedDatasourceImpl implements FeedDatasource {
         s1 = FirebaseFirestore.instance
             .collection('reports')
             .orderBy('createdAt', descending: true)
-            .limit(50)
+            .limit(200)
             .snapshots()
             .map(
               (snap) => snap.docs
@@ -48,7 +48,7 @@ class FeedDatasourceImpl implements FeedDatasource {
         s2 = FirebaseFirestore.instance
             .collection('wire_news')
             .orderBy('publishedAt', descending: true)
-            .limit(25)
+            .limit(100)
             .snapshots()
             .map(
               (snap) => _deduplicateWire(

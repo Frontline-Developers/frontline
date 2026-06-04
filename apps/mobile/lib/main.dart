@@ -6,11 +6,15 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/pin/domain/entities/pin_state.dart';
 import 'features/pin/presentation/providers/pin_provider.dart';
 import 'features/pin/presentation/screens/pin_screen.dart';
+import 'features/search/data/datasources/search_datasource.dart';
+import 'features/search/data/repositories/search_repository_impl.dart';
+import 'features/search/presentation/providers/search_provider.dart';
 
 import 'firebase_options.dart';
 
@@ -30,6 +34,12 @@ Future<void> main() async {
       region: 'asia-southeast1',
     ).useFunctionsEmulator('localhost', 5001);
     await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+
+    // Sign in anonymously up front so the FAB → /report/new flow always has
+    // a uid available for the submit pipeline (matches firestore.rules).
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
   }
 
   // Sign in anonymously so all Firestore rules (request.auth != null) pass.
@@ -52,7 +62,15 @@ Future<void> main() async {
     }
   }
 
-  runApp(const ProviderScope(child: FrontlineApp()));
+  final prefs = await SharedPreferences.getInstance();
+  final searchRepo = SearchRepositoryImpl(SearchDatasourceImpl(prefs));
+
+  runApp(
+    ProviderScope(
+      overrides: [searchRepositoryProvider.overrideWithValue(searchRepo)],
+      child: const FrontlineApp(),
+    ),
+  );
 }
 
 class FrontlineApp extends ConsumerWidget {
