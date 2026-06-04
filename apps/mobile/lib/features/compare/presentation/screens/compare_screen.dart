@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
@@ -30,7 +31,8 @@ class _P {
 
 // TODO: DELETE — mock toggle is for visualization only; remove before shipping
 class CompareScreen extends ConsumerStatefulWidget {
-  const CompareScreen({super.key});
+  final NewsItem? anchorItem;
+  const CompareScreen({super.key, this.anchorItem});
 
   @override
   ConsumerState<CompareScreen> createState() => _CompareScreenState();
@@ -42,7 +44,22 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(compareNotifierProvider);
-    final clusters = _useMockData ? _kMockClusters : state.clusters;
+    final anchor = widget.anchorItem;
+    final allClusters = _useMockData ? _kMockClusters : state.clusters;
+    final clusters = (anchor == null || _useMockData)
+        ? allClusters
+        : allClusters
+              .where((c) => c.category == (anchor.category ?? 'other'))
+              .map(
+                (c) => EventCluster(
+                  id: c.id,
+                  category: c.category,
+                  date: c.date,
+                  items: c.items.where((i) => i.id != anchor.id).toList(),
+                ),
+              )
+              .where((c) => c.items.isNotEmpty)
+              .toList();
 
     return ColoredBox(
       color: _P.surface,
@@ -54,12 +71,19 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
             _CompareAppBar(
               useMockData: _useMockData,
               onToggleMock: () => setState(() => _useMockData = !_useMockData),
+              onBack: anchor != null ? () => context.pop() : null,
             ),
-            _CompareHeader(count: clusters.length),
+            if (anchor != null) ...[
+              _FeaturedItemCard(item: anchor),
+              _RelatedReportsHeader(count: clusters.length),
+            ] else
+              _CompareHeader(count: allClusters.length),
             const SizedBox(height: 4),
             Expanded(
               child: _useMockData
-                  ? _ClusterList(clusters: clusters)
+                  ? (clusters.isEmpty
+                        ? _EmptyState(hasAnchor: anchor != null)
+                        : _ClusterList(clusters: clusters))
                   : state.isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: _P.navy),
@@ -67,7 +91,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   : state.error != null
                   ? _ErrorState(error: state.error!)
                   : clusters.isEmpty
-                  ? _EmptyState()
+                  ? _EmptyState(hasAnchor: anchor != null)
                   : _ClusterList(clusters: clusters),
             ),
           ],
@@ -83,8 +107,13 @@ class _CompareAppBar extends StatelessWidget {
   // TODO: DELETE — mock toggle props; remove with _kMockClusters before shipping
   final bool useMockData;
   final VoidCallback onToggleMock;
+  final VoidCallback? onBack;
 
-  const _CompareAppBar({required this.useMockData, required this.onToggleMock});
+  const _CompareAppBar({
+    required this.useMockData,
+    required this.onToggleMock,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -92,15 +121,25 @@ class _CompareAppBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
       child: Row(
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: _P.navy,
+          if (onBack != null)
+            GestureDetector(
+              onTap: onBack,
+              child: const Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: Icon(Icons.arrow_back_ios, size: 16, color: _P.ink),
+              ),
+            )
+          else ...[
+            Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: _P.navy,
+              ),
             ),
-          ),
-          const SizedBox(width: 7),
+            const SizedBox(width: 7),
+          ],
           const Text(
             'Compare sources',
             style: TextStyle(
@@ -179,29 +218,34 @@ class _CompareHeader extends StatelessWidget {
 // ── States ────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
+  final bool hasAnchor;
+  const _EmptyState({this.hasAnchor = false});
+
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.compare_arrows, size: 48, color: _P.inkTertiary),
-            SizedBox(height: 12),
+            const Icon(Icons.compare_arrows, size: 48, color: _P.inkTertiary),
+            const SizedBox(height: 12),
             Text(
-              'No events to compare yet',
-              style: TextStyle(
+              hasAnchor ? 'No related reports yet' : 'No events to compare yet',
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _P.inkSecondary,
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Events appear once two or more reports cover\nthe same incident.',
+              hasAnchor
+                  ? 'No other reports cover this topic yet.\nCheck back as more come in.'
+                  : 'Events appear once two or more reports cover\nthe same incident.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
                 color: _P.inkTertiary,
                 height: 1.5,
@@ -228,6 +272,156 @@ class _ErrorState extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(color: _P.disputed, fontSize: 13),
         ),
+      ),
+    );
+  }
+}
+
+// ── Featured item (anchor) ────────────────────────────────────────────────────
+
+class _FeaturedItemCard extends StatelessWidget {
+  final NewsItem item;
+  const _FeaturedItemCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _P.navy.withValues(alpha: 0.25),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'COMPARING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _P.navy,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (item.category != null) ...[
+                      _CategoryBadge(category: item.category!),
+                      const SizedBox(width: 6),
+                    ],
+                    _SourceChip(source: item.source),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _P.ink,
+                    height: 1.35,
+                  ),
+                ),
+                if (item.body != null && item.body!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.body!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _P.inkSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      _timeAgo(item.publishedAt),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _P.inkTertiary,
+                      ),
+                    ),
+                    if (item.source == NewsSource.citizen &&
+                        (item.confirmCount + item.disputeCount) > 0)
+                      Text(
+                        ' · ${item.confirmCount} confirmed · ${item.disputeCount} disputed',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: _P.inkTertiary,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Related reports header ────────────────────────────────────────────────────
+
+class _RelatedReportsHeader extends StatelessWidget {
+  final int count;
+  const _RelatedReportsHeader({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+      child: Row(
+        children: [
+          const Text(
+            'Related reports',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              letterSpacing: -0.2,
+            ),
+          ),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _P.navy.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _P.navy,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -643,6 +837,14 @@ String _formatTime(DateTime dt) {
   final h = dt.toLocal().hour.toString().padLeft(2, '0');
   final m = dt.toLocal().minute.toString().padLeft(2, '0');
   return '$h:$m';
+}
+
+String _timeAgo(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+  if (diff.inHours < 24) return '${diff.inHours} hr ago';
+  return '${diff.inDays}d ago';
 }
 
 // TODO: DELETE — mock clusters for UI visualization only; remove before shipping
