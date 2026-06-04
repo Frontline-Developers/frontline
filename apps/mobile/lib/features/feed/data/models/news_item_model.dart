@@ -97,8 +97,8 @@ class ReportFeedModel {
 
     final rawStatus = data['status'] as String? ?? 'pending';
     final status = switch (rawStatus) {
-      'reviewed' => ItemStatus.verified,
-      'rejected' => ItemStatus.disputed,
+      'confirmed' || 'reviewed' => ItemStatus.verified,
+      'disputed' || 'rejected' => ItemStatus.disputed,
       _ => ItemStatus.pending,
     };
 
