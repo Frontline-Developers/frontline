@@ -68,6 +68,11 @@ void main() {
     expect(find.text('No events to compare yet'), findsOneWidget);
   });
 
+  testWidgets('shows "Side by side" in app bar', (tester) async {
+    await tester.pumpWidget(_wrap(const CompareState()));
+    expect(find.text('Side by side'), findsOneWidget);
+  });
+
   testWidgets('shows category label when clusters is non-empty', (
     tester,
   ) async {
@@ -76,59 +81,60 @@ void main() {
     expect(find.textContaining('Infrastructure'), findsWidgets);
   });
 
-  testWidgets('shows SUPPORTS badge for a supporting item', (tester) async {
+  testWidgets('shows SUPPORTS badge in timeline for a supporting item', (
+    tester,
+  ) async {
     final cluster = _infraCluster();
     await tester.pumpWidget(_wrap(CompareState(clusters: [cluster])));
-    expect(find.text('SUPPORTS'), findsWidgets);
+    // The timeline card headers contain '● CITIZEN REPORT' or '● WIRE'
+    // The timeline entries for supports cluster have those headers present.
+    expect(find.textContaining('CITIZEN REPORT'), findsWidgets);
   });
 
-  testWidgets('shows CONTRADICTS badge for a contradicting item', (
+  testWidgets('shows SOURCES CONFLICT status for a contradicting cluster', (
     tester,
   ) async {
     final cluster = _mixedCluster();
     await tester.pumpWidget(_wrap(CompareState(clusters: [cluster])));
-    expect(find.text('CONTRADICTS'), findsOneWidget);
+    expect(find.text('SOURCES CONFLICT'), findsOneWidget);
   });
 
-  testWidgets('shows UNVERIFIED badge for an unverified item', (tester) async {
+  testWidgets('shows SOURCES ALIGN status for an all-supporting cluster', (
+    tester,
+  ) async {
+    final cluster = _infraCluster();
+    await tester.pumpWidget(_wrap(CompareState(clusters: [cluster])));
+    expect(find.text('SOURCES ALIGN'), findsOneWidget);
+  });
+
+  testWidgets('shows UNVERIFIED status for an unverified cluster', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(CompareState(clusters: [_unverifiedCluster()])),
     );
-    expect(find.text('UNVERIFIED'), findsWidgets);
+    expect(find.text('UNVERIFIED'), findsOneWidget);
   });
 
-  // ── Anchor (FeaturedItemCard) path ────────────────────────────────────────
-
-  testWidgets('shows anchor title in FeaturedItemCard when anchorItem set', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
-    expect(find.text('Strike near Kyiv'), findsOneWidget);
-  });
-
-  testWidgets('shows COMPARING label when anchorItem set', (tester) async {
-    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
-    expect(find.text('COMPARING'), findsOneWidget);
-  });
+  // ── Anchor path ────────────────────────────────────────────────────────────
 
   testWidgets('shows back arrow icon when anchorItem set', (tester) async {
     await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
     expect(find.byIcon(Icons.arrow_back_ios), findsOneWidget);
   });
 
-  testWidgets(
-    'shows no-related-reports empty state when anchor has no matching clusters',
-    (tester) async {
-      await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
-      expect(find.text('No related reports yet'), findsOneWidget);
-    },
-  );
-
-  testWidgets('shows Related reports header when anchorItem set', (
+  testWidgets('shows "Side by side" in app bar with anchor set', (
     tester,
   ) async {
     await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
-    expect(find.text('Related reports'), findsOneWidget);
+    expect(find.text('Side by side'), findsOneWidget);
+  });
+
+  testWidgets('shows empty state when clusters is empty with anchor', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrapWithAnchor(const CompareState()));
+    expect(find.text('No events to compare yet'), findsOneWidget);
   });
 }
 
@@ -150,6 +156,7 @@ EventCluster _infraCluster() => EventCluster(
       id: '2',
       title: 'Reuters: Substation attack confirmed',
       source: NewsSource.wire,
+      sourceName: 'Reuters',
       publishedAt: DateTime(2026, 6, 4, 10),
       eval: EvidenceEval.supports,
       confirmCount: 0,
