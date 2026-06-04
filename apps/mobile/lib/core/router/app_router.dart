@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/compare/presentation/screens/compare_screen.dart';
+import '../../features/feed/domain/entities/news_item.dart';
 import '../../features/feed/presentation/screens/feed_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/my_reports/presentation/screens/my_reports_screen.dart';
@@ -21,7 +22,8 @@ final appRouter = GoRouter(
         GoRoute(path: '/', builder: (context, state) => const MapScreen()),
         GoRoute(
           path: '/compare',
-          builder: (context, state) => const CompareScreen(),
+          builder: (context, state) =>
+              CompareScreen(anchorItem: state.extra as NewsItem?),
         ),
         GoRoute(
           path: '/my-reports',
