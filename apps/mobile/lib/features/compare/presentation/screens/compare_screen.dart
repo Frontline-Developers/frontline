@@ -466,7 +466,7 @@ class _ColumnsView extends StatelessWidget {
               label: 'Wire sources',
               color: _P.wireDot,
               items: wireNews,
-              emptyMessage: 'No wire coverage found in this 48h window',
+              emptyMessage: 'No wire coverage found for this report',
             ),
           ),
         ],

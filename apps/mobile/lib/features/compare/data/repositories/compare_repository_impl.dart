@@ -11,11 +11,14 @@ class CompareRepositoryImpl implements CompareRepository {
       _datasource.fetchReport(reportId);
 
   @override
-  Future<List<NewsItem>> fetchRelatedWireNews({
-    required String description,
-    required String category,
-  }) => _datasource.fetchRelatedWireNews(
-    description: description,
-    category: category,
-  );
+  Future<List<NewsItem>> fetchWireNewsByLocations(List<String> locations) =>
+      _datasource.fetchWireNewsByLocations(locations);
+
+  @override
+  Future<List<NewsItem>> fetchWireNewsByCategory(String category) =>
+      _datasource.fetchWireNewsByCategory(category);
+
+  @override
+  Future<List<NewsItem>> fetchRecentWireNews() =>
+      _datasource.fetchRecentWireNews();
 }
