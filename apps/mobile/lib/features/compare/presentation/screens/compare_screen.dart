@@ -251,11 +251,30 @@ class _FeaturedItemCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userVote = item.source == NewsSource.citizen
+    final isCitizen = item.source == NewsSource.citizen;
+    final userVote = isCitizen
         ? ref
               .watch(voteProvider(item.id))
               .when(data: (v) => v, loading: () => null, error: (e, s) => null)
         : null;
+    final confirmCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.confirm,
+                loading: () => item.confirmCount,
+                error: (e, s) => item.confirmCount,
+              )
+        : item.confirmCount;
+    final disputeCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.dispute,
+                loading: () => item.disputeCount,
+                error: (e, s) => item.disputeCount,
+              )
+        : item.disputeCount;
 
     return Center(
       child: ConstrainedBox(
@@ -334,13 +353,13 @@ class _FeaturedItemCard extends ConsumerWidget {
                         color: _P.inkTertiary,
                       ),
                     ),
-                    if (item.source == NewsSource.citizen) ...[
+                    if (isCitizen) ...[
                       const SizedBox(width: 12),
                       _ActionBtn(
                         icon: userVote == 'confirm'
                             ? Icons.check_circle
                             : Icons.check_circle_outline,
-                        count: item.confirmCount,
+                        count: confirmCount,
                         active: userVote == 'confirm',
                         activeColor: _P.verified,
                         onTap: () => _castVote(ref, 'confirm'),
@@ -350,7 +369,7 @@ class _FeaturedItemCard extends ConsumerWidget {
                         icon: userVote == 'dispute'
                             ? Icons.flag
                             : Icons.flag_outlined,
-                        count: item.disputeCount,
+                        count: disputeCount,
                         active: userVote == 'dispute',
                         activeColor: _P.disputed,
                         onTap: () => _castVote(ref, 'dispute'),
@@ -612,11 +631,30 @@ class _TimelineRow extends ConsumerWidget {
       EvidenceEval.unverified => _P.unverifiedFg,
     };
 
-    final userVote = item.source == NewsSource.citizen
+    final isCitizen = item.source == NewsSource.citizen;
+    final userVote = isCitizen
         ? ref
               .watch(voteProvider(item.id))
               .when(data: (v) => v, loading: () => null, error: (e, s) => null)
         : null;
+    final confirmCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.confirm,
+                loading: () => item.confirmCount,
+                error: (e, s) => item.confirmCount,
+              )
+        : item.confirmCount;
+    final disputeCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.dispute,
+                loading: () => item.disputeCount,
+                error: (e, s) => item.disputeCount,
+              )
+        : item.disputeCount;
 
     return IntrinsicHeight(
       child: Row(
@@ -680,7 +718,7 @@ class _TimelineRow extends ConsumerWidget {
                       height: 1.35,
                     ),
                   ),
-                  if (item.source == NewsSource.citizen) ...[
+                  if (isCitizen) ...[
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -688,7 +726,7 @@ class _TimelineRow extends ConsumerWidget {
                           icon: userVote == 'confirm'
                               ? Icons.check_circle
                               : Icons.check_circle_outline,
-                          count: item.confirmCount,
+                          count: confirmCount,
                           active: userVote == 'confirm',
                           activeColor: _P.verified,
                           onTap: () => _castVote(ref, 'confirm'),
@@ -698,7 +736,7 @@ class _TimelineRow extends ConsumerWidget {
                           icon: userVote == 'dispute'
                               ? Icons.flag
                               : Icons.flag_outlined,
-                          count: item.disputeCount,
+                          count: disputeCount,
                           active: userVote == 'dispute',
                           activeColor: _P.disputed,
                           onTap: () => _castVote(ref, 'dispute'),
