@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -62,7 +64,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _FeedAppBar(),
-            _FeedHeader(),
+            _FeedHeader(
+              citizenCount: state.items
+                  .where((i) => i.source == NewsSource.citizen)
+                  .length,
+              wireSourceCount: state.items
+                  .where(
+                    (i) => i.source == NewsSource.wire && i.sourceName != null,
+                  )
+                  .map((i) => i.sourceName!)
+                  .toSet()
+                  .length,
+            ),
             _FilterChips(
               active: _activeFilter,
               onChanged: (i) => setState(() => _activeFilter = i),
@@ -154,6 +167,13 @@ class _FeedAppBar extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _FeedHeader extends StatelessWidget {
+  final int citizenCount;
+  final int wireSourceCount;
+  const _FeedHeader({
+    required this.citizenCount,
+    required this.wireSourceCount,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -192,9 +212,9 @@ class _FeedHeader extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
-              const Text(
-                ' · 17 citizens reporting · 6 sources active',
-                style: TextStyle(fontSize: 12, color: _P.inkTertiary),
+              Text(
+                ' · $citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
+                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
               ),
             ],
           ),
@@ -445,6 +465,35 @@ class _CitizenCard extends ConsumerWidget {
                             title: item.title,
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        GestureDetector(
+                          onTap: () => context.push('/compare', extra: item.id),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.compare_arrows,
+                                  size: 16,
+                                  color: _P.navy,
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Compare',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),
                         const SizedBox(width: 4),
@@ -552,7 +601,14 @@ class _WireCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Container(color: const Color(0xFF1A3A5C)),
+                    item.imageUrl != null
+                        ? Image.network(
+                            item.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) =>
+                                Container(color: const Color(0xFF1A3A5C)),
+                          )
+                        : Container(color: const Color(0xFF1A3A5C)),
                     Positioned(
                       top: 10,
                       left: 10,
@@ -603,20 +659,30 @@ class _WireCard extends StatelessWidget {
                     Row(
                       children: [
                         if (item.url != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.open_in_new, size: 14, color: _P.navy),
-                              SizedBox(width: 4),
-                              Text(
-                                'Open source',
-                                style: TextStyle(
-                                  fontSize: 13,
+                          GestureDetector(
+                            onTap: () => launchUrl(
+                              Uri.parse(item.url!),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
                                   color: _P.navy,
-                                  fontWeight: FontWeight.w500,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'Open source',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _P.navy,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         const Spacer(),
                         _ActionBtn(icon: Icons.bookmark_border),

@@ -1,0 +1,233 @@
+/* ──────────────────────────────────────────────────────────────
+   BackOffice Design System — Tokens
+   Aesthetic: Calm Clarity (Slate Blue, Cool Gray, Color-as-Signal)
+   Platform: Mobile-first, Thai-first UI
+   ────────────────────────────────────────────────────────────── */
+
+/* Font imports — Google Fonts (closest available matches) */
+@import url('https://fonts.googleapis.com/css2?family=Trirong:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ── COLOR — Primary Brand (Slate Blue) ────────────────────── */
+  --primary:           #3B5BDB;   /* CTA, link, active state */
+  --primary-light:     #748FFC;   /* hover highlight */
+  --primary-deep:      #2F4AC2;   /* pressed */
+  --primary-surface:   #EEF2FF;   /* selected row, chip bg */
+  --primary-muted:     #BAC8FF;   /* active border / underline */
+
+  /* ── COLOR — Profit / Positive (Green) ────────────────────── */
+  --profit:            #2F9E44;
+  --profit-light:      #B2F2BB;
+  --profit-surface:    #EBFBEE;
+  --profit-deep:       #1E6B2E;
+
+  /* ── COLOR — AI / Smart accent (Earth tone — warm, grounded) ── */
+  --ai:                #4A3728;   /* deep warm brown — AI primary */
+  --ai-light:          #EDE5D8;   /* warm sand — AI surface tint */
+  --ai-surface:        #FAF8F4;   /* near-white warm — AI bg */
+  --ai-mid:            #9C8878;   /* warm taupe — AI border / icon muted */
+  --ai-on:             #FFFFFF;
+
+  /* ── COLOR — Semantic ──────────────────────────────────────── */
+  --success:           #2F9E44;
+  --success-bg:        #EBFBEE;
+  --warning:           #E67700;
+  --warning-bg:        #FFF3BF;
+  --error:             #C92A2A;
+  --error-bg:          #FFE3E3;
+  --info:              #1971C2;
+  --info-bg:           #E7F5FF;
+
+  /* ── COLOR — Neutral Surfaces (cool gray) ──────────────────── */
+  --canvas:            #FFFFFF;
+  --surface:           #F8F9FA;   /* page bg */
+  --surface-card:      #FFFFFF;
+  --surface-raised:    #F1F3F5;   /* input bg, divider section */
+  --surface-overlay:   #E9ECEF;   /* pressed bg, skeleton */
+  --surface-dark:      #1A1B1E;   /* bottom nav, dark header */
+
+  /* ── COLOR — Ink / Text (cool charcoal) ────────────────────── */
+  --ink:               #212529;
+  --ink-secondary:     #495057;
+  --ink-tertiary:      #868E96;
+  --ink-disabled:      #CED4DA;
+  --on-primary:        #FFFFFF;
+  --on-dark:           #F8F9FA;
+  --on-dark-muted:     #868E96;
+  --on-profit:         #1E6B2E;
+
+  /* ── COLOR — Borders / Hairlines ──────────────────────────── */
+  --hairline:          #DEE2E6;
+  --hairline-soft:     #E9ECEF;
+  --hairline-strong:   #CED4DA;
+
+  /* ── COLOR — Stock status chips ───────────────────────────── */
+  --status-fresh:        #EBFBEE;
+  --status-fresh-text:   #2F9E44;
+  --status-expiring:     #FFF3BF;
+  --status-expiring-text:#E67700;
+  --status-expired:      #FFE3E3;
+  --status-expired-text: #C92A2A;
+  --status-low:          #FFF0F6;
+  --status-low-text:     #C2255C;
+
+  /* ── COLOR — Leaderboard ranks ────────────────────────────── */
+  --rank-1:            #F59F00;   /* gold */
+  --rank-2:            #868E96;   /* silver */
+  --rank-3:            #CD7F32;   /* bronze */
+  --rank-other:        #ADB5BD;
+
+  /* ── TYPOGRAPHY — Font Families ───────────────────────────── */
+  --font-th-heading:   'Trirong', 'Sarabun', 'Noto Sans Thai', serif;
+  --font-th-body:      'Sarabun', 'Noto Sans Thai', sans-serif;
+  --font-en-heading:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-en-body:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-numeric:      'Sarabun', 'Inter', sans-serif;
+
+  /* ── TYPOGRAPHY — Sizes (mobile) ──────────────────────────── */
+  --size-display-xl:   40px;
+  --size-display-lg:   32px;
+  --size-h1:           24px;
+  --size-h2:           20px;
+  --size-h3:           17px;
+  --size-h4:           15px;
+  --size-body-lg:      16px;
+  --size-body-md:      15px;
+  --size-body-sm:      13px;
+  --size-label-lg:     15px;
+  --size-label-md:     13px;
+  --size-label-sm:     12px;
+  --size-caption:      12px;
+  --size-micro:        11px;
+  --size-number-hero:  36px;
+  --size-number-md:    20px;
+
+  /* ── SPACING ──────────────────────────────────────────────── */
+  --space-xxs:   4px;
+  --space-xs:    8px;
+  --space-sm:    12px;
+  --space-md:    16px;
+  --space-lg:    20px;
+  --space-xl:    24px;
+  --space-xxl:   32px;
+  --space-xxxl:  40px;
+  --space-section: 48px;
+  --page-h:        16px;          /* horizontal page padding mobile */
+  --page-h-tablet: 32px;
+  --bottom-nav:    80px;
+
+  /* ── RADIUS ───────────────────────────────────────────────── */
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-xxl:  24px;
+  --radius-card: 16px;
+  --radius-sheet:20px;
+  --radius-full: 9999px;
+
+  /* ── ELEVATION (shadows) ──────────────────────────────────── */
+  --elev-0: none;
+  --elev-1: 0px 1px 3px rgba(0,0,0,0.06), 0px 1px 2px rgba(0,0,0,0.04);
+  --elev-2: 0px 4px 12px rgba(0,0,0,0.08);
+  --elev-3: 0px 8px 24px rgba(0,0,0,0.12);
+  --elev-4: 0px 16px 40px rgba(0,0,0,0.16);
+  --elev-sheet: 0px -4px 24px rgba(0,0,0,0.10);
+
+  /* ── MOTION ────────────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:    100ms;
+  --dur-base:    250ms;
+  --dur-sheet:   350ms;
+  --dur-number:  600ms;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --size-display-xl: 56px;
+    --size-display-lg: 44px;
+    --size-h1: 32px;
+    --size-h2: 26px;
+    --size-h3: 20px;
+    --size-h4: 17px;
+    --size-body-lg: 18px;
+    --size-body-md: 16px;
+    --size-body-sm: 14px;
+    --size-label-lg: 16px;
+    --size-label-md: 14px;
+    --size-label-sm: 13px;
+    --size-caption: 13px;
+    --size-micro: 12px;
+    --size-number-hero: 48px;
+    --size-number-md: 24px;
+    --page-h: 32px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SEMANTIC TYPE CLASSES — Thai-first
+   Apply data-lang="en" on a parent to switch to English stack.
+   ────────────────────────────────────────────────────────────── */
+
+html, body {
+  font-family: var(--font-th-body);
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+[data-lang="en"] { font-family: var(--font-en-body); }
+
+.display-xl,
+.display-lg,
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+  font-family: var(--font-th-heading);
+  font-weight: 600;     /* Trirong supports 100–900; 600 used for headings */
+  color: var(--ink);
+  letter-spacing: 0;
+}
+[data-lang="en"] :is(.display-xl, .display-lg, h1, h2, h3, h4, .h1, .h2, .h3, .h4) {
+  font-family: var(--font-en-heading);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.display-xl { font-size: var(--size-display-xl); line-height: 1.10; }
+.display-lg { font-size: var(--size-display-lg); line-height: 1.15; }
+h1, .h1     { font-size: var(--size-h1); line-height: 1.25; }
+h2, .h2     { font-size: var(--size-h2); line-height: 1.30; }
+h3, .h3     { font-size: var(--size-h3); line-height: 1.35; }
+h4, .h4     { font-size: var(--size-h4); line-height: 1.40; }
+
+.body-lg { font-size: var(--size-body-lg); line-height: 1.65; }
+.body-md, p { font-size: var(--size-body-md); line-height: 1.60; }
+.body-sm { font-size: var(--size-body-sm); line-height: 1.55; }
+
+.label-lg { font-size: var(--size-label-lg); font-weight: 600; line-height: 1.30; }
+.label-md { font-size: var(--size-label-md); font-weight: 600; line-height: 1.30; }
+.label-sm { font-size: var(--size-label-sm); font-weight: 500; line-height: 1.30; }
+[data-lang="en"] :is(.label-lg, .label-md) { font-weight: 500; }
+
+.caption { font-size: var(--size-caption); line-height: 1.45; color: var(--ink-tertiary); }
+.micro   { font-size: var(--size-micro); line-height: 1.40; font-weight: 500; letter-spacing: 0.2px; text-transform: uppercase; color: var(--ink-tertiary); }
+
+/* ── Numeric — tabular always ─────────────────────────────── */
+.number-hero, .number-md, .num {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+}
+.number-hero { font-size: var(--size-number-hero); line-height: 1.0; letter-spacing: -0.5px; }
+.number-md   { font-size: var(--size-number-md);   line-height: 1.10; }
+
+/* Tonal helpers */
+.text-ink        { color: var(--ink); }
+.text-secondary  { color: var(--ink-secondary); }
+.text-tertiary   { color: var(--ink-tertiary); }
+.text-primary    { color: var(--primary); }
+.text-profit     { color: var(--profit); }
+.text-ai         { color: var(--ai); }
+.text-error      { color: var(--error); }
+.text-warning    { color: var(--warning); }
