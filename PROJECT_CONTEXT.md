@@ -72,8 +72,10 @@ createdAt:    Timestamp
 
 ### `reports/{reportId}/comments/{commentId}`
 ```
-userId:       string      ← anonymous UID
-body:         string
+type:         string      ← 'confirm' | 'dispute' | 'context'
+text:         string      ← comment body (≤ 500 chars); field is 'text', NOT 'body'
+authorToken:  string      ← short anonymous token, NOT a Firebase UID (privacy by design)
+upvotes:      number
 createdAt:    Timestamp
 ```
 
@@ -265,7 +267,8 @@ All functions deploy to `asia-southeast1` (Singapore).
 ### Implemented as of Jun 4 2026
 - Compare page (`/compare`) — full Clean Architecture feature: real-time `watchClusters()` stream groups all citizen + wire items by category+date; timeline UI with SUPPORTS/CONTRADICTS/UNVERIFIED evidence badges; anchor mode (launched from Feed "Compare" button) filters to matching-category clusters and shows FeaturedItemCard
 - `FetchRelatedWireNewsUseCase` — three-tier fallback (location match → category match → recency) for future single-report wire-news lookup; domain layer only, wired into `CompareRepository`
-- Test suite: 153 tests across 21 files covering auth, feed, map, my_reports, comments, compare (4 files), and reporting features
+- `EventDetailScreen` (`/report/:id`) — full-screen detail view for both citizen reports and wire news; citizen branch shows hero image, category+status badges, community verification panel (confirm/dispute meter + vote buttons), compare CTA, and discussion preview; wire branch shows article summary, source name, "Read full article" button (opens URL in browser), and compare CTA; Feed cards navigate to this screen via `context.push('/report/:id', extra: item)`
+- Test suite: 176 tests across 22 files covering auth, feed, map, my_reports, comments, compare (4 files), reporting + EventDetailScreen (21 tests)
 
 ---
 
@@ -315,7 +318,8 @@ All functions deploy to `asia-southeast1` (Singapore).
 - [x] `evaluateReportTrust` Cloud Function implemented (4 heuristics: EXIF, wire news, spatial spike, impossible travel)
 - [ ] `fetchGdeltNews` must populate `geohash5` field on `wire_news` documents for wire corroboration heuristic to activate
 - [ ] `gdelt.ts` `initializeApp` guard can be removed once it imports from `admin.ts` (safe — both guards use `!admin.apps.length`)
-- [ ] Firestore rules `allow read` on `reports/` is currently owner-only — needs broadening for Event Detail (confirm/dispute) flow (task 5.6)
+- [ ] Firestore rules `allow read` on `reports/` is currently owner-only — needs broadening for Event Detail (confirm/dispute) flow (task 5.6) — **EventDetailScreen UI is done; unblocked once rules are updated**
+- [ ] `/report/:id` route relies on GoRouter `extra` to receive `NewsItem` — deep links and process restarts fall back to `_ReportDetailPlaceholder` until a Firestore-backed fetch is wired (task 5.7)
 - [ ] Additional Cloud Functions to be added: `stripExifMetadata`, `withdrawReport`
 - [ ] `drift` dependency to be added to `pubspec.yaml` when implementing task 5.10
 - [ ] Firebase App Check to be initialized in `main.dart` (task 4.8)
