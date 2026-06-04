@@ -3,6 +3,13 @@
 // keeping only the highest-priority source per story.
 
 const admin = require('../functions/node_modules/firebase-admin');
+const isProd = process.argv.includes('--prod');
+if (!process.env.FIRESTORE_EMULATOR_HOST && !isProd) {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+}
+if (!process.env.FIRESTORE_EMULATOR_HOST && isProd && !process.argv.includes('--yes-delete')) {
+  throw new Error('Refusing to run against production without --yes-delete');
+}
 admin.initializeApp({ projectId: 'frontline-549fb' });
 const db = admin.firestore();
 

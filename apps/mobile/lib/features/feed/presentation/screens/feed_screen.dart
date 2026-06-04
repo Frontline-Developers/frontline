@@ -660,10 +660,14 @@ class _WireCard extends StatelessWidget {
                       children: [
                         if (item.url != null)
                           GestureDetector(
-                            onTap: () => launchUrl(
-                              Uri.parse(item.url!),
-                              mode: LaunchMode.externalApplication,
-                            ),
+                            onTap: () async {
+                              final uri = Uri.tryParse(item.url!);
+                              if (uri == null) return;
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            },
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [

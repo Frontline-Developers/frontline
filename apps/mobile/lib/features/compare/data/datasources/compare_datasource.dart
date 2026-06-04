@@ -53,7 +53,7 @@ class CompareDatasourceImpl implements CompareDatasource {
     required String category,
   }) async {
     // 1. Try location match — find wire articles mentioning same Ukraine locations
-    final locations = _extractLocations(description);
+    final locations = _extractLocations(description).take(10).toList();
     if (locations.isNotEmpty) {
       final snap = await FirebaseFirestore.instance
           .collection('wire_news')
