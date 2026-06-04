@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+typedef VoteCounts = ({int confirm, int dispute});
+
 abstract class VoteDatasource {
   Future<String?> getUserVote(String reportId);
-  Future<void> castVote(
-    String reportId,
-    String? type,
-  ); // 'confirm'|'dispute'|null
+  Future<void> castVote(String reportId, String? type);
+  Stream<VoteCounts> watchVoteCounts(String reportId);
 }
 
 class VoteDatasourceImpl implements VoteDatasource {
@@ -85,4 +85,17 @@ class VoteDatasourceImpl implements VoteDatasource {
       });
     });
   }
+
+  @override
+  Stream<VoteCounts> watchVoteCounts(String reportId) => FirebaseFirestore
+      .instance
+      .collection('reports')
+      .doc(reportId)
+      .snapshots()
+      .map(
+        (snap) => (
+          confirm: (snap.data()?['confirmCount'] as int?) ?? 0,
+          dispute: (snap.data()?['disputeCount'] as int?) ?? 0,
+        ),
+      );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers/vote_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
 import '../../domain/entities/event_cluster.dart';
@@ -238,12 +239,60 @@ class _ErrorState extends StatelessWidget {
 
 // ── Featured item (anchor) ────────────────────────────────────────────────────
 
-class _FeaturedItemCard extends StatelessWidget {
+class _FeaturedItemCard extends ConsumerStatefulWidget {
   final NewsItem item;
   const _FeaturedItemCard({required this.item});
 
   @override
+  ConsumerState<_FeaturedItemCard> createState() => _FeaturedItemCardState();
+}
+
+class _FeaturedItemCardState extends ConsumerState<_FeaturedItemCard> {
+  bool _votePending = false;
+
+  Future<void> _castVote(String type) async {
+    if (_votePending) return;
+    setState(() => _votePending = true);
+    try {
+      await ref
+          .read(compareNotifierProvider.notifier)
+          .castVote(widget.item.id, type);
+      ref.invalidate(voteProvider(widget.item.id));
+    } catch (_) {
+      // swallow — button re-enables via finally
+    } finally {
+      if (mounted) setState(() => _votePending = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final isCitizen = item.source == NewsSource.citizen;
+    final userVote = isCitizen
+        ? ref
+              .watch(voteProvider(item.id))
+              .when(data: (v) => v, loading: () => null, error: (e, s) => null)
+        : null;
+    final confirmCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.confirm,
+                loading: () => item.confirmCount,
+                error: (e, s) => item.confirmCount,
+              )
+        : item.confirmCount;
+    final disputeCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.dispute,
+                loading: () => item.disputeCount,
+                error: (e, s) => item.disputeCount,
+              )
+        : item.disputeCount;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: _kMaxWidth),
@@ -321,15 +370,28 @@ class _FeaturedItemCard extends StatelessWidget {
                         color: _P.inkTertiary,
                       ),
                     ),
-                    if (item.source == NewsSource.citizen &&
-                        (item.confirmCount + item.disputeCount) > 0)
-                      Text(
-                        ' · ${item.confirmCount} confirmed · ${item.disputeCount} disputed',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: _P.inkTertiary,
-                        ),
+                    if (isCitizen) ...[
+                      const SizedBox(width: 12),
+                      _ActionBtn(
+                        icon: userVote == 'confirm'
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
+                        count: confirmCount,
+                        active: userVote == 'confirm',
+                        activeColor: _P.verified,
+                        onTap: _votePending ? null : () => _castVote('confirm'),
                       ),
+                      const SizedBox(width: 12),
+                      _ActionBtn(
+                        icon: userVote == 'dispute'
+                            ? Icons.flag
+                            : Icons.flag_outlined,
+                        count: disputeCount,
+                        active: userVote == 'dispute',
+                        activeColor: _P.disputed,
+                        onTap: _votePending ? null : () => _castVote('dispute'),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -567,18 +629,66 @@ class _ClusterTimeline extends StatelessWidget {
   }
 }
 
-class _TimelineRow extends StatelessWidget {
+class _TimelineRow extends ConsumerStatefulWidget {
   final ClusterItem item;
   final bool isLast;
   const _TimelineRow({required this.item, required this.isLast});
 
   @override
+  ConsumerState<_TimelineRow> createState() => _TimelineRowState();
+}
+
+class _TimelineRowState extends ConsumerState<_TimelineRow> {
+  bool _votePending = false;
+
+  Future<void> _castVote(String type) async {
+    if (_votePending) return;
+    setState(() => _votePending = true);
+    try {
+      await ref
+          .read(compareNotifierProvider.notifier)
+          .castVote(widget.item.id, type);
+      ref.invalidate(voteProvider(widget.item.id));
+    } catch (_) {
+      // swallow — button re-enables via finally
+    } finally {
+      if (mounted) setState(() => _votePending = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final dotColor = switch (item.eval) {
       EvidenceEval.supports => _P.verified,
       EvidenceEval.contradicts => _P.disputed,
       EvidenceEval.unverified => _P.unverifiedFg,
     };
+
+    final isCitizen = item.source == NewsSource.citizen;
+    final userVote = isCitizen
+        ? ref
+              .watch(voteProvider(item.id))
+              .when(data: (v) => v, loading: () => null, error: (e, s) => null)
+        : null;
+    final confirmCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.confirm,
+                loading: () => item.confirmCount,
+                error: (e, s) => item.confirmCount,
+              )
+        : item.confirmCount;
+    final disputeCount = isCitizen
+        ? ref
+              .watch(voteCountsProvider(item.id))
+              .when(
+                data: (c) => c.dispute,
+                loading: () => item.disputeCount,
+                error: (e, s) => item.disputeCount,
+              )
+        : item.disputeCount;
 
     return IntrinsicHeight(
       child: Row(
@@ -597,7 +707,7 @@ class _TimelineRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                if (!isLast)
+                if (!widget.isLast)
                   Expanded(
                     child: Center(
                       child: Container(width: 1, color: _P.hairline),
@@ -619,7 +729,7 @@ class _TimelineRow extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              padding: EdgeInsets.only(bottom: widget.isLast ? 0 : 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -642,15 +752,34 @@ class _TimelineRow extends StatelessWidget {
                       height: 1.35,
                     ),
                   ),
-                  if (item.source == NewsSource.citizen &&
-                      (item.confirmCount + item.disputeCount) > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '${item.confirmCount} confirmed · ${item.disputeCount} disputed',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: _P.inkTertiary,
-                      ),
+                  if (isCitizen) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _ActionBtn(
+                          icon: userVote == 'confirm'
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          count: confirmCount,
+                          active: userVote == 'confirm',
+                          activeColor: _P.verified,
+                          onTap: _votePending
+                              ? null
+                              : () => _castVote('confirm'),
+                        ),
+                        const SizedBox(width: 12),
+                        _ActionBtn(
+                          icon: userVote == 'dispute'
+                              ? Icons.flag
+                              : Icons.flag_outlined,
+                          count: disputeCount,
+                          active: userVote == 'dispute',
+                          activeColor: _P.disputed,
+                          onTap: _votePending
+                              ? null
+                              : () => _castVote('dispute'),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -751,6 +880,52 @@ class _CategoryBadge extends StatelessWidget {
           color: color,
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+}
+
+// ── Vote button ───────────────────────────────────────────────────────────────
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final int? count;
+  final bool active;
+  final Color? activeColor;
+  final VoidCallback? onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    this.count,
+    this.active = false,
+    this.activeColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? (activeColor ?? _P.navy) : _P.inkTertiary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
+        child: count != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              )
+            : Icon(icon, size: 16, color: color),
       ),
     );
   }
