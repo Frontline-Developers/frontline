@@ -134,7 +134,7 @@ class _FeedAppBar extends StatelessWidget {
           ),
           const Spacer(),
           IconButton(
-            onPressed: () {},
+            onPressed: () => context.push('/search'),
             icon: const Icon(Icons.search, color: _P.inkSecondary, size: 22),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
