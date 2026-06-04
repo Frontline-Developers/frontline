@@ -27,7 +27,7 @@ Privacy-first, location-based reporting and news platform — anonymous submissi
 | State | Riverpod 3.x + `Notifier` pattern |
 | Navigation | GoRouter 17.x (`core/router/app_router.dart`) |
 | Backend | Firebase Auth (anonymous), Firestore, Storage, Cloud Functions v2 (TypeScript) |
-| Maps | flutter_map 7.x + OpenStreetMap tiles (no token, web + mobile parity) |
+| Maps | flutter_map 8.x + OpenStreetMap tiles (no token, web + mobile parity) |
 | Geo queries | geoflutterfire_plus (GeoFire for Firestore) |
 | Models | Freezed + json_serializable |
 | Observability | `firebase-functions/v2/logger` in Cloud Functions |
