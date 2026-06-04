@@ -103,10 +103,11 @@ npm install && npm run build && npm test   # npm test requires emulators
 | Feature | Provider | Status | Notes |
 |---|---|---|---|
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
-| `map` | `mapNotifierProvider` | Stub | flutter_map + geoflutterfire_plus geo queries |
+| `map` | `mapNotifierProvider` | Active | flutter_map + OSM tiles, category/time filters, "You are here" GPS toggle |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
 | `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
+| `alerts` | `alertNotifierProvider` | Active | Save alert subscriptions to Firestore; `sendAlertNotifications` CF dispatches FCM push |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 | `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
 
@@ -118,9 +119,10 @@ npm install && npm run build && npm test   # npm test requires emulators
 reports/{reportId}
   userId:               string   ← anonymous Firebase UID
   location:             GeoPoint ← fuzzed by fuzzReportLocation CF (never raw)
-  geohash:              string   ← GeoFire geohash of fuzzed location
+  geohash:              string   ← GeoFire geohash of fuzzed location (geoflutterfire_plus)
   category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
   description:          string
+  locationLabel:        string   ← city/area name for map clustering (e.g. 'Kyiv')
   mediaUrls:            string[]
   status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn' | 'deleted'
   tokenHash:            string   ← SHA-256(displayToken); written at submit time; deleted on report delete
@@ -136,36 +138,26 @@ reports/{reportId}
   isDisputed:           boolean  ← true when disputeCount > 0; written by vote transaction
   createdAt:            Timestamp
 
-  interactions/{userId}          ← subcollection; one doc per voter
-    type:       string           ← 'confirm' | 'dispute'
-    token:      string           ← random hex for idempotency audit
-    createdAt:  Timestamp
+wire_news/{articleId}
+  title:       string
+  body:        string?
+  url:         string?
+  source:      'wire'
+  publishedAt: Timestamp
+  ← written only by fetchGdeltNews CF; client read-only
 
-  comments/{commentId}           ← subcollection
-    type:       string           ← 'confirm' | 'dispute' | 'context'
-    text:       string           ← comment body (≤ 500 chars)
-    authorToken: string          ← short anonymous token, NOT a Firebase UID (privacy by design)
-    upvotes:    number
-    createdAt:  Timestamp
+user_alerts/{userId}/subscriptions/{subscriptionId}
+  userId:        string    ← anonymous Firebase UID
+  locationLabel: string    ← city name e.g. 'Kyiv'
+  lat:           number    ← centre of alert radius (display-only, never raw GPS)
+  lng:           number
+  radiusKm:      number    ← 1–20
+  categories:    string[]  ← subset of valid category values above
+  createdAt:     Timestamp
+  ← written by saveSubscription; read by sendAlertNotifications CF
 
-    upvoters/{userId}            ← subcollection; one doc per upvoter
-      at:       Timestamp
-
-wire_news/{articleId}          ← written only by fetchGdeltNews CF; client read-only
-  title:          string
-  body:           string?
-  url:            string?
-  source:         'wire'
-  sourceName:     string?   ← outlet display name (e.g. "Reuters")
-  sourceDomain:   string?   ← outlet hostname
-  sourcePriority: number?   ← GDELT source tier
-  imageUrl:       string?
-  locations:      string[]  ← extracted location strings
-  themes:         string[]  ← GDELT theme codes
-  tone:           number?   ← GDELT average tone
-  storyKey:       string?   ← GDELT story dedup key
-  geohash5:       string?   ← required by wire corroboration heuristic
-  publishedAt:    Timestamp
+user_tokens/{userId}
+  token: string  ← FCM device token; written when app registers for push notifications
 ```
 
 ---
@@ -174,17 +166,17 @@ wire_news/{articleId}          ← written only by fetchGdeltNews CF; client rea
 
 | Function | Trigger | Purpose |
 |---|---|---|
-| `fuzzReportLocation` | `onCall` | Applies ±3km randomization to submitted lat/lng |
+| `fuzzReportLocation` | `onCall` (authenticated) | Applies ±3km randomization to submitted lat/lng |
 | `fetchGdeltNews` | `onSchedule` (every 30 min) | Fetches GDELT feed, writes to `wire_news/` |
-| `evaluateReportTrust` | `onDocumentCreated` (`reports/`) | Runs 4 heuristics (EXIF, wire news, spatial spike, impossible travel) to apply system trust scores |
-| `confirmReport` | `onCall` (authenticated) | Increments confirm vote; recalculates consensus status atomically |
-| `disputeReport` | `onCall` (authenticated) | Increments dispute vote; recalculates consensus status atomically |
+| `sendAlertNotifications` | `onDocumentCreated` (`reports/{id}`) | Queries `user_alerts` subscriptions, sends FCM push to matching users |
+| `stripExifMetadata` | `onObjectFinalized` (Storage) | Strips EXIF from uploaded media via Sharp |
+| `confirmReport` | `onCall` (authenticated) | Atomically increments `confirmCount`; flips `status` at threshold |
+| `disputeReport` | `onCall` (authenticated) | Atomically increments `disputeCount`; flips `status` at threshold |
+| `checkSpatialConflict` | `onDocumentCreated` (`reports/{id}`) | Sets `isDisputed` if spatially/temporally conflicting report exists |
+| `withdrawReport` | `onCall` (authenticated) | Deletes report document + Storage media |
 
 `fuzzReportLocation` must validate `request.auth` before processing. Unauthenticated calls → `HttpsError('unauthenticated')`.
-
-**Consensus math** (used by `confirmReport`/`disputeReport`):
-- `C_eff = confirmCount + systemConfirms`, `D_eff = disputeCount + systemDisputes`, `V = C_eff + D_eff`
-- V < 5 → `pending`; V ≥ 5 && C_eff/V ≥ 0.75 → `confirmed`; V ≥ 5 && D_eff/V ≥ 0.60 → `disputed`
+All functions deploy to `asia-southeast1` (Singapore).
 
 ---
 
@@ -258,13 +250,14 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **306 tests** across 25 test files — all pass, zero analyze issues.
+Total: **423 tests** across 34 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
 | `auth` | `auth/domain/auth_state_test.dart` | `AuthState`, `UserIdentity`, `AuthStatus` enum, `copyWith` sentinel |
 | `feed` | `feed/domain/news_item_test.dart`, `feed/presentation/feed_screen_test.dart` | `NewsItem` entity; FeedScreen loading/error/empty/loaded; all 4 filter chips |
-| `map` | `map/presentation/map_screen_test.dart` | MapScreen render + placeholder; `MapState.copyWith` sentinel |
+| `map` | `map/domain/map_filters_test.dart`, `map/data/map_report_model_test.dart`, `map/presentation/map_screen_test.dart`, `map/presentation/map_notifier_test.dart`, `map/presentation/locate_me_test.dart` | `MapFilters`/`MapTimeRange`/`MapCategory` entities; `MapReportModel.fromJson` + `toEntity` + fallbacks; MapScreen all 5 required states; `MapNotifier` all methods + `watchArea` state transitions; locate-me toggle |
+| `alerts` | `alerts/domain/save_alert_test.dart`, `alerts/presentation/alert_notifier_test.dart`, `alerts/data/fcm_token_service_test.dart` | `SaveAlert` validation + boundary values (radius 1–20); `AlertNotifier` idle/saving/saved/error + `reset()`; FCM registration success + non-blocking failure |
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |

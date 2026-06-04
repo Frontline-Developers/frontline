@@ -119,6 +119,7 @@ class ReportingDatasourceImpl implements ReportingDatasource {
       userId: userId,
       category: draft.category!,
       description: draft.description.trim(),
+      locationLabel: draft.locationLabel,
       lat: fuzzed.lat,
       lng: fuzzed.lng,
       geohash: geohash,

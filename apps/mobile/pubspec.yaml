@@ -16,7 +16,7 @@ dependencies:
   # Firebase
   firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
-  cloud_firestore: ^6.4.0
+  cloud_firestore: ^6.5.0
   firebase_storage: ^13.4.0
   cloud_functions: ^6.2.0
   firebase_app_check: ^0.4.4+1
@@ -57,6 +57,7 @@ dependencies:
   url_launcher: ^6.3.2
   crypto: ^3.0.3
   local_auth: ^2.3.0
+  firebase_messaging: ^16.3.0
   share_plus: ^10.1.4
   geocoding: ^3.0.0
 
