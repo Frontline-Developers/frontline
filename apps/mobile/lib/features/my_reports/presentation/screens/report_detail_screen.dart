@@ -1,64 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/time_utils.dart';
+import '../../../comments/presentation/providers/comments_provider.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
+import '../../../feed/presentation/providers/vote_provider.dart';
 import '../../domain/entities/my_report.dart';
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// ── Palette — mirrors reporting/presentation/screens/report_detail_screen ─────
 
-class _C {
-  static const bg = Colors.white;
-  static const surface = Color(0xFFF8F9FA);
-  static const ink = Color(0xFF212529);
-  static const inkSub = Color(0xFF495057);
-  static const inkMuted = Color(0xFF868E96);
-  static const hairline = Color(0xFFE9ECEF);
+class _P {
+  static const surface = AppColors.reportSurface;
+  static const card = AppColors.reportSurfaceCard;
+  static const raised = AppColors.reportSurfaceRaised;
   static const navy = AppColors.reportNavy;
-  static const citizen = Color(0xFFB45309);
-  static const verified = Color(0xFF1F7A3F);
-  static const verifiedBg = Color(0xFFECFDF5);
-  static const disputed = Color(0xFFB42318);
-  static const discussionAccent = Color(0xFF22C55E);
+  static const ink = AppColors.reportInk;
+  static const inkSecondary = AppColors.reportInkSecondary;
+  static const inkTertiary = AppColors.reportInkTertiary;
+  static const hairline = AppColors.reportHairline;
+  static const hairlineSoft = AppColors.reportHairlineSoft;
+  static const citizen = Color(0xFFB54708);
+  static const citizenSoft = Color(0xFFFEF3C7);
+  static const verified = AppColors.reportVerified;
+  static const disputed = AppColors.reportDisputed;
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class MyReportDetailScreen extends StatefulWidget {
+class MyReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
   final MyReport? report;
 
   const MyReportDetailScreen({super.key, required this.reportId, this.report});
 
   @override
-  State<MyReportDetailScreen> createState() => _MyReportDetailScreenState();
+  ConsumerState<MyReportDetailScreen> createState() =>
+      _MyReportDetailScreenState();
 }
 
-class _MyReportDetailScreenState extends State<MyReportDetailScreen> {
-  late final PageController _pageCtrl;
-  int _photoIndex = 0;
+class _MyReportDetailScreenState extends ConsumerState<MyReportDetailScreen> {
+  int _imageIndex = 0;
   bool _bookmarked = false;
 
   MyReport? get _report => widget.report;
 
-  @override
-  void initState() {
-    super.initState();
-    _pageCtrl = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageCtrl.dispose();
-    super.dispose();
-  }
-
-  void _goToPhoto(int i) {
-    _pageCtrl.animateToPage(
-      i,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+  Future<void> _castVote(String type) async {
+    final ds = ref.read(voteDatasourceProvider);
+    await ds.castVote(widget.reportId, type);
+    ref.invalidate(voteProvider(widget.reportId));
   }
 
   @override
@@ -66,397 +57,289 @@ class _MyReportDetailScreenState extends State<MyReportDetailScreen> {
     final report = _report;
     if (report == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          backgroundColor: _P.card,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 18, color: _P.ink),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        backgroundColor: _P.surface,
         body: const Center(child: Text('Report not found')),
       );
     }
 
-    final photos = report.photos;
+    final voteAsync = ref.watch(voteProvider(widget.reportId));
+    final userVote = voteAsync.when(
+      data: (v) => v,
+      loading: () => null,
+      error: (e, _) => null,
+    );
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: _C.bg,
-        body: Column(
-          children: [
-            // ── Pinned app bar ──────────────────────────────────────────────
-            _DetailAppBar(
-              status: report.status,
-              bookmarked: _bookmarked,
-              onBack: () => Navigator.of(context).pop(),
-              onShare: () => _showShare(context, report),
-              onBookmark: () => setState(() => _bookmarked = !_bookmarked),
-            ),
+    final commentsAsync = ref.watch(commentsStreamProvider(widget.reportId));
+    final comments = commentsAsync.when(
+      data: (c) => c,
+      loading: () => const <Comment>[],
+      error: (e, _) => const <Comment>[],
+    );
 
-            // ── Scrollable content ──────────────────────────────────────────
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
+    return Scaffold(
+      backgroundColor: _P.surface,
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _TopBar(
+                  report: report,
+                  bookmarked: _bookmarked,
+                  onBookmark: () => setState(() => _bookmarked = !_bookmarked),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 92),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Hero image (swipeable PageView)
                         _HeroSection(
-                          photos: photos,
-                          index: _photoIndex,
-                          pageCtrl: _pageCtrl,
-                          status: report.status,
-                          onPageChanged: (i) => setState(() => _photoIndex = i),
+                          report: report,
+                          imageIndex: _imageIndex,
+                          onImageTap: (i) => setState(() => _imageIndex = i),
                         ),
-
-                        // Thumbnail strip
-                        if (photos.length > 1)
-                          _ThumbnailStrip(
-                            photos: photos,
-                            selected: _photoIndex,
-                            onTap: _goToPhoto,
-                          ),
-
-                        const Divider(height: 1, color: _C.hairline),
-
-                        // Meta row
                         _MetaRow(report: report),
-
-                        // Title
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                          child: Text(
-                            report.title,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: _C.ink,
-                              height: 1.25,
-                              letterSpacing: -0.4,
-                            ),
-                          ),
+                        _TitleBody(report: report),
+                        _VerificationPanel(
+                          report: report,
+                          userVote: userVote,
+                          onConfirm: () => _castVote('confirm'),
+                          onFlag: () => _castVote('dispute'),
                         ),
-
-                        // Body
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                          child: Text(
-                            report.body,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: _C.inkSub,
-                              height: 1.65,
-                            ),
-                          ),
-                        ),
-
-                        const Divider(height: 1, color: _C.hairline),
-
-                        // Discussion preview
-                        _DiscussionSection(report: report),
-
-                        const SizedBox(height: 100),
+                        _DiscussionSection(report: report, comments: comments),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // ── Bottom bar ──────────────────────────────────────────────────
-            _BottomBar(report: report),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showShare(BuildContext ctx, MyReport report) {
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _ShareSheet(report: report),
-    );
-  }
-}
-
-// ── App bar ───────────────────────────────────────────────────────────────────
-
-class _DetailAppBar extends StatelessWidget {
-  final String status;
-  final bool bookmarked;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onBookmark;
-
-  const _DetailAppBar({
-    required this.status,
-    required this.bookmarked,
-    required this.onBack,
-    required this.onShare,
-    required this.onBookmark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            _CircleBtn(icon: Icons.arrow_back, onTap: onBack),
-            const SizedBox(width: 12),
-            Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: _C.citizen,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'CITIZEN REPORT',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: _C.citizen,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const Spacer(),
-            _CircleBtn(icon: Icons.share_outlined, onTap: onShare),
-            const SizedBox(width: 8),
-            _CircleBtn(
-              icon: bookmarked ? Icons.bookmark : Icons.bookmark_border,
-              iconColor: bookmarked ? _C.navy : null,
-              onTap: onBookmark,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CircleBtn extends StatelessWidget {
-  final IconData icon;
-  final Color? iconColor;
-  final VoidCallback onTap;
-  const _CircleBtn({required this.icon, this.iconColor, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _C.surface,
-          border: Border.all(color: _C.hairline),
-        ),
-        child: Icon(icon, size: 18, color: iconColor ?? _C.ink),
-      ),
-    );
-  }
-}
-
-// ── Hero section (swipeable) ──────────────────────────────────────────────────
-
-class _HeroSection extends StatelessWidget {
-  final List<String> photos;
-  final int index;
-  final PageController pageCtrl;
-  final String status;
-  final void Function(int) onPageChanged;
-
-  const _HeroSection({
-    required this.photos,
-    required this.index,
-    required this.pageCtrl,
-    required this.status,
-    required this.onPageChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 10,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Swipeable photos
-          photos.isNotEmpty
-              ? PageView.builder(
-                  controller: pageCtrl,
-                  onPageChanged: onPageChanged,
-                  itemCount: photos.length,
-                  itemBuilder: (ctx, i) => Image.network(
-                    photos[i],
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, e, s) => const _HeroPlaceholder(),
-                  ),
-                )
-              : const _HeroPlaceholder(),
-
-          // Status badge — top left
-          Positioned(top: 12, left: 12, child: _StatusBadge(status: status)),
-
-          // Photo counter — bottom right
-          if (photos.length > 1)
-            Positioned(
-              bottom: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.photo_library_outlined,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${index + 1} / ${photos.length}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _ActionBar(reportId: widget.reportId, title: report.title),
+          ),
         ],
       ),
     );
   }
 }
 
-class _HeroPlaceholder extends StatelessWidget {
-  const _HeroPlaceholder();
+// ── Top bar ───────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  final MyReport report;
+  final bool bookmarked;
+  final VoidCallback onBookmark;
+
+  const _TopBar({
+    required this.report,
+    required this.bookmarked,
+    required this.onBookmark,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFCED4DA),
-      child: const Center(
-        child: Icon(Icons.image_outlined, color: Color(0xFF868E96), size: 48),
+      padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+      decoration: BoxDecoration(
+        color: _P.card,
+        border: Border(bottom: BorderSide(color: _P.hairlineSoft, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 18),
+            onPressed: () => context.pop(),
+            color: _P.ink,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          ),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: _P.citizen,
+            ),
+          ),
+          const SizedBox(width: 5),
+          const Expanded(
+            child: Text(
+              'CITIZEN REPORT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _P.inkSecondary,
+                letterSpacing: 0.4,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined, size: 18),
+            onPressed: () {},
+            color: _P.inkSecondary,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
+          ),
+          IconButton(
+            icon: Icon(
+              bookmarked ? Icons.bookmark : Icons.bookmark_border,
+              size: 18,
+            ),
+            onPressed: onBookmark,
+            color: bookmarked ? _P.navy : _P.inkSecondary,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Thumbnail strip ───────────────────────────────────────────────────────────
+// ── Hero section ──────────────────────────────────────────────────────────────
 
-class _ThumbnailStrip extends StatelessWidget {
-  final List<String> photos;
+class _HeroSection extends StatelessWidget {
+  final MyReport report;
+  final int imageIndex;
+  final void Function(int) onImageTap;
+
+  const _HeroSection({
+    required this.report,
+    required this.imageIndex,
+    required this.onImageTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = report.photos;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              photos.isNotEmpty
+                  ? Image.network(
+                      photos[imageIndex.clamp(0, photos.length - 1)],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, err, _) =>
+                          Container(color: const Color(0xFF5C3317)),
+                    )
+                  : Container(color: const Color(0xFF5C3317)),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Wrap(
+                  spacing: 6,
+                  children: [
+                    _Badge(
+                      label: 'ON THE GROUND',
+                      bgColor: _P.citizenSoft,
+                      textColor: _P.citizen,
+                    ),
+                    if (report.category.isNotEmpty)
+                      _Badge(
+                        label: report.category.toUpperCase(),
+                        bgColor: _categoryBg(report.category),
+                        textColor: _categoryFg(report.category),
+                      ),
+                    _StatusBadge(status: report.status),
+                  ],
+                ),
+              ),
+              if (photos.length > 1)
+                Positioned(
+                  bottom: 10,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${imageIndex + 1} / ${photos.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (photos.length > 1)
+          _ThumbnailRow(urls: photos, selected: imageIndex, onTap: onImageTap),
+      ],
+    );
+  }
+}
+
+class _ThumbnailRow extends StatelessWidget {
+  final List<String> urls;
   final int selected;
   final void Function(int) onTap;
 
-  const _ThumbnailStrip({
-    required this.photos,
+  const _ThumbnailRow({
+    required this.urls,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _C.bg,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(
-        children: [
-          for (var i = 0; i < photos.length; i++) ...[
-            GestureDetector(
-              onTap: () => onTap(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: i == selected ? _C.navy : Colors.transparent,
-                    width: 2.5,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    photos[i],
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, e, s) => Container(color: _C.hairline),
-                  ),
+    return SizedBox(
+      height: 64,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        itemCount: urls.length,
+        separatorBuilder: (_, i) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final active = i == selected;
+          return GestureDetector(
+            onTap: () => onTap(i),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: active ? _P.navy : _P.hairline,
+                  width: active ? 2 : 1,
                 ),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.network(
+                urls[i],
+                fit: BoxFit.cover,
+                errorBuilder: (context, err, _) =>
+                    Container(color: const Color(0xFF5C3317)),
+              ),
             ),
-            if (i < photos.length - 1) const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final (icon, label, bg, fg) = switch (status) {
-      'verified' => (
-        Icons.check_circle_outline,
-        'VERIFIED',
-        _C.verifiedBg,
-        _C.verified,
-      ),
-      'disputed' => (
-        Icons.error_outline,
-        'DISPUTED',
-        const Color(0xFFFEE2E2),
-        _C.disputed,
-      ),
-      _ => (
-        Icons.schedule_outlined,
-        'PENDING',
-        const Color(0xFFFEF3C7),
-        const Color(0xFFB45309),
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: fg),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: fg,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -471,135 +354,62 @@ class _MetaRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Row(
         children: [
           if (report.location.isNotEmpty) ...[
-            const Icon(
-              Icons.location_on_outlined,
-              size: 14,
-              color: _C.inkMuted,
-            ),
+            const Icon(Icons.location_on, size: 13, color: _P.inkTertiary),
             const SizedBox(width: 3),
             Text(
-              report.location,
-              style: const TextStyle(fontSize: 13, color: _C.inkMuted),
+              '${report.location} · ${timeAgo(report.submittedAt)}',
+              style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6),
-              child: Text('·', style: TextStyle(color: _C.inkMuted)),
+          ] else ...[
+            const Icon(Icons.access_time, size: 13, color: _P.inkTertiary),
+            const SizedBox(width: 3),
+            Text(
+              timeAgo(report.submittedAt),
+              style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
             ),
           ],
-          const Icon(Icons.schedule_outlined, size: 14, color: _C.inkMuted),
         ],
       ),
     );
   }
 }
 
-// ── Discussion preview ────────────────────────────────────────────────────────
+// ── Title + body ──────────────────────────────────────────────────────────────
 
-class _DiscussionSection extends StatelessWidget {
+class _TitleBody extends StatelessWidget {
   final MyReport report;
-  const _DiscussionSection({required this.report});
+  const _TitleBody({required this.report});
 
   @override
   Widget build(BuildContext context) {
-    final hasPreview = (report.previewCommentContent ?? '').isNotEmpty;
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text(
-                'DISCUSSION',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _C.inkMuted,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const Spacer(),
-              if (report.commentCount > 0)
-                GestureDetector(
-                  onTap: () => showCommentsSheet(
-                    context,
-                    reportId: report.id,
-                    title: report.title,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View all ${report.commentCount}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: _C.navy,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Icon(Icons.arrow_forward, size: 14, color: _C.navy),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          if (hasPreview) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _C.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: const Border(
-                  left: BorderSide(color: _C.discussionAccent, width: 3),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        report.previewCommentToken ?? '',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _C.ink,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _timeAgo(report.previewCommentAt ?? report.submittedAt),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: _C.inkMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    report.previewCommentContent ?? '',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: _C.inkSub,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            report.title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              height: 1.22,
+              letterSpacing: -0.4,
             ),
-          ] else ...[
-            const SizedBox(height: 12),
-            const Text(
-              'No discussion yet. Be the first to add context.',
-              style: TextStyle(fontSize: 13, color: _C.inkMuted),
+          ),
+          if (report.body.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              report.body,
+              style: const TextStyle(
+                fontSize: 15,
+                color: _P.inkSecondary,
+                height: 1.7,
+              ),
             ),
           ],
         ],
@@ -608,158 +418,117 @@ class _DiscussionSection extends StatelessWidget {
   }
 }
 
-// ── Bottom bar ────────────────────────────────────────────────────────────────
+// ── Verification panel ────────────────────────────────────────────────────────
 
-class _BottomBar extends StatelessWidget {
+class _VerificationPanel extends StatelessWidget {
   final MyReport report;
-  const _BottomBar({required this.report});
+  final String? userVote;
+  final VoidCallback onConfirm;
+  final VoidCallback onFlag;
+
+  const _VerificationPanel({
+    required this.report,
+    required this.userVote,
+    required this.onConfirm,
+    required this.onFlag,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
-      decoration: const BoxDecoration(
-        color: _C.bg,
-        border: Border(top: BorderSide(color: _C.hairline)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => showCommentsSheet(
-                context,
-                reportId: report.id,
-                title: report.title,
-              ),
-              icon: const Icon(Icons.chat_bubble_outline, size: 17),
-              label: const Text(
-                'Comment',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _C.ink,
-                side: const BorderSide(color: Color(0xFFDEE2E6)),
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () {
-                Clipboard.setData(
-                  ClipboardData(
-                    text: 'https://frontline.app/report/${report.id}',
-                  ),
-                );
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Link copied')));
-              },
-              icon: const Icon(Icons.share_outlined, size: 17),
-              label: const Text(
-                'Share',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: _C.navy,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final total = report.confirms + report.flags;
+    final ratio = total == 0 ? 0.5 : report.confirms / total;
 
-// ── Share sheet ───────────────────────────────────────────────────────────────
-
-class _ShareSheet extends StatelessWidget {
-  final MyReport report;
-  const _ShareSheet({required this.report});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _P.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _P.hairline),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text(
-                  'Share report',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: _C.ink,
+                const Expanded(
+                  child: Text(
+                    'Community verification',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _P.ink,
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: _C.inkMuted, size: 20),
+                Text(
+                  '$total reviews',
+                  style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: SizedBox(
+                height: 4,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: (ratio * 100).round(),
+                      child: Container(color: _P.verified),
+                    ),
+                    Expanded(
+                      flex: 100 - (ratio * 100).round(),
+                      child: Container(color: _P.disputed),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 6),
-            Text(
-              report.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: _C.inkMuted),
-            ),
-            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _SBtn(
-                  icon: Icons.link,
-                  label: 'Copy link',
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: 'https://frontline.app/report/${report.id}',
-                      ),
-                    );
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Link copied')),
-                    );
-                  },
+                Text(
+                  '${report.confirms} verified',
+                  style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
                 ),
-                _SBtn(
-                  icon: Icons.send_outlined,
-                  label: 'Telegram',
-                  onTap: () => Navigator.pop(context),
-                ),
-                _SBtn(
-                  icon: Icons.message_outlined,
-                  label: 'WhatsApp',
-                  onTap: () => Navigator.pop(context),
-                ),
-                _SBtn(
-                  icon: Icons.more_horiz,
-                  label: 'More',
-                  onTap: () => Navigator.pop(context),
+                const Spacer(),
+                Text(
+                  '${report.flags} flagged',
+                  style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'The shared link only shows the public report — your identity remains anonymous.',
-              style: TextStyle(fontSize: 11, color: _C.inkMuted, height: 1.5),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _VoteButton(
+                    label: 'Confirm',
+                    icon: userVote == 'confirm'
+                        ? Icons.check_circle
+                        : Icons.check_circle_outline,
+                    active: userVote == 'confirm',
+                    activeColor: _P.verified,
+                    onTap: onConfirm,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _VoteButton(
+                    label: 'Flag',
+                    icon: userVote == 'dispute'
+                        ? Icons.flag
+                        : Icons.flag_outlined,
+                    active: userVote == 'dispute',
+                    activeColor: _P.disputed,
+                    onTap: onFlag,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -768,43 +537,386 @@ class _ShareSheet extends StatelessWidget {
   }
 }
 
-class _SBtn extends StatelessWidget {
-  final IconData icon;
+class _VoteButton extends StatelessWidget {
   final String label;
+  final IconData icon;
+  final bool active;
+  final Color activeColor;
   final VoidCallback onTap;
-  const _SBtn({required this.icon, required this.label, required this.onTap});
+
+  const _VoteButton({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.activeColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: _C.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _C.hairline),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: active ? activeColor : _P.raised,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: active ? activeColor : _P.hairline),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 17,
+              color: active ? Colors.white : _P.inkSecondary,
             ),
-            child: Icon(icon, color: _C.inkMuted, size: 22),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : _P.inkSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Discussion section ────────────────────────────────────────────────────────
+
+class _DiscussionSection extends StatelessWidget {
+  final MyReport report;
+  final List<Comment> comments;
+
+  const _DiscussionSection({required this.report, required this.comments});
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = comments.isNotEmpty ? comments.first : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Text(
+                  'DISCUSSION',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: _P.inkTertiary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const Spacer(),
+                if (comments.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => showCommentsSheet(
+                      context,
+                      reportId: report.id,
+                      title: report.title,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'View all ${comments.length}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: _P.navy,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 13,
+                          color: _P.navy,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 11, color: _C.inkMuted)),
+          const SizedBox(height: 10),
+          if (preview != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GestureDetector(
+                onTap: () => showCommentsSheet(
+                  context,
+                  reportId: report.id,
+                  title: report.title,
+                ),
+                child: _CommentPreviewCard(comment: preview),
+              ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'No comments yet',
+                style: TextStyle(fontSize: 13, color: _P.inkTertiary),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+class _CommentPreviewCard extends StatelessWidget {
+  final Comment comment;
+  const _CommentPreviewCard({required this.comment});
 
-String _timeAgo(DateTime dt) {
-  final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  return '${diff.inDays}d ago';
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = switch (comment.type) {
+      CommentType.confirm => _P.verified,
+      CommentType.dispute => _P.disputed,
+      CommentType.context => _P.inkTertiary,
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _P.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _P.hairlineSoft),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'token #${comment.authorToken.substring(0, comment.authorToken.length.clamp(0, 4))}',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: _P.inkSecondary,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          timeAgo(comment.createdAt),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: _P.inkTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      comment.text,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        color: _P.ink,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+// ── Bottom action bar ─────────────────────────────────────────────────────────
+
+class _ActionBar extends StatelessWidget {
+  final String reportId;
+  final String title;
+
+  const _ActionBar({required this.reportId, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
+      decoration: BoxDecoration(
+        color: _P.card,
+        border: Border(top: BorderSide(color: _P.hairlineSoft, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _BarButton(
+              label: 'Comment',
+              icon: Icons.chat_bubble_outline,
+              outlined: true,
+              onTap: () =>
+                  showCommentsSheet(context, reportId: reportId, title: title),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _BarButton(
+              label: 'Share',
+              icon: Icons.share_outlined,
+              outlined: false,
+              onTap: () {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool outlined;
+  final VoidCallback onTap;
+
+  const _BarButton({
+    required this.label,
+    required this.icon,
+    required this.outlined,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: outlined ? Colors.transparent : _P.navy,
+          borderRadius: BorderRadius.circular(12),
+          border: outlined ? Border.all(color: _P.hairline) : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: outlined ? _P.inkSecondary : Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: outlined ? _P.inkSecondary : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+
+  const _Badge({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, bg, fg) = switch (status) {
+      'verified' => (
+        'VERIFIED',
+        const Color(0xFFDCFCE7),
+        AppColors.reportVerified,
+      ),
+      'disputed' => (
+        'DISPUTED',
+        const Color(0xFFFEE2E2),
+        AppColors.reportDisputed,
+      ),
+      _ => ('PENDING', const Color(0xFFF3F4F6), const Color(0xFF6B7280)),
+    };
+    return _Badge(label: label, bgColor: bg, textColor: fg);
+  }
+}
+
+Color _categoryBg(String category) => switch (category) {
+  'combat' => const Color(0xFFFEE2E2),
+  'aid' => const Color(0xFFD1FAE5),
+  'alert' => const Color(0xFFFEF3C7),
+  'displaced' => const Color(0xFFF3E8FF),
+  'infra' => const Color(0xFFDBEAFE),
+  _ => const Color(0xFFF3F4F6),
+};
+
+Color _categoryFg(String category) => switch (category) {
+  'combat' => AppColors.reportCatCombat,
+  'aid' => AppColors.reportCatAid,
+  'alert' => AppColors.reportCatAlert,
+  'displaced' => AppColors.reportCatDisplaced,
+  'infra' => AppColors.reportCatInfra,
+  _ => AppColors.reportCatOther,
+};

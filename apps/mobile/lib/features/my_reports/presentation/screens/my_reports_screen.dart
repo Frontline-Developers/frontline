@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../comments/presentation/providers/comments_provider.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/my_report.dart';
 import '../providers/my_reports_provider.dart';
@@ -248,12 +249,6 @@ class _AggregateStats extends StatelessWidget {
               _StatCol(
                 value: _compact(state.totalConfirms),
                 label: 'CONFIRMS',
-                color: _C.ink,
-              ),
-              const SizedBox(width: 24),
-              _StatCol(
-                value: _compact(state.totalViews),
-                label: 'TOTAL VIEWS',
                 color: _C.ink,
               ),
             ],
@@ -826,7 +821,7 @@ class _VerifyMeter extends StatelessWidget {
 
 // ── Action row ────────────────────────────────────────────────────────────────
 
-class _ActionRow extends StatelessWidget {
+class _ActionRow extends ConsumerWidget {
   final MyReport report;
   final VoidCallback onComment;
   final VoidCallback onShare;
@@ -838,15 +833,20 @@ class _ActionRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Read live comment count from Firestore so it's always accurate,
+    // even if the denormalized commentCount on the report doc is stale.
+    final liveCount = ref
+        .watch(commentsStreamProvider(report.id))
+        .when(
+          data: (c) => c.length,
+          loading: () => report.commentCount,
+          error: (e, s) => report.commentCount,
+        );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.visibility_outlined, size: 13, color: _C.inkMuted),
-          const SizedBox(width: 3),
-          _MetricText(number: _commaNum(report.views), label: ' views'),
-          const SizedBox(width: 10),
           const Icon(Icons.check_circle_outline, size: 13, color: _C.inkMuted),
           const SizedBox(width: 3),
           _MetricText(number: _commaNum(report.confirms), label: ' confirms'),
@@ -876,7 +876,7 @@ class _ActionRow extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${report.commentCount}',
+                    '$liveCount',
                     style: const TextStyle(
                       fontSize: 12,
                       color: _C.navy,
