@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../data/datasources/map_datasource.dart';
+import '../../data/datasources/mock_map_datasource.dart';
 import '../../data/repositories/map_repository_impl.dart';
 import '../../domain/entities/map_filters.dart';
 import '../../domain/entities/map_report.dart';
@@ -65,7 +67,11 @@ const _sentinel = Object();
 // DI
 // ---------------------------------------------------------------------------
 
-final _mapDatasourceProvider = Provider((_) => MapDatasourceImpl());
+// In debug builds, use mock data so the app runs without Firebase.
+// Flip to MapDatasourceImpl() when the emulator / prod is ready.
+final _mapDatasourceProvider = Provider<MapDatasource>(
+  (_) => kDebugMode ? MockMapDatasource() : MapDatasourceImpl(),
+);
 final _mapRepositoryProvider = Provider(
   (ref) => MapRepositoryImpl(ref.watch(_mapDatasourceProvider)),
 );
@@ -106,8 +112,7 @@ class MapNotifier extends Notifier<MapState> {
   void updateFilters(MapFilters filters) =>
       state = state.copyWith(filters: filters);
 
-  void resetFilters() =>
-      state = state.copyWith(filters: const MapFilters());
+  void resetFilters() => state = state.copyWith(filters: const MapFilters());
 
   void toggleCityLabels() =>
       state = state.copyWith(showCityLabels: !state.showCityLabels);
