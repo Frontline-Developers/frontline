@@ -987,13 +987,21 @@ class _SetAlertSheetState extends ConsumerState<_SetAlertSheet> {
               onPressed: alertState.status == AlertStatus.saving
                   ? null
                   : () async {
+                      final uid = ref.read(authNotifierProvider).user?.uid;
+                      if (uid == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Still signing in — please try again in a moment.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       final enabledCategories = _toggles.entries
                           .where((e) => e.value)
                           .map((e) => e.key.name)
                           .toList();
-                      final uid =
-                          ref.read(authNotifierProvider).user?.uid ??
-                          'anonymous';
                       await ref
                           .read(alertNotifierProvider.notifier)
                           .save(

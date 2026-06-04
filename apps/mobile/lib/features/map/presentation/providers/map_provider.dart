@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../data/datasources/map_datasource.dart';
@@ -98,13 +100,19 @@ final mapNotifierProvider = NotifierProvider<MapNotifier, MapState>(
 );
 
 class MapNotifier extends Notifier<MapState> {
+  StreamSubscription<List<MapReport>>? _areaSub;
+
   @override
-  MapState build() => const MapState();
+  MapState build() {
+    ref.onDispose(() => _areaSub?.cancel());
+    return const MapState();
+  }
 
   void watchArea(double lat, double lng, double radiusKm) {
+    _areaSub?.cancel();
     state = state.copyWith(isLoading: true, error: null);
     // Fetch all data; filtering is applied client-side so filter changes are instant.
-    ref
+    _areaSub = ref
         .read(_mapRepositoryProvider)
         .watchReportsNear(
           lat,

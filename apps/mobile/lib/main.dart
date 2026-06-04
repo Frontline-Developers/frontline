@@ -38,10 +38,17 @@ Future<void> main() async {
     try {
       await FirebaseAuth.instance.signInAnonymously();
     } catch (e) {
-      // Auth failure (e.g. no network on cold start) is non-fatal — the app
-      // renders but Firestore reads will fail with permission-denied until the
-      // user comes online and the sign-in retries via AuthStateChanges.
       debugPrint('Anonymous sign-in failed: $e');
+      // Schedule a single retry after a brief delay — covers the common case
+      // where the network is not ready at cold start (e.g. app opens before
+      // connectivity is fully established).
+      Future.delayed(const Duration(seconds: 5), () async {
+        if (FirebaseAuth.instance.currentUser == null) {
+          try {
+            await FirebaseAuth.instance.signInAnonymously();
+          } catch (_) {}
+        }
+      });
     }
   }
 
@@ -55,21 +62,27 @@ class FrontlineApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pin = ref.watch(pinNotifierProvider);
 
-    if (pin.status != PinStatus.unlocked) {
-      return MaterialApp(
-        title: 'Frontline',
-        theme: AppTheme.darkTheme,
-        debugShowCheckedModeBanner: false,
-        home: const PinScreen(),
-      );
-    }
-
+    // Always use a single MaterialApp.router so the Flutter engine view is
+    // never disposed and recreated on PIN unlock (which causes an
+    // "Trying to render a disposed EngineFlutterView" assertion on web).
+    // The PIN screen is overlaid via the builder callback instead.
     return MaterialApp.router(
       title: 'Frontline',
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
       scrollBehavior: _AppScrollBehavior(),
+      builder: (context, child) {
+        // Always keep child (GoRouter's navigator) in the tree so its
+        // GlobalKey is never orphaned. PinScreen is stacked on top when
+        // locked — removing it on unlock avoids the duplicate-key crash.
+        return Stack(
+          children: [
+            child ?? const SizedBox.shrink(),
+            if (pin.status != PinStatus.unlocked) const PinScreen(),
+          ],
+        );
+      },
     );
   }
 }

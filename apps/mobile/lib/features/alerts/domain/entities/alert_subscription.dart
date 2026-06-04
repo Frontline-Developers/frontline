@@ -1,3 +1,14 @@
+/// Thrown when saving an alert subscription fails for a known reason.
+/// Carries a user-readable message so the presentation layer never needs
+/// to inspect Firebase error codes directly.
+class AlertSaveException implements Exception {
+  final String message;
+  const AlertSaveException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Pure Dart — zero Flutter/Firebase imports.
 class AlertSubscription {
   final String id;

@@ -5,5 +5,6 @@ const kReportTokensStorageKey = 'frontline_report_tokens';
 
 // PIN lock screen keys.
 const kPinHashStorageKey = 'frontline_pin_hash';
+const kPinSaltStorageKey = 'frontline_pin_salt';
 const kAppSetupCompleteKey = 'frontline_setup_complete';
 const kBiometricEnabledKey = 'frontline_biometric_enabled';

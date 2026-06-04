@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/reporting_datasource.dart';
@@ -143,7 +142,10 @@ class ReportingNotifier extends Notifier<ReportingState> {
         displayToken: result.displayToken,
         reportId: result.reportId,
       );
-    } catch (e) {
+    } catch (e, st) {
+      // Log the real error so it's visible in the console during development.
+      // The user-facing message stays generic to avoid leaking internal details.
+      debugPrint('Report submit failed: $e\n$st');
       state = state.copyWith(
         stage: ReportingStage.evidence,
         error: 'Submit failed. Please try again.',

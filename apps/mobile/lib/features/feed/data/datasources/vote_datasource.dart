@@ -90,12 +90,17 @@ class VoteDatasourceImpl implements VoteDatasource {
   Stream<VoteCounts> watchVoteCounts(String reportId) => FirebaseFirestore
       .instance
       .collection('reports')
-      .doc(reportId)
+      // Use a list query (allow list) rather than .doc().snapshots() (allow get),
+      // because get is restricted to the report owner for privacy.
+      .where(FieldPath.documentId, isEqualTo: reportId)
+      .limit(1)
       .snapshots()
-      .map(
-        (snap) => (
-          confirm: (snap.data()?['confirmCount'] as int?) ?? 0,
-          dispute: (snap.data()?['disputeCount'] as int?) ?? 0,
-        ),
-      );
+      .map((snap) {
+        if (snap.docs.isEmpty) return (confirm: 0, dispute: 0);
+        final data = snap.docs.first.data();
+        return (
+          confirm: (data['confirmCount'] as int?) ?? 0,
+          dispute: (data['disputeCount'] as int?) ?? 0,
+        );
+      });
 }
