@@ -24,6 +24,22 @@
         { "fieldPath": "geohash5",    "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "wire_news",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "themes",      "arrayConfig": "CONTAINS" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wire_news",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "locations",   "arrayConfig": "CONTAINS" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
