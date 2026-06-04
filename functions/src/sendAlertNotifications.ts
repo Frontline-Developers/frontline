@@ -31,33 +31,52 @@ export const sendAlertNotifications = onDocumentCreated(
     // Collect all subscriptions across all users.
     const alertsSnap = await db.collectionGroup("subscriptions").get();
 
-    const sends: Promise<void>[] = [];
+    // Filter to subscriptions that match category + radius before any I/O.
+    type SubData = {
+      userId: string;
+      categories: string[];
+      lat: number;
+      lng: number;
+      radiusKm: number;
+      locationLabel: string;
+    };
 
-    for (const subDoc of alertsSnap.docs) {
-      const sub = subDoc.data() as {
-        userId: string;
-        categories: string[];
-        lat: number;
-        lng: number;
-        radiusKm: number;
-        locationLabel: string;
-      };
-
-      // 1. Category must match.
-      if (!sub.categories.includes(category)) continue;
-
-      // 2. Report must be within radiusKm of the subscription centre.
+    const matched = alertsSnap.docs.filter((doc) => {
+      const sub = doc.data() as SubData;
+      if (!sub.categories.includes(category)) return false;
       const distKm = _haversineKm(
         sub.lat,
         sub.lng,
         location.latitude,
         location.longitude,
       );
-      if (distKm > sub.radiusKm) continue;
+      return distKm <= sub.radiusKm;
+    });
 
-      // 3. Look up the user's FCM token.
-      const tokenDoc = await db.doc(`user_tokens/${sub.userId}`).get();
-      const fcmToken = tokenDoc.data()?.token as string | undefined;
+    if (matched.length === 0) {
+      logger.info(
+        `No matching subscriptions for report ${event.params.reportId}`,
+      );
+      return;
+    }
+
+    // Fetch all FCM tokens in parallel.
+    const tokenDocs = await Promise.all(
+      matched.map((doc) =>
+        db.doc(`user_tokens/${(doc.data() as SubData).userId}`).get(),
+      ),
+    );
+
+    const bodyText =
+      description && description.length > 120
+        ? `${description.slice(0, 117)}...`
+        : (description ?? "");
+
+    const sends: Promise<void>[] = [];
+
+    for (let i = 0; i < matched.length; i++) {
+      const sub = matched[i].data() as SubData;
+      const fcmToken = tokenDocs[i].data()?.token as string | undefined;
       if (!fcmToken) continue;
 
       const categoryLabel = _categoryLabel(category);
@@ -67,7 +86,7 @@ export const sendAlertNotifications = onDocumentCreated(
             token: fcmToken,
             notification: {
               title: `${categoryLabel} near ${sub.locationLabel}`,
-              body: description?.slice(0, 120) ?? categoryLabel,
+              body: bodyText || categoryLabel,
             },
             data: {
               reportId: event.params.reportId,
