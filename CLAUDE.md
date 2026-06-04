@@ -121,7 +121,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 reports/{reportId}
   userId:               string   ← anonymous Firebase UID
   location:             GeoPoint ← fuzzed by fuzzReportLocation CF (never raw)
-  geohash:              string   ← GeoFire geohash of fuzzed location (geoflutterfire_plus)
+  geohash:              map      ← {geohash: string, geopoint: GeoPoint} — nested map required by geoflutterfire_plus subscribeWithin
   category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
   description:          string
   locationLabel:        string   ← city/area name for map clustering (e.g. 'Kyiv')

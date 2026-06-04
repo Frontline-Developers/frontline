@@ -45,7 +45,10 @@ class ReportModel {
     'description': description,
     'locationLabel': locationLabel,
     'location': GeoPoint(lat, lng),
-    if (geohash != null) 'geohash': geohash,
+    // geoflutterfire_plus expects a nested map {geohash, geopoint} at this
+    // field, not a flat string — its internal query is orderBy('geohash.geohash').
+    if (geohash != null)
+      'geohash': {'geohash': geohash, 'geopoint': GeoPoint(lat, lng)},
     'mediaUrls': mediaUrls,
     'status': status.name,
     'confirmCount': confirmCount,
