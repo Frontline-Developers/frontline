@@ -24,13 +24,15 @@ class MapReportModel {
 
   factory MapReportModel.fromJson(String id, Map<String, dynamic> json) {
     final ts = json['createdAt'] as Timestamp;
-    final gp = json['geo'] as GeoPoint;
+    final gp = json['location'] as GeoPoint;
     return MapReportModel(
       id: id,
       lat: gp.latitude,
       lng: gp.longitude,
       category: json['category'] as String? ?? 'other',
-      title: json['title'] as String? ?? '',
+      // Firestore schema uses 'description'; fallback to 'title' for mock data.
+      title: json['description'] as String? ?? json['title'] as String? ?? '',
+      // locationLabel is not in Firestore schema — use empty string fallback.
       locationLabel: json['locationLabel'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
       createdAt: ts.toDate(),

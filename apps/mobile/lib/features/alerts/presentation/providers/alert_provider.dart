@@ -1,9 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/alert_datasource_impl.dart';
 import '../../data/repositories/alert_repository_impl.dart';
+import '../../data/services/fcm_token_service.dart';
 import '../../domain/usecases/save_alert.dart';
+
+export '../../data/services/fcm_token_service.dart' show FcmTokenService;
 
 // ---------------------------------------------------------------------------
 // State
@@ -39,6 +43,14 @@ final _alertRepositoryProvider = Provider(
   (ref) => AlertRepositoryImpl(ref.watch(_alertDatasourceProvider)),
 );
 
+/// Exported so tests can override with a fake implementation.
+final fcmTokenServiceProvider = Provider<FcmTokenService>(
+  (_) => FcmTokenServiceImpl(
+    FirebaseMessaging.instance,
+    FirebaseFirestore.instance,
+  ),
+);
+
 // ---------------------------------------------------------------------------
 // Notifier
 // ---------------------------------------------------------------------------
@@ -61,6 +73,7 @@ class AlertNotifier extends Notifier<AlertState> {
   }) async {
     state = state.copyWith(status: AlertStatus.saving, error: null);
     try {
+      // 1. Save subscription to Firestore.
       await SaveAlert(ref.read(_alertRepositoryProvider))(
         userId: userId,
         locationLabel: locationLabel,
@@ -69,6 +82,14 @@ class AlertNotifier extends Notifier<AlertState> {
         radiusKm: radiusKm,
         categories: categories,
       );
+
+      // 2. Register FCM token — best-effort; never blocks the save.
+      try {
+        await ref.read(fcmTokenServiceProvider).registerToken(userId: userId);
+      } catch (_) {
+        // FCM failure is non-fatal: subscription is already saved.
+      }
+
       state = state.copyWith(status: AlertStatus.saved, error: null);
     } catch (e) {
       state = state.copyWith(status: AlertStatus.error, error: e.toString());

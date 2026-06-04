@@ -156,43 +156,21 @@ class MapNotifier extends Notifier<MapState> {
       return;
     }
 
-    final location = await ref
-        .read(locationServiceProvider)
-        .getCurrentLocation();
+    final svc = ref.read(locationServiceProvider);
+    final location = await svc.getCurrentLocation();
     if (location == null) return;
 
-    final city = _nearestCity(location.latitude, location.longitude);
+    // Reverse-geocode to a real city name — works worldwide.
+    final rawCity = await svc.getCityName(
+      location.latitude,
+      location.longitude,
+    );
+    final city = (rawCity?.isNotEmpty == true) ? rawCity! : 'Your location';
+
     state = state.copyWith(
       userLocation: location,
       showUserMarker: true,
       locationCity: city,
     );
-  }
-
-  /// Returns the name of the nearest known Ukrainian city to [lat]/[lng].
-  static String _nearestCity(double lat, double lng) {
-    const cities = [
-      ('Kyiv', 50.45, 30.52),
-      ('Kharkiv', 49.99, 36.23),
-      ('Sumy', 50.91, 34.80),
-      ('Bakhmut', 48.60, 38.00),
-      ('Zaporizhzhia', 47.83, 35.16),
-      ('Odesa', 46.48, 30.72),
-      ('Mariupol', 47.10, 37.54),
-      ('Dnipro', 48.46, 35.04),
-      ('Kherson', 46.64, 32.62),
-      ('Lviv', 49.84, 24.03),
-    ];
-
-    double minDist = double.infinity;
-    String nearest = cities.first.$1;
-    for (final (name, clat, clng) in cities) {
-      final d = (lat - clat) * (lat - clat) + (lng - clng) * (lng - clng);
-      if (d < minDist) {
-        minDist = d;
-        nearest = name;
-      }
-    }
-    return nearest;
   }
 }

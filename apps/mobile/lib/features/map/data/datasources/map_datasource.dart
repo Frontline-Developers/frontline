@@ -17,7 +17,7 @@ class MapDatasourceImpl implements MapDatasource {
   final FirebaseFirestore _firestore;
 
   MapDatasourceImpl([FirebaseFirestore? firestore])
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Stream<List<MapReport>> watchReportsNear(
@@ -32,7 +32,7 @@ class MapDatasourceImpl implements MapDatasource {
           center: GeoFirePoint(GeoPoint(lat, lng)),
           radiusInKm: radiusKm,
           field: 'geohash',
-          geopointFrom: (data) => data['geo'] as GeoPoint,
+          geopointFrom: (data) => data['location'] as GeoPoint,
           strictMode: true,
         )
         .map(

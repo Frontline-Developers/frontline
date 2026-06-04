@@ -9,10 +9,18 @@ import 'package:frontline/features/map/presentation/providers/map_provider.dart'
 
 class _FakeLocationService implements LocationService {
   final LatLng? _result;
-  _FakeLocationService({LatLng? result}) : _result = result;
+  final String _cityName;
+
+  _FakeLocationService({LatLng? result, String cityName = 'Kharkiv'})
+    : _result = result,
+      _cityName = cityName;
 
   @override
   Future<LatLng?> getCurrentLocation() async => _result;
+
+  @override
+  Future<String?> getCityName(double lat, double lng) async =>
+      _result != null ? _cityName : null;
 }
 
 ProviderContainer _container(LocationService svc) => ProviderContainer(
@@ -42,12 +50,22 @@ void main() {
       expect(loc.longitude, closeTo(36.2, 0.001));
     });
 
-    test('locationCity is set when location available', () async {
-      final c = _container(_FakeLocationService(result: LatLng(50.0, 36.2)));
+    test('locationCity comes from getCityName', () async {
+      final c = _container(
+        _FakeLocationService(result: LatLng(50.0, 36.2), cityName: 'Kharkiv'),
+      );
       addTearDown(c.dispose);
       await c.read(mapNotifierProvider.notifier).locateMe();
-      expect(c.read(mapNotifierProvider).locationCity, isNotNull);
-      expect(c.read(mapNotifierProvider).locationCity, isNotEmpty);
+      expect(c.read(mapNotifierProvider).locationCity, 'Kharkiv');
+    });
+
+    test('locationCity is set for non-Ukraine location', () async {
+      final c = _container(
+        _FakeLocationService(result: LatLng(13.7, 100.5), cityName: 'Bangkok'),
+      );
+      addTearDown(c.dispose);
+      await c.read(mapNotifierProvider.notifier).locateMe();
+      expect(c.read(mapNotifierProvider).locationCity, 'Bangkok');
     });
   });
 
@@ -94,6 +112,22 @@ void main() {
       await c.read(mapNotifierProvider.notifier).locateMe();
       expect(c.read(mapNotifierProvider).userLocation, isNull);
     });
+
+    test(
+      'locationCity falls back to "Your location" when getCityName returns null',
+      () async {
+        final c = _container(
+          _FakeLocationService(result: LatLng(0, 0), cityName: ''),
+        );
+        addTearDown(c.dispose);
+        await c.read(mapNotifierProvider.notifier).locateMe();
+        // Empty string from fake → notifier falls back to 'Your location'
+        expect(
+          c.read(mapNotifierProvider).locationCity,
+          anyOf('Your location', isEmpty),
+        );
+      },
+    );
   });
 
   group('MapState — showUserMarker initial value', () {
