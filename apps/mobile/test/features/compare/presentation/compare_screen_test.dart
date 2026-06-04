@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/compare/domain/entities/event_cluster.dart';
-import 'package:frontline/features/compare/presentation/providers/compare_provider.dart';
+import 'package:frontline/features/compare/presentation/providers/compare_provider.dart'
+    show
+        CompareNotifier,
+        CompareState,
+        compareNotifierProvider,
+        wireNewsForItemProvider;
 import 'package:frontline/features/compare/presentation/screens/compare_screen.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 
@@ -33,6 +38,7 @@ final _anchor = NewsItem(
 Widget _wrapWithAnchor(CompareState state, {NewsItem? anchor}) => ProviderScope(
   overrides: [
     compareNotifierProvider.overrideWith(() => _FakeCompareNotifier(state)),
+    wireNewsForItemProvider.overrideWith((ref, arg) async => []),
   ],
   child: MaterialApp(home: CompareScreen(anchorItem: anchor ?? _anchor)),
 );

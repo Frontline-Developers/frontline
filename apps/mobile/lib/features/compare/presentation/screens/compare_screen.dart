@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../feed/domain/entities/news_item.dart';
@@ -81,8 +82,10 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                     )
                   : state.error != null
                   ? _ErrorState(error: state.error!)
+                  : anchor != null
+                  ? _AnchorContentList(anchor: anchor, clusters: clusters)
                   : clusters.isEmpty
-                  ? _EmptyState(hasAnchor: anchor != null)
+                  ? const _EmptyState(hasAnchor: false)
                   : _ClusterList(clusters: clusters),
             ),
           ],
@@ -163,9 +166,7 @@ class _CompareHeader extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            count > 0
-                ? '$count events tracked · live'
-                : 'Ground truth analysis',
+            count > 0 ? '$count events tracked' : 'Ground truth analysis',
             style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
           ),
         ],
@@ -381,6 +382,175 @@ class _RelatedReportsHeader extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ── Anchor content (wire coverage + clusters) ─────────────────────────────────
+
+class _AnchorContentList extends ConsumerWidget {
+  final NewsItem anchor;
+  final List<EventCluster> clusters;
+  const _AnchorContentList({required this.anchor, required this.clusters});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<NewsItem> wireItems =
+        ref.watch(wireNewsForItemProvider(anchor)).asData?.value ??
+        const <NewsItem>[];
+
+    if (wireItems.isEmpty && clusters.isEmpty) {
+      return const _EmptyState(hasAnchor: true);
+    }
+
+    final bool hasWire = wireItems.isNotEmpty;
+    final int wireCount = hasWire ? wireItems.length + 1 : 0;
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 4, bottom: 24),
+      itemCount: wireCount + clusters.length,
+      itemBuilder: (_, i) {
+        if (hasWire) {
+          if (i == 0) return _WireCoverageHeader(count: wireItems.length);
+          if (i <= wireItems.length) {
+            return _RelatedWireItem(item: wireItems[i - 1]);
+          }
+          return _EventClusterCard(cluster: clusters[i - wireCount]);
+        }
+        return _EventClusterCard(cluster: clusters[i]);
+      },
+    );
+  }
+}
+
+class _WireCoverageHeader extends StatelessWidget {
+  final int count;
+  const _WireCoverageHeader({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          const Text(
+            'Wire coverage',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _P.ink,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _P.navy.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: _P.navy,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RelatedWireItem extends StatelessWidget {
+  final NewsItem item;
+  const _RelatedWireItem({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _P.card,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const _SourceChip(source: NewsSource.wire),
+                  if (item.sourceName != null) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      item.sourceName!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _P.inkTertiary,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Text(
+                    _timeAgo(item.publishedAt),
+                    style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: _P.ink,
+                  height: 1.35,
+                ),
+              ),
+              if (item.url != null) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.tryParse(item.url!);
+                    if (uri == null) return;
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.open_in_new, size: 13, color: _P.navy),
+                      SizedBox(width: 3),
+                      Text(
+                        'Open source',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _P.navy,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

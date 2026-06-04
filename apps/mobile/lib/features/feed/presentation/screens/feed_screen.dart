@@ -3,8 +3,10 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/providers/bookmark_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -137,32 +139,15 @@ class _FeedAppBar extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: _P.inkSecondary,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _P.disputed,
-                  ),
-                ),
-              ),
-            ],
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _P.inkSecondary,
+              size: 22,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),
@@ -481,9 +466,12 @@ class _CitizenCard extends ConsumerWidget {
                           ),
                         ),
                         const Spacer(),
-                        _ActionBtn(icon: Icons.bookmark_border),
+                        _BookmarkBtn(itemId: item.id),
                         const SizedBox(width: 4),
-                        _ActionBtn(icon: Icons.share_outlined),
+                        _ActionBtn(
+                          icon: Icons.share_outlined,
+                          onTap: () => _share(item),
+                        ),
                       ],
                     ),
                   ],
@@ -677,9 +665,12 @@ class _WireCard extends StatelessWidget {
                             ),
                           ),
                         const Spacer(),
-                        _ActionBtn(icon: Icons.bookmark_border),
+                        _BookmarkBtn(itemId: item.id),
                         const SizedBox(width: 4),
-                        _ActionBtn(icon: Icons.share_outlined),
+                        _ActionBtn(
+                          icon: Icons.share_outlined,
+                          onTap: () => _share(item),
+                        ),
                       ],
                     ),
                   ],
@@ -859,6 +850,27 @@ class _ActionBtn extends StatelessWidget {
               )
             : Icon(icon, size: 20, color: color),
       ),
+    );
+  }
+}
+
+void _share(NewsItem item) {
+  final text = item.url != null ? '${item.title}\n${item.url}' : item.title;
+  Share.share(text);
+}
+
+class _BookmarkBtn extends ConsumerWidget {
+  final String itemId;
+  const _BookmarkBtn({required this.itemId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(bookmarkNotifierProvider).contains(itemId);
+    return _ActionBtn(
+      icon: saved ? Icons.bookmark : Icons.bookmark_border,
+      active: saved,
+      activeColor: _P.navy,
+      onTap: () => ref.read(bookmarkNotifierProvider.notifier).toggle(itemId),
     );
   }
 }

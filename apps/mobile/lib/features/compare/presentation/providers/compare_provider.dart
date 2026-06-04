@@ -4,6 +4,8 @@ import '../../data/datasources/compare_datasource.dart';
 import '../../data/repositories/compare_repository_impl.dart';
 import '../../domain/entities/event_cluster.dart';
 import '../../domain/repositories/compare_repository.dart';
+import '../../domain/usecases/fetch_related_wire_news_usecase.dart';
+import '../../../feed/domain/entities/news_item.dart';
 
 class CompareState {
   final List<EventCluster> clusters;
@@ -62,3 +64,14 @@ class CompareNotifier extends Notifier<CompareState> {
     return const CompareState(isLoading: true);
   }
 }
+
+final wireNewsForItemProvider = FutureProvider.family<List<NewsItem>, NewsItem>(
+  (ref, item) {
+    return FetchRelatedWireNewsUseCase(
+      ref.watch(compareRepositoryProvider),
+    ).call(
+      description: '${item.title} ${item.body ?? ''}',
+      category: item.category ?? 'other',
+    );
+  },
+);
