@@ -97,7 +97,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _controller.clear();
       ref.read(searchNotifierProvider.notifier).clearQuery();
     } else {
-      Navigator.pop(context);
+      context.pop();
     }
   }
 

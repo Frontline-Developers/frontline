@@ -252,7 +252,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **484 tests** across 39 test files — all pass, zero analyze issues.
+Total: **485 tests** across 39 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|

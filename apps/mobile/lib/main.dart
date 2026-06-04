@@ -13,6 +13,7 @@ import 'features/pin/domain/entities/pin_state.dart';
 import 'features/pin/presentation/providers/pin_provider.dart';
 import 'features/pin/presentation/screens/pin_screen.dart';
 import 'features/search/data/datasources/search_datasource.dart';
+import 'features/search/data/repositories/search_repository_impl.dart';
 import 'features/search/presentation/providers/search_provider.dart';
 
 import 'firebase_options.dart';
@@ -62,7 +63,7 @@ Future<void> main() async {
   }
 
   final prefs = await SharedPreferences.getInstance();
-  final searchRepo = SearchDatasourceImpl(prefs);
+  final searchRepo = SearchRepositoryImpl(SearchDatasourceImpl(prefs));
 
   runApp(
     ProviderScope(
