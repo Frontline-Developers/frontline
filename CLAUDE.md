@@ -105,8 +105,8 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
 | `map` | `mapNotifierProvider` | Stub | flutter_map + geoflutterfire_plus geo queries |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
-| `reporting` | `reportingNotifierProvider` | Stub | Multi-step form, calls `fuzzReportLocation` CF |
-| `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
+| `reporting` | `reportingNotifierProvider` | Done | Multi-step form, EXIF strip, GPS fuzz via CF, saves token to secure storage post-submit |
+| `my_reports` | `myReportsNotifierProvider` | Done | Token-based query (no UID) — reads local tokens, SHA-256 hashes, queries Firestore `tokenHash` |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 
 ---
@@ -121,13 +121,17 @@ reports/{reportId}
   category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
   description:          string
   mediaUrls:            string[]
-  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn'
+  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn' | 'deleted'
+  tokenHash:            string   ← SHA-256(displayToken); written at submit time; deleted on report delete
   confirmCount:         number   ← human confirm votes
   disputeCount:         number   ← human dispute votes
+  viewCount:            number   ← total views (denormalized by CF)
+  commentCount:         number   ← total comments (denormalized by CF)
   systemConfirms:       number   ← virtual votes from evaluateReportTrust heuristics
   systemDisputes:       number   ← virtual votes from evaluateReportTrust heuristics
   totalEffectiveVolume: number   ← C_eff + D_eff; written by confirmReport/disputeReport CF
   confidenceRatio:      number   ← C_eff / V; written by confirmReport/disputeReport CF
+  isDisputed:           boolean
   exifStripped:         boolean
   createdAt:            Timestamp
 

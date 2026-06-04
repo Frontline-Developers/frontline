@@ -8,8 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'features/my_reports/presentation/providers/my_reports_mock.dart';
-import 'features/my_reports/presentation/providers/my_reports_provider.dart';
+
 import 'firebase_options.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
@@ -43,15 +42,7 @@ Future<void> main() async {
     }
   }
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        // TODO: remove before production — shows mock My Reports data
-        myReportsNotifierProvider.overrideWith(FakeMyReportsNotifier.new),
-      ],
-      child: const FrontlineApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: FrontlineApp()));
 }
 
 class FrontlineApp extends StatelessWidget {

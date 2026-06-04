@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontline/features/reporting/data/datasources/reporting_datasource.dart';
 import 'package:frontline/features/reporting/domain/entities/report.dart';
@@ -10,6 +12,7 @@ class _Calls {
   final List<({double lat, double lng})> fuzzInputs = [];
   final List<({String path, Uint8List bytes})> uploads = [];
   final List<({String id, Map<String, dynamic> json})> writes = [];
+  final List<String> savedTokens = [];
 }
 
 ReportingDatasourceImpl _buildDatasource({
@@ -40,6 +43,7 @@ ReportingDatasourceImpl _buildDatasource({
     generateReportId: () => reportId,
     generateDisplayToken: () => token,
     geohashFor: (lat, lng) => geohash,
+    saveToken: (t) async => calls.savedTokens.add(t),
   );
 }
 
@@ -215,6 +219,78 @@ void main() {
         ),
       );
       expect(() => ds.submitReport(draft), throwsArgumentError);
+    });
+
+    test(
+      'writes tokenHash (sha-256 of display token) to Firestore — never plain token',
+      () async {
+        const token = 'abcd-1234-efgh-5678';
+        final expectedHash = sha256.convert(utf8.encode(token)).toString();
+        final calls = _Calls();
+        final ds = _buildDatasource(calls: calls, token: token);
+        const draft = ReportDraft(
+          description: 'a drone hit the substation',
+          category: ReportCategory.combat,
+          locationLabel: 'Kharkiv',
+          lat: 50.0,
+          lng: 36.2,
+        );
+        await ds.submitReport(draft);
+        final json = calls.writes.single.json;
+        expect(
+          json['tokenHash'],
+          expectedHash,
+          reason: 'tokenHash must be SHA-256 hex, not the plain token',
+        );
+        expect(json.containsKey('tokenHash'), true);
+        expect(
+          json['tokenHash'],
+          isNot(equals(token)),
+          reason: 'plain token must never be written to Firestore',
+        );
+      },
+    );
+
+    test('saves plain display token to local storage after write', () async {
+      const token = 'abcd-1234-efgh-5678';
+      final calls = _Calls();
+      final ds = _buildDatasource(calls: calls, token: token);
+      const draft = ReportDraft(
+        description: 'a drone hit the substation',
+        category: ReportCategory.combat,
+        locationLabel: 'Kharkiv',
+        lat: 50.0,
+        lng: 36.2,
+      );
+      await ds.submitReport(draft);
+      expect(calls.savedTokens, contains(token));
+    });
+
+    test('saves token AFTER successful Firestore write, not before', () async {
+      final order = <String>[];
+      final ds = ReportingDatasourceImpl(
+        stripExif: (b) async => b,
+        fuzzLocation: (lat, lng) async => (lat: lat, lng: lng),
+        uploadMedia: (p, b) async => 'https://storage.test/$p',
+        writeReport: (id, json) async => order.add('write'),
+        currentUserId: () => 'uid-1',
+        generateReportId: () => 'rep-1',
+        generateDisplayToken: () => 'abcd-1234-efgh-5678',
+        geohashFor: (lat, lng) => 'g123',
+        saveToken: (t) async => order.add('save'),
+      );
+      const draft = ReportDraft(
+        description: 'a drone hit the substation',
+        category: ReportCategory.combat,
+        locationLabel: 'Kharkiv',
+        lat: 50.0,
+        lng: 36.2,
+      );
+      await ds.submitReport(draft);
+      expect(order, [
+        'write',
+        'save',
+      ], reason: 'token must be saved only after Firestore write succeeds');
     });
 
     test('includes geohash computed from fuzzed coords', () async {

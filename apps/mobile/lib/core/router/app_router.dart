@@ -140,7 +140,7 @@ class _AppNavBar extends StatelessWidget {
                 _NavTab(
                   icon: Icons.folder_outlined,
                   activeIcon: Icons.folder,
-                  label: 'My posts',
+                  label: 'My reports',
                   active: currentIndex == 4,
                   onTap: () => onTap(4),
                 ),
