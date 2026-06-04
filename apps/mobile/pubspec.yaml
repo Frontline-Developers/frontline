@@ -57,6 +57,7 @@ dependencies:
   url_launcher: ^6.3.2
   crypto: ^3.0.3
   firebase_messaging: ^16.3.0
+  share_plus: ^10.1.4
   geocoding: ^3.0.0
 
 dev_dependencies:

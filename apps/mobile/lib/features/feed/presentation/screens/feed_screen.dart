@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/providers/bookmark_provider.dart';
+import '../../../../core/providers/device_country_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -56,6 +59,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(feedNotifierProvider);
+    final country = ref.watch(deviceCountryProvider).asData?.value ?? '';
 
     return ColoredBox(
       color: _P.surface,
@@ -66,6 +70,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           children: [
             const _FeedAppBar(),
             _FeedHeader(
+              country: country,
               citizenCount: state.items
                   .where((i) => i.source == NewsSource.citizen)
                   .length,
@@ -134,32 +139,15 @@ class _FeedAppBar extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: _P.inkSecondary,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _P.disputed,
-                  ),
-                ),
-              ),
-            ],
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _P.inkSecondary,
+              size: 22,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),
@@ -170,9 +158,11 @@ class _FeedAppBar extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _FeedHeader extends StatelessWidget {
+  final String country;
   final int citizenCount;
   final int wireSourceCount;
   const _FeedHeader({
+    required this.country,
     required this.citizenCount,
     required this.wireSourceCount,
   });
@@ -184,42 +174,30 @@ class _FeedHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ukraine · live',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: _P.ink,
-              letterSpacing: -0.8,
-              height: 1.1,
+          if (country.isEmpty)
+            Container(
+              width: 160,
+              height: 34,
+              decoration: BoxDecoration(
+                color: _P.hairline,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            )
+          else
+            Text(
+              country,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: _P.ink,
+                letterSpacing: -0.8,
+                height: 1.1,
+              ),
             ),
-          ),
           const SizedBox(height: 5),
-          Row(
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _P.disputed,
-                ),
-              ),
-              const SizedBox(width: 5),
-              const Text(
-                'LIVE',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _P.disputed,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                ' · $citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
-                style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
-              ),
-            ],
+          Text(
+            '$citizenCount citizen${citizenCount == 1 ? '' : 's'} reporting · $wireSourceCount source${wireSourceCount == 1 ? '' : 's'} active',
+            style: const TextStyle(fontSize: 12, color: _P.inkTertiary),
           ),
         ],
       ),
@@ -473,14 +451,14 @@ class _CitizenCard extends ConsumerWidget {
                           const SizedBox(width: 14),
                           GestureDetector(
                             onTap: () => context.push('/compare', extra: item),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
                                 vertical: 4,
                                 horizontal: 2,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.compare_arrows,
                                     size: 16,
@@ -500,9 +478,12 @@ class _CitizenCard extends ConsumerWidget {
                             ),
                           ),
                           const Spacer(),
-                          _ActionBtn(icon: Icons.bookmark_border, onTap: () {}),
+                          _BookmarkBtn(itemId: item.id),
                           const SizedBox(width: 4),
-                          _ActionBtn(icon: Icons.share_outlined, onTap: () {}),
+                          _ActionBtn(
+                            icon: Icons.share_outlined,
+                            onTap: () => _share(item),
+                          ),
                         ],
                       ),
                     ],
@@ -678,9 +659,9 @@ class _WireCard extends StatelessWidget {
                                   mode: LaunchMode.externalApplication,
                                 );
                               },
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.open_in_new,
                                     size: 14,
@@ -699,9 +680,12 @@ class _WireCard extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          _ActionBtn(icon: Icons.bookmark_border, onTap: () {}),
+                          _BookmarkBtn(itemId: item.id),
                           const SizedBox(width: 4),
-                          _ActionBtn(icon: Icons.share_outlined, onTap: () {}),
+                          _ActionBtn(
+                            icon: Icons.share_outlined,
+                            onTap: () => _share(item),
+                          ),
                         ],
                       ),
                     ],
@@ -882,6 +866,27 @@ class _ActionBtn extends StatelessWidget {
               )
             : Icon(icon, size: 20, color: color),
       ),
+    );
+  }
+}
+
+void _share(NewsItem item) {
+  final text = item.url != null ? '${item.title}\n${item.url}' : item.title;
+  Share.share(text);
+}
+
+class _BookmarkBtn extends ConsumerWidget {
+  final String itemId;
+  const _BookmarkBtn({required this.itemId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(bookmarkNotifierProvider).contains(itemId);
+    return _ActionBtn(
+      icon: saved ? Icons.bookmark : Icons.bookmark_border,
+      active: saved,
+      activeColor: _P.navy,
+      onTap: () => ref.read(bookmarkNotifierProvider.notifier).toggle(itemId),
     );
   }
 }

@@ -108,6 +108,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
 | `alerts` | `alertNotifierProvider` | Active | Save alert subscriptions to Firestore; `sendAlertNotifications` CF dispatches FCM push |
+| `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 
 ---
 

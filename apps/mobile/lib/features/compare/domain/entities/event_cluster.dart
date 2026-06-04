@@ -7,6 +7,7 @@ class ClusterItem {
   final String title;
   final String? body;
   final NewsSource source;
+  final String? sourceName;
   final DateTime publishedAt;
   final EvidenceEval eval;
   final int confirmCount;
@@ -17,6 +18,7 @@ class ClusterItem {
     required this.title,
     this.body,
     required this.source,
+    this.sourceName,
     required this.publishedAt,
     required this.eval,
     required this.confirmCount,
