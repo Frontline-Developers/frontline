@@ -4,6 +4,8 @@ class MapReport {
   final double lng;
   final String category;
   final String title;
+  final String locationLabel;
+  final String status;
   final DateTime createdAt;
 
   const MapReport({
@@ -12,6 +14,8 @@ class MapReport {
     required this.lng,
     required this.category,
     required this.title,
+    required this.locationLabel,
+    required this.status,
     required this.createdAt,
   });
 }
