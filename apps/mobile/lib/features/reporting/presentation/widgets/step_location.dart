@@ -37,11 +37,14 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     final draft = ref.read(reportingNotifierProvider).draft;
     _labelController = TextEditingController(text: draft.locationLabel);
     _mapController = MapController();
-    // Auto-detect user location the first time this step is opened.
-    // Runs silently (no spinner) so the UI settles before the async work starts.
-    if (draft.lat == null) {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _useMyLocation(silent: true));
+    // Auto-detect user location the first time this step is opened on mobile.
+    // Skipped on web: geolocator_web's async callbacks can arrive mid-frame and
+    // corrupt the render pipeline (window.dart:99 disposed-view assertion).
+    // Web users tap the GPS button manually instead.
+    if (draft.lat == null && !kIsWeb) {
+      Future<void>.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) _useMyLocation(silent: true);
+      });
     }
   }
 
