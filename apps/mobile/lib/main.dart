@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/pin/domain/entities/pin_state.dart';
+import 'features/pin/presentation/providers/pin_provider.dart';
+import 'features/pin/presentation/screens/pin_screen.dart';
 
 import 'firebase_options.dart';
 
@@ -45,11 +48,22 @@ Future<void> main() async {
   runApp(const ProviderScope(child: FrontlineApp()));
 }
 
-class FrontlineApp extends StatelessWidget {
+class FrontlineApp extends ConsumerWidget {
   const FrontlineApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pin = ref.watch(pinNotifierProvider);
+
+    if (pin.status != PinStatus.unlocked) {
+      return MaterialApp(
+        title: 'Frontline',
+        theme: AppTheme.darkTheme,
+        debugShowCheckedModeBanner: false,
+        home: const PinScreen(),
+      );
+    }
+
     return MaterialApp.router(
       title: 'Frontline',
       theme: AppTheme.darkTheme,
