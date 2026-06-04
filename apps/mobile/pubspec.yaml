@@ -36,7 +36,7 @@ dependencies:
   # flutter_map + OpenStreetMap tiles — works on web + mobile with no token
   # and no per-platform setup. Picked after mapbox_maps_flutter v2.24.3 was
   # found to have no Flutter-web support (rendered blank on Chrome/Edge).
-  flutter_map: ^7.0.0
+  flutter_map: ^8.0.0
   latlong2: ^0.9.1
   geolocator: ^14.0.0
 
@@ -55,6 +55,7 @@ dependencies:
   http: ^1.6.0
   connectivity_plus: ^7.1.1
   url_launcher: ^6.3.2
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

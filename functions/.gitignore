@@ -1,0 +1,15 @@
+# Firebase runtime secrets (set via `firebase functions:secrets:set` or .env files)
+.env
+.env.*
+.secret.*
+
+# Service account keys
+serviceAccount*.json
+*-service-account.json
+*credentials*.json
+
+# Build output (compiled by tsc)
+lib/
+
+# Dependencies
+node_modules/

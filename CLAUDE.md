@@ -27,7 +27,7 @@ Privacy-first, location-based reporting and news platform — anonymous submissi
 | State | Riverpod 3.x + `Notifier` pattern |
 | Navigation | GoRouter 17.x (`core/router/app_router.dart`) |
 | Backend | Firebase Auth (anonymous), Firestore, Storage, Cloud Functions v2 (TypeScript) |
-| Maps | flutter_map 7.x + OpenStreetMap tiles (no token, web + mobile parity) |
+| Maps | flutter_map 8.x + OpenStreetMap tiles (no token, web + mobile parity) |
 | Geo queries | geoflutterfire_plus (GeoFire for Firestore) |
 | Models | Freezed + json_serializable |
 | Observability | `firebase-functions/v2/logger` in Cloud Functions |
@@ -105,7 +105,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
 | `map` | `mapNotifierProvider` | Stub | flutter_map + geoflutterfire_plus geo queries |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
-| `reporting` | `reportingNotifierProvider` | Stub | Multi-step form, calls `fuzzReportLocation` CF |
+| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
 | `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 
@@ -121,24 +121,50 @@ reports/{reportId}
   category:             string   ← 'combat' | 'aid' | 'alert' | 'displaced' | 'infra' | 'other'
   description:          string
   mediaUrls:            string[]
-  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn'
+  status:               string   ← 'pending' | 'confirmed' | 'disputed' | 'withdrawn' | 'deleted'
+  tokenHash:            string   ← SHA-256(displayToken); written at submit time; deleted on report delete
   confirmCount:         number   ← human confirm votes
   disputeCount:         number   ← human dispute votes
+  viewCount:            number   ← total views (denormalized by CF)
+  commentCount:         number   ← total comments (denormalized by CF)
   systemConfirms:       number   ← virtual votes from evaluateReportTrust heuristics
   systemDisputes:       number   ← virtual votes from evaluateReportTrust heuristics
   totalEffectiveVolume: number   ← C_eff + D_eff; written by confirmReport/disputeReport CF
   confidenceRatio:      number   ← C_eff / V; written by confirmReport/disputeReport CF
   exifStripped:         boolean
+  isDisputed:           boolean  ← true when disputeCount > 0; written by vote transaction
   createdAt:            Timestamp
 
-wire_news/{articleId}
-  title:       string
-  body:        string?
-  url:         string?
-  source:      'wire'
-  publishedAt: Timestamp
-  geohash5:    string?  ← required by wire corroboration heuristic; populated when fetchGdeltNews is implemented
-  ← written only by fetchGdeltNews CF; client read-only
+  interactions/{userId}          ← subcollection; one doc per voter
+    type:       string           ← 'confirm' | 'dispute'
+    token:      string           ← random hex for idempotency audit
+    createdAt:  Timestamp
+
+  comments/{commentId}           ← subcollection
+    type:       string           ← 'confirm' | 'dispute' | 'context'
+    text:       string           ← comment body (≤ 500 chars)
+    authorToken: string          ← short anonymous token, NOT a Firebase UID (privacy by design)
+    upvotes:    number
+    createdAt:  Timestamp
+
+    upvoters/{userId}            ← subcollection; one doc per upvoter
+      at:       Timestamp
+
+wire_news/{articleId}          ← written only by fetchGdeltNews CF; client read-only
+  title:          string
+  body:           string?
+  url:            string?
+  source:         'wire'
+  sourceName:     string?   ← outlet display name (e.g. "Reuters")
+  sourceDomain:   string?   ← outlet hostname
+  sourcePriority: number?   ← GDELT source tier
+  imageUrl:       string?
+  locations:      string[]  ← extracted location strings
+  themes:         string[]  ← GDELT theme codes
+  tone:           number?   ← GDELT average tone
+  storyKey:       string?   ← GDELT story dedup key
+  geohash5:       string?   ← required by wire corroboration heuristic
+  publishedAt:    Timestamp
 ```
 
 ---
@@ -231,7 +257,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **153 tests** across 21 test files — all pass, zero analyze issues.
+Total: **176 tests** across 22 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -241,7 +267,7 @@ Total: **153 tests** across 21 test files — all pass, zero analyze issues.
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
-| `reporting` | 9 files (datasource, model, domain, notifier, screen, widgets) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing |
+| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
 
 **Test conventions:**
 - Widget tests: override providers with `_FakeXxxNotifier extends XxxNotifier` — no mock frameworks

@@ -14,6 +14,7 @@ export interface Report {
   systemDisputes: number;
   totalEffectiveVolume: number;
   confidenceRatio: number;
+  isDisputed: boolean;
   exifStripped: boolean;
   createdAt: firestore.Timestamp;
 }
