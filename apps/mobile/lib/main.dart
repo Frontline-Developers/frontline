@@ -6,25 +6,22 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/pin/domain/entities/pin_state.dart';
 import 'features/pin/presentation/providers/pin_provider.dart';
 import 'features/pin/presentation/screens/pin_screen.dart';
+import 'features/search/data/datasources/search_datasource.dart';
+import 'features/search/presentation/providers/search_provider.dart';
 
 import 'firebase_options.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
-const _mapboxToken = String.fromEnvironment('MAPBOX_ACCESS_TOKEN');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  if (_mapboxToken.isNotEmpty) {
-    MapboxOptions.setAccessToken(_mapboxToken);
-  }
 
   if (_useEmulator) {
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
@@ -57,7 +54,15 @@ Future<void> main() async {
     }
   }
 
-  runApp(const ProviderScope(child: FrontlineApp()));
+  final prefs = await SharedPreferences.getInstance();
+  final searchRepo = SearchDatasourceImpl(prefs);
+
+  runApp(
+    ProviderScope(
+      overrides: [searchRepositoryProvider.overrideWithValue(searchRepo)],
+      child: const FrontlineApp(),
+    ),
+  );
 }
 
 class FrontlineApp extends ConsumerWidget {
