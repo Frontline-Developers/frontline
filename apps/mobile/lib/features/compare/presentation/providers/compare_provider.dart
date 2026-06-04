@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/providers/vote_provider.dart';
 import '../../data/datasources/compare_datasource.dart';
 import '../../data/repositories/compare_repository_impl.dart';
 import '../../domain/entities/event_cluster.dart';
@@ -62,6 +63,10 @@ class CompareNotifier extends Notifier<CompareState> {
         );
     ref.onDispose(sub.cancel);
     return const CompareState(isLoading: true);
+  }
+
+  Future<void> castVote(String reportId, String type) async {
+    await ref.read(voteDatasourceProvider).castVote(reportId, type);
   }
 }
 

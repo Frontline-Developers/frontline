@@ -37,7 +37,6 @@ abstract class MyReportsDatasource {
 
 // ── Implementation ────────────────────────────────────────────────────────────
 
-
 class MyReportsDatasourceImpl implements MyReportsDatasource {
   final TokensReader _readTokens;
   final TokenRemover _removeToken;
