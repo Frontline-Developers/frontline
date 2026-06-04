@@ -18,6 +18,10 @@ class Report {
   final int disputeCount;
   final bool isDisputed;
   final bool exifStripped;
+  final int systemConfirms;
+  final int systemDisputes;
+  final double totalEffectiveVolume;
+  final double confidenceRatio;
   final DateTime? createdAt;
 
   const Report({
@@ -34,6 +38,10 @@ class Report {
     this.disputeCount = 0,
     this.isDisputed = false,
     this.exifStripped = false,
+    this.systemConfirms = 0,
+    this.systemDisputes = 0,
+    this.totalEffectiveVolume = 0,
+    this.confidenceRatio = 0,
     this.createdAt,
   });
 }

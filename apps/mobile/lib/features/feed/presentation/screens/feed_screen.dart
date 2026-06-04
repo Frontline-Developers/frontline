@@ -295,8 +295,8 @@ class _FeedList extends StatelessWidget {
       itemBuilder: (_, i) {
         final item = items[i];
         return item.source == NewsSource.citizen
-            ? _CitizenCard(item: item)
-            : _WireCard(item: item);
+            ? _CitizenCard(key: ValueKey(item.id), item: item)
+            : _WireCard(key: ValueKey(item.id), item: item);
       },
     );
   }
@@ -325,7 +325,7 @@ class _ErrorState extends StatelessWidget {
 
 class _CitizenCard extends ConsumerWidget {
   final NewsItem item;
-  const _CitizenCard({required this.item});
+  const _CitizenCard({super.key, required this.item});
 
   Future<void> _castVote(WidgetRef ref, String type) async {
     final ds = ref.read(voteDatasourceProvider);
@@ -345,7 +345,9 @@ class _CitizenCard extends ConsumerWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: _kMaxWidth),
-        child: Container(
+        child: GestureDetector(
+          onTap: () => context.push('/report/${item.id}', extra: item),
+          child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
             color: _P.card,
@@ -511,6 +513,7 @@ class _CitizenCard extends ConsumerWidget {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -577,14 +580,16 @@ class _VerifyMeter extends StatelessWidget {
 
 class _WireCard extends StatelessWidget {
   final NewsItem item;
-  const _WireCard({required this.item});
+  const _WireCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: _kMaxWidth),
-        child: Container(
+        child: GestureDetector(
+          onTap: () => context.push('/report/${item.id}', extra: item),
+          child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
             color: _P.card,
@@ -706,6 +711,7 @@ class _WireCard extends StatelessWidget {
               _CompareWithRow(item: item),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -11,6 +11,12 @@ abstract class VoteDatasource {
   ); // 'confirm'|'dispute'|null
 }
 
+String _randomToken() {
+  final rng = Random.secure();
+  final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+  return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+}
+
 class VoteDatasourceImpl implements VoteDatasource {
   @override
   Future<String?> getUserVote(String reportId) async {
@@ -19,7 +25,7 @@ class VoteDatasourceImpl implements VoteDatasource {
     final snap = await FirebaseFirestore.instance
         .collection('reports')
         .doc(reportId)
-        .collection('votes')
+        .collection('interactions')
         .doc(uid)
         .get();
     if (!snap.exists) return null;
@@ -34,7 +40,7 @@ class VoteDatasourceImpl implements VoteDatasource {
     final reportRef = FirebaseFirestore.instance
         .collection('reports')
         .doc(reportId);
-    final voteRef = reportRef.collection('votes').doc(uid);
+    final voteRef = reportRef.collection('interactions').doc(uid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final voteSnap = await tx.get(voteRef);
@@ -66,6 +72,7 @@ class VoteDatasourceImpl implements VoteDatasource {
         } else {
           tx.set(voteRef, {
             'type': type,
+            'token': _randomToken(),
             'createdAt': FieldValue.serverTimestamp(),
           });
         }

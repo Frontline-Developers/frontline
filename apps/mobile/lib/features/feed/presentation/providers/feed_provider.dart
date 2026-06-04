@@ -47,4 +47,5 @@ class FeedNotifier extends Notifier<FeedState> {
     ref.onDispose(sub.cancel);
     return const FeedState(isLoading: true);
   }
+
 }
