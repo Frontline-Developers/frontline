@@ -15,6 +15,10 @@ class ReportModel {
   final int disputeCount;
   final bool isDisputed;
   final bool exifStripped;
+  // SHA-256 of the display token — used by My Reports to query without auth UID.
+  // Stored as a plain hex string; My Reports reads local tokens, hashes them,
+  // and matches against this field.  Never stored in plain text.
+  final String? tokenHash;
 
   const ReportModel({
     this.id,
@@ -30,6 +34,7 @@ class ReportModel {
     this.disputeCount = 0,
     this.isDisputed = false,
     this.exifStripped = false,
+    this.tokenHash,
   });
 
   Map<String, dynamic> toJson() => {
@@ -44,6 +49,7 @@ class ReportModel {
     'disputeCount': disputeCount,
     'isDisputed': isDisputed,
     'exifStripped': exifStripped,
+    if (tokenHash != null) 'tokenHash': tokenHash,
     'createdAt': FieldValue.serverTimestamp(),
   };
 }

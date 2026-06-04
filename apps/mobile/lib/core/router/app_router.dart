@@ -5,8 +5,11 @@ import '../../features/compare/presentation/screens/compare_screen.dart';
 import '../../features/feed/domain/entities/news_item.dart';
 import '../../features/feed/presentation/screens/feed_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
+import '../../features/my_reports/domain/entities/my_report.dart';
 import '../../features/my_reports/presentation/screens/my_reports_screen.dart';
-import '../../features/reporting/presentation/screens/event_detail_screen.dart';
+import '../../features/my_reports/presentation/screens/report_detail_screen.dart';
+import '../../features/reporting/presentation/screens/report_detail_screen.dart'
+    as reporting;
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
 
 const _navy = Color(0xFF1E3A8A);
@@ -42,9 +45,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/report/:id',
       builder: (context, state) {
-        final item = state.extra is NewsItem ? state.extra as NewsItem : null;
-        if (item != null) return EventDetailScreen(item: item);
-        return _ReportDetailPlaceholder(id: state.pathParameters['id']!);
+        if (state.extra is NewsItem) {
+          return reporting.ReportDetailScreen(item: state.extra as NewsItem);
+        }
+        return MyReportDetailScreen(
+          reportId: state.pathParameters['id']!,
+          report: state.extra is MyReport ? state.extra as MyReport : null,
+        );
       },
     ),
   ],
@@ -140,7 +147,7 @@ class _AppNavBar extends StatelessWidget {
                 _NavTab(
                   icon: Icons.folder_outlined,
                   activeIcon: Icons.folder,
-                  label: 'My posts',
+                  label: 'My reports',
                   active: currentIndex == 4,
                   onTap: () => onTap(4),
                 ),
@@ -240,21 +247,6 @@ class _ReportTab extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Placeholder ───────────────────────────────────────────────────────────────
-
-class _ReportDetailPlaceholder extends StatelessWidget {
-  final String id;
-  const _ReportDetailPlaceholder({required this.id});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Report')),
-      body: Center(child: Text('Report $id — coming soon')),
     );
   }
 }

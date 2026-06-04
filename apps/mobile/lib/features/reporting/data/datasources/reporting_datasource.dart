@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 
+import '../../../../core/constants/storage_keys.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/repositories/reporting_repository.dart';
 import '../models/report_model.dart';
@@ -22,6 +26,8 @@ typedef CurrentUserIdProvider = String? Function();
 typedef ReportIdGenerator = String Function();
 typedef DisplayTokenGenerator = String Function();
 typedef GeohashCalculator = String Function(double lat, double lng);
+// Persists the plain display token locally so My Reports can query Firestore.
+typedef TokenSaver = Future<void> Function(String token);
 
 abstract class ReportingDatasource {
   Future<SubmitResult> submitReport(
@@ -39,6 +45,7 @@ class ReportingDatasourceImpl implements ReportingDatasource {
   final ReportIdGenerator _generateReportId;
   final DisplayTokenGenerator _generateDisplayToken;
   final GeohashCalculator _geohashFor;
+  final TokenSaver _saveToken;
 
   ReportingDatasourceImpl({
     ExifStripper? stripExif,
@@ -49,6 +56,7 @@ class ReportingDatasourceImpl implements ReportingDatasource {
     ReportIdGenerator? generateReportId,
     DisplayTokenGenerator? generateDisplayToken,
     GeohashCalculator? geohashFor,
+    TokenSaver? saveToken,
   }) : _stripExif = stripExif ?? _defaultStripExif,
        _fuzzLocation = fuzzLocation ?? _defaultFuzzLocation,
        _uploadMedia = uploadMedia ?? _defaultUploadMedia,
@@ -57,7 +65,8 @@ class ReportingDatasourceImpl implements ReportingDatasource {
        _generateReportId = generateReportId ?? _defaultGenerateReportId,
        _generateDisplayToken =
            generateDisplayToken ?? generateDefaultDisplayToken,
-       _geohashFor = geohashFor ?? _defaultGeohash;
+       _geohashFor = geohashFor ?? _defaultGeohash,
+       _saveToken = saveToken ?? _defaultSaveToken;
 
   @override
   Future<SubmitResult> submitReport(
@@ -102,6 +111,9 @@ class ReportingDatasourceImpl implements ReportingDatasource {
     ]);
     onProgress?.call(3);
 
+    final token = _generateDisplayToken();
+    final tokenHash = sha256.convert(utf8.encode(token)).toString();
+
     final model = ReportModel(
       id: reportId,
       userId: userId,
@@ -112,11 +124,16 @@ class ReportingDatasourceImpl implements ReportingDatasource {
       geohash: geohash,
       mediaUrls: mediaUrls,
       exifStripped: true,
+      tokenHash: tokenHash,
     );
 
-    // Milestone 4: write the report and generate the user's tracking token.
+    // Milestone 4: persist the plain token locally first, then write to Firestore.
+    // Save-before-write is the safer failure order: a stale local token with no
+    // matching Firestore doc is harmless (My Reports returns nothing for it),
+    // whereas a Firestore doc with no local token leaves the report permanently
+    // inaccessible. The plain token never leaves the device after this point.
+    await _saveToken(token);
     await _writeReport(reportId, model.toJson());
-    final token = _generateDisplayToken();
     onProgress?.call(4);
 
     return SubmitResult(reportId: reportId, displayToken: token);
@@ -166,6 +183,21 @@ String _defaultGenerateReportId() =>
 
 String _defaultGeohash(double lat, double lng) =>
     GeoFirePoint(GeoPoint(lat, lng)).geohash;
+
+Future<void> _defaultSaveToken(String token) async {
+  const storage = FlutterSecureStorage();
+  final raw = await storage.read(key: kReportTokensStorageKey);
+  final tokens = raw != null
+      ? (jsonDecode(raw) as List).cast<String>()
+      : <String>[];
+  if (!tokens.contains(token)) {
+    tokens.add(token);
+    await storage.write(
+      key: kReportTokensStorageKey,
+      value: jsonEncode(tokens),
+    );
+  }
+}
 
 // ── Public token generator (exposed for tests + UI) ─────────────────────────
 

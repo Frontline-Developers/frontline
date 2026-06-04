@@ -32,15 +32,15 @@ class _P {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class EventDetailScreen extends ConsumerStatefulWidget {
+class ReportDetailScreen extends ConsumerStatefulWidget {
   final NewsItem item;
-  const EventDetailScreen({super.key, required this.item});
+  const ReportDetailScreen({super.key, required this.item});
 
   @override
-  ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
+  ConsumerState<ReportDetailScreen> createState() => _ReportDetailScreenState();
 }
 
-class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
+class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   int _imageIndex = 0;
   bool _bookmarked = false;
 
