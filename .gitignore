@@ -14,6 +14,7 @@
 apps/mobile/android/app/google-services.json
 apps/mobile/ios/Runner/GoogleService-Info.plist
 apps/mobile/lib/firebase_options.dart
+apps/mobile/lib/google-services.json
 
 # Firebase cache
 .firebase/
