@@ -42,6 +42,8 @@ class FeedScreen extends ConsumerStatefulWidget {
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   int _activeFilter = 0;
+  // TODO: DELETE — mock toggle for compare-page testing only
+  bool _useMockData = false;
 
   List<NewsItem> _applyFilter(List<NewsItem> items) {
     return switch (_activeFilter) {
@@ -55,7 +57,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(feedNotifierProvider);
-    final items = state.items;
+    // TODO: DELETE — swap to mock items when toggle is on
+    final items = _useMockData ? _kMockItems : state.items;
 
     return ColoredBox(
       color: _P.surface,
@@ -64,7 +67,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _FeedAppBar(),
+            // TODO: DELETE — pass mock toggle props; remove with _kMockItems
+            _FeedAppBar(
+              useMockData: _useMockData,
+              onToggleMock: () => setState(() => _useMockData = !_useMockData),
+            ),
             _FeedHeader(
               citizenCount: state.items
                   .where((i) => i.source == NewsSource.citizen)
@@ -83,7 +90,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             ),
             const SizedBox(height: 4),
             Expanded(
-              child: state.isLoading
+              child: _useMockData
+                  // TODO: DELETE — bypass live state when mock is on
+                  ? _FeedList(items: _applyFilter(items))
+                  : state.isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: _P.navy),
                     )
@@ -100,8 +110,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
 // ── App bar ───────────────────────────────────────────────────────────────────
 
+// TODO: DELETE — remove useMockData/onToggleMock props and toggle button before shipping
 class _FeedAppBar extends StatelessWidget {
-  const _FeedAppBar();
+  final bool useMockData;
+  final VoidCallback onToggleMock;
+  const _FeedAppBar({required this.useMockData, required this.onToggleMock});
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +174,29 @@ class _FeedAppBar extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(width: 4),
+          // TODO: DELETE — mock data toggle button for compare-page testing only
+          GestureDetector(
+            onTap: onToggleMock,
+            child: Container(
+              margin: const EdgeInsets.only(left: 4, right: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: useMockData
+                    ? const Color(0xFFFF6B00)
+                    : const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                useMockData ? 'MOCK ON' : 'MOCK',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: useMockData ? Colors.white : const Color(0xFF6B7280),
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -899,3 +934,64 @@ String _categoryLabel(String category) {
     _ => category,
   };
 }
+
+// TODO: DELETE — mock data for compare-page manual testing only
+final _kMockNow = DateTime(2026, 6, 4, 9);
+final _kMockItems = <NewsItem>[
+  NewsItem(
+    id: 'mock_combat_1',
+    title: 'Strike near Kyiv reported by local resident',
+    source: NewsSource.citizen,
+    publishedAt: _kMockNow,
+    category: 'combat',
+    status: ItemStatus.verified,
+    confirmCount: 8,
+    disputeCount: 1,
+  ),
+  NewsItem(
+    id: 'mock_aid_wire',
+    title: 'ICRC convoy reaches Zaporizhzhia — Reuters',
+    source: NewsSource.wire,
+    publishedAt: _kMockNow,
+    category: 'aid',
+    sourceName: 'Reuters',
+  ),
+  NewsItem(
+    id: 'mock_infra_1',
+    title: 'Power outage across Kharkiv district',
+    source: NewsSource.citizen,
+    publishedAt: _kMockNow,
+    category: 'infra',
+    status: ItemStatus.verified,
+    confirmCount: 5,
+    disputeCount: 0,
+  ),
+  NewsItem(
+    id: 'mock_displaced_wire',
+    title: 'UN: 2 000 displaced from Kherson villages — AP',
+    source: NewsSource.wire,
+    publishedAt: _kMockNow,
+    category: 'displaced',
+    sourceName: 'AP',
+  ),
+  NewsItem(
+    id: 'mock_alert_1',
+    title: 'Air-raid sirens active in Mykolaiv',
+    source: NewsSource.citizen,
+    publishedAt: _kMockNow,
+    category: 'alert',
+    status: ItemStatus.pending,
+    confirmCount: 2,
+    disputeCount: 3,
+  ),
+  NewsItem(
+    id: 'mock_aid_disputed',
+    title: 'Aid distribution point reportedly closed',
+    source: NewsSource.citizen,
+    publishedAt: _kMockNow,
+    category: 'aid',
+    status: ItemStatus.pending,
+    confirmCount: 1,
+    disputeCount: 4,
+  ),
+];
