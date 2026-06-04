@@ -1,4 +1,4 @@
-﻿// Mirror of confirmReport.test.ts — tests the dispute path specifically.
+// Mirror of confirmReport.test.ts — tests the dispute path specifically.
 const mockGet = jest.fn();
 const mockSet = jest.fn();
 const mockUpdate = jest.fn();

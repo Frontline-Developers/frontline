@@ -1,10 +1,11 @@
-﻿import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {logger} from "firebase-functions/v2";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import ngeohash from "ngeohash";
 import {parse as parseExif} from "exifr";
 import {db, storage} from "./admin.js";
 import {haversineKm, speedKmh} from "./geo.js";
+import {calculateConsensusStatus} from "./voteHelper.js";
 import type {Report} from "./types.js";
 
 const EXIF_DISTANCE_THRESHOLD_KM = 5.0;
@@ -90,7 +91,8 @@ async function heuristicExifCheck(
       const [buffer] = await bucket.file(mediaPath).download();
       const exif = await parseExif(buffer as Buffer, {gps: true, tiff: true});
 
-      if (!exif?.latitude || !exif?.longitude) continue;
+      if (exif == null || exif.latitude == null || exif.longitude == null)
+        continue;
 
       const distKm = haversineKm(
         report.location.latitude,
@@ -236,6 +238,7 @@ async function heuristicImpossibleTravel(
     const timeDeltaMs =
       report.createdAt.toMillis() -
       (prev.createdAt as unknown as {toMillis(): number}).toMillis();
+    if (timeDeltaMs <= 0) continue;
     const speed = speedKmh(distKm, timeDeltaMs);
 
     if (speed > IMPOSSIBLE_SPEED_KMH) {
@@ -289,5 +292,29 @@ export const evaluateReportTrust = onDocumentCreated(
         }),
       ),
     ]);
+
+    // Recalculate derived fields now that all heuristics have applied system signals.
+    // Without this, totalEffectiveVolume and confidenceRatio would be stale until
+    // the next human vote.
+    const updatedSnap = await reportRef.get();
+    if (updatedSnap.exists) {
+      const updated = updatedSnap.data() as Report;
+      const {
+        V,
+        R,
+        status: newStatus,
+      } = calculateConsensusStatus({
+        confirmCount: updated.confirmCount ?? 0,
+        disputeCount: updated.disputeCount ?? 0,
+        systemConfirms: updated.systemConfirms ?? 0,
+        systemDisputes: updated.systemDisputes ?? 0,
+        currentStatus: updated.status,
+      });
+      await reportRef.update({
+        totalEffectiveVolume: V,
+        confidenceRatio: R,
+        status: newStatus,
+      });
+    }
   },
 );

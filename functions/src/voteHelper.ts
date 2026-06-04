@@ -45,8 +45,9 @@ export function calculateConsensusStatus(
       status = "confirmed";
     } else if (dEff / V >= CONSENSUS.DISPUTE_RATIO) {
       status = "disputed";
+    } else {
+      status = "pending";
     }
-    // else: volume met but neither threshold — keep current status
   }
 
   return {status, cEff, dEff, V, R};
@@ -84,9 +85,9 @@ export async function processVote(
     const report = reportSnap.data() as Report;
 
     const newConfirmCount =
-      report.confirmCount + (voteType === "confirm" ? 1 : 0);
+      (report.confirmCount ?? 0) + (voteType === "confirm" ? 1 : 0);
     const newDisputeCount =
-      report.disputeCount + (voteType === "dispute" ? 1 : 0);
+      (report.disputeCount ?? 0) + (voteType === "dispute" ? 1 : 0);
 
     const {
       status: newStatus,
