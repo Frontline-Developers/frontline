@@ -1,7 +1,17 @@
-﻿// Mocks must be established before imports.
+// Mocks must be established before imports.
 const mockIncrement = jest.fn().mockReturnValue({_increment: true});
 const mockUpdate = jest.fn().mockResolvedValue(undefined);
-const mockDocRef = {update: mockUpdate, path: "reports/r1"};
+const mockDocGet = jest.fn().mockResolvedValue({
+  exists: true,
+  data: () => ({
+    confirmCount: 0,
+    disputeCount: 0,
+    systemConfirms: 0,
+    systemDisputes: 0,
+    status: "pending",
+  }),
+});
+const mockDocRef = {update: mockUpdate, get: mockDocGet, path: "reports/r1"};
 const mockDocFn = jest.fn().mockReturnValue(mockDocRef);
 
 const mockCollectionGet = jest.fn();

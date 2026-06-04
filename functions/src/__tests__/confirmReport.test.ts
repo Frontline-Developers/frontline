@@ -1,4 +1,4 @@
-﻿// Mock firebase-admin BEFORE any imports that transitively use it.
+// Mock firebase-admin BEFORE any imports that transitively use it.
 const mockGet = jest.fn();
 const mockSet = jest.fn();
 const mockUpdate = jest.fn();

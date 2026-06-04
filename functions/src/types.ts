@@ -14,7 +14,6 @@ export interface Report {
   systemDisputes: number;
   totalEffectiveVolume: number;
   confidenceRatio: number;
-  isDisputed: boolean;
   exifStripped: boolean;
   createdAt: firestore.Timestamp;
 }
@@ -22,7 +21,7 @@ export interface Report {
 export interface Interaction {
   type: "confirm" | "dispute";
   token: string;
-  createdAt: firestore.FieldValue;
+  createdAt: firestore.FieldValue | firestore.Timestamp;
 }
 
 export interface WireArticle {
