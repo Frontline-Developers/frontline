@@ -72,6 +72,7 @@ class ReportFeedModel {
   final int disputeCount;
   final int commentCount;
   final DateTime publishedAt;
+  final String locationLabel;
 
   const ReportFeedModel({
     required this.id,
@@ -84,6 +85,7 @@ class ReportFeedModel {
     required this.disputeCount,
     required this.commentCount,
     required this.publishedAt,
+    this.locationLabel = '',
   });
 
   factory ReportFeedModel.fromFirestore(DocumentSnapshot doc) {
@@ -115,6 +117,7 @@ class ReportFeedModel {
       disputeCount: (data['disputeCount'] as num?)?.toInt() ?? 0,
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       publishedAt: publishedAt,
+      locationLabel: data['locationLabel'] as String? ?? '',
     );
   }
 
@@ -130,6 +133,7 @@ class ReportFeedModel {
     confirmCount: confirmCount,
     disputeCount: disputeCount,
     commentCount: commentCount,
+    locations: locationLabel.isNotEmpty ? [locationLabel] : const [],
   );
 
   // Split description at a word boundary ≤90 chars for use as a card title.
