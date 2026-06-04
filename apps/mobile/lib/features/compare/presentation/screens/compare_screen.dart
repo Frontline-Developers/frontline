@@ -46,7 +46,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final clusters = anchor == null
         ? allClusters
         : allClusters
-              .where((c) => c.category == (anchor.category ?? 'other'))
+              .where((c) => c.category == _effectiveCategory(anchor))
               .map(
                 (c) => EventCluster(
                   id: c.id,
@@ -103,12 +103,11 @@ class _CompareAppBar extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null)
-            GestureDetector(
-              onTap: onBack,
-              child: const Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: Icon(Icons.arrow_back_ios, size: 16, color: _P.ink),
-              ),
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_ios, size: 16, color: _P.ink),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
             )
           else ...[
             Container(
@@ -520,6 +519,7 @@ class _ConsensusMeter extends StatelessWidget {
     final total = supports + contradicts;
     if (total == 0) return const SizedBox.shrink();
     final ratio = supports / total;
+    final supportFlex = (ratio * 100).round().clamp(1, 99);
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: SizedBox(
@@ -527,11 +527,11 @@ class _ConsensusMeter extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              flex: (ratio * 100).round(),
+              flex: supportFlex,
               child: Container(color: _P.verified),
             ),
             Expanded(
-              flex: 100 - (ratio * 100).round(),
+              flex: 100 - supportFlex,
               child: Container(color: _P.disputed),
             ),
           ],
@@ -636,7 +636,7 @@ class _TimelineRow extends StatelessWidget {
                       height: 1.35,
                     ),
                   ),
-                  if (item.source.name == 'citizen' &&
+                  if (item.source == NewsSource.citizen &&
                       (item.confirmCount + item.disputeCount) > 0) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -751,6 +751,15 @@ class _CategoryBadge extends StatelessWidget {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _effectiveCategory(NewsItem item) {
+  if (item.category != null) return item.category!;
+  const knownCategories = {'combat', 'aid', 'alert', 'displaced', 'infra'};
+  for (final t in item.themes) {
+    if (knownCategories.contains(t)) return t;
+  }
+  return 'other';
+}
 
 Color _categoryColor(String category) => switch (category) {
   'combat' => AppColors.reportCatCombat,
