@@ -60,12 +60,18 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
 
     // Extract EXIF from full-res bytes first, then compress before storing
     // so the draft never holds a multi-megabyte raw image in RAM.
+    // flutter_image_compress has no web implementation — skip on web.
     final rows = await _extractExifRows(rawBytes);
-    final compressed = await FlutterImageCompress.compressWithList(
-      rawBytes,
-      quality: 88,
-      keepExif: false,
-    );
+    final Uint8List compressed;
+    if (kIsWeb) {
+      compressed = rawBytes;
+    } else {
+      compressed = await FlutterImageCompress.compressWithList(
+        rawBytes,
+        quality: 88,
+        keepExif: false,
+      );
+    }
     if (!mounted) return;
 
     setState(() => _exifRows = rows);
