@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../comments/presentation/providers/comments_provider.dart';
+import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/my_report.dart';
 import '../providers/my_reports_provider.dart';
@@ -408,7 +409,7 @@ class _FilterTab extends StatelessWidget {
 
 // ── Report list ───────────────────────────────────────────────────────────────
 
-class _ReportList extends StatelessWidget {
+class _ReportList extends StatefulWidget {
   final List<MyReport> reports;
   final bool isDeleting;
   final void Function(MyReport) onDelete;
@@ -426,21 +427,38 @@ class _ReportList extends StatelessWidget {
   });
 
   @override
+  State<_ReportList> createState() => _ReportListState();
+}
+
+class _ReportListState extends State<_ReportList> {
+  final _ctrl = ScrollController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      itemCount: reports.length + 1,
-      itemBuilder: (ctx, i) {
-        if (i == reports.length) return const _ExplainerCard();
-        final r = reports[i];
-        return _ReportCard(
-          report: r,
-          onDelete: () => onDelete(r),
-          onShare: () => onShare(r),
-          onComment: () => onComment(r),
-          onTap: () => onTapCard(r),
-        );
-      },
+    return ScrollNavButtons.wrap(
+      controller: _ctrl,
+      child: ListView.builder(
+        controller: _ctrl,
+        padding: const EdgeInsets.only(top: 8, bottom: 32),
+        itemCount: widget.reports.length + 1,
+        itemBuilder: (ctx, i) {
+          if (i == widget.reports.length) return const _ExplainerCard();
+          final r = widget.reports[i];
+          return _ReportCard(
+            report: r,
+            onDelete: () => widget.onDelete(r),
+            onShare: () => widget.onShare(r),
+            onComment: () => widget.onComment(r),
+            onTap: () => widget.onTapCard(r),
+          );
+        },
+      ),
     );
   }
 }
