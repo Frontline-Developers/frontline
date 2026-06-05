@@ -7,12 +7,12 @@ class MapFilters {
   final MapCategory category;
 
   const MapFilters({
-    this.timeRange = MapTimeRange.sixHours,
+    this.timeRange = MapTimeRange.all,
     this.category = MapCategory.all,
   });
 
   bool get isDefault =>
-      timeRange == MapTimeRange.sixHours && category == MapCategory.all;
+      timeRange == MapTimeRange.all && category == MapCategory.all;
 
   MapFilters copyWith({MapTimeRange? timeRange, MapCategory? category}) {
     return MapFilters(

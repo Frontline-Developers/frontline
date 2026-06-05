@@ -82,6 +82,24 @@ void main() {
       expect(model.createdAt, DateTime(2026, 1, 1));
     });
 
+    test(
+      'defaults createdAt to now when createdAt is null (pending write)',
+      () {
+        final before = DateTime.now();
+        final json = _baseJson()..remove('createdAt');
+        final model = MapReportModel.fromJson('doc-1', json);
+        final after = DateTime.now();
+        expect(
+          model.createdAt.millisecondsSinceEpoch,
+          greaterThanOrEqualTo(before.millisecondsSinceEpoch),
+        );
+        expect(
+          model.createdAt.millisecondsSinceEpoch,
+          lessThanOrEqualTo(after.millisecondsSinceEpoch),
+        );
+      },
+    );
+
     test('id is assigned from first argument', () {
       final model = MapReportModel.fromJson('doc-99', _baseJson());
       expect(model.id, 'doc-99');
