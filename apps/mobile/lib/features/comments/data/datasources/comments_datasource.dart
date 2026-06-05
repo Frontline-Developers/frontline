@@ -11,8 +11,10 @@ abstract class CommentsDatasource {
     required String text,
     required CommentType type,
     required String authorToken,
+    String? parentCommentId,
   });
   Future<void> upvote(String reportId, String commentId);
+  Future<void> downvote(String reportId, String commentId);
 }
 
 class CommentsDatasourceImpl implements CommentsDatasource {
@@ -38,6 +40,7 @@ class CommentsDatasourceImpl implements CommentsDatasource {
     required String text,
     required CommentType type,
     required String authorToken,
+    String? parentCommentId,
   }) async {
     final model = CommentModel(
       id: '',
@@ -46,6 +49,7 @@ class CommentsDatasourceImpl implements CommentsDatasource {
       authorToken: authorToken,
       createdAt: DateTime.now(),
       upvotes: 0,
+      parentCommentId: parentCommentId,
     );
     final batch = FirebaseFirestore.instance.batch();
     final commentRef = FirebaseFirestore.instance
@@ -54,10 +58,13 @@ class CommentsDatasourceImpl implements CommentsDatasource {
         .collection('comments')
         .doc();
     batch.set(commentRef, model.toFirestore());
-    batch.update(
-      FirebaseFirestore.instance.collection('reports').doc(reportId),
-      {'commentCount': FieldValue.increment(1)},
-    );
+    // Only increment commentCount for top-level comments
+    if (parentCommentId == null) {
+      batch.update(
+        FirebaseFirestore.instance.collection('reports').doc(reportId),
+        {'commentCount': FieldValue.increment(1)},
+      );
+    }
     await batch.commit();
   }
 
@@ -72,18 +79,70 @@ class CommentsDatasourceImpl implements CommentsDatasource {
         .collection('comments')
         .doc(commentId);
     final upvoterRef = commentRef.collection('upvoters').doc(uid);
+    final downvoterRef = commentRef.collection('downvoters').doc(uid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
-      final snap = await tx.get(upvoterRef);
-      if (snap.exists) {
-        // Toggle off — remove upvote
+      final upSnap = await tx.get(upvoterRef);
+      final downSnap = await tx.get(downvoterRef);
+      final hasUpvoted = upSnap.exists;
+      final hasDownvoted = downSnap.exists;
+
+      if (hasUpvoted) {
         tx.delete(upvoterRef);
         tx.update(commentRef, {'upvotes': FieldValue.increment(-1)});
-      } else {
-        // Toggle on — add upvote
-        tx.set(upvoterRef, {'at': FieldValue.serverTimestamp()});
-        tx.update(commentRef, {'upvotes': FieldValue.increment(1)});
+        if (hasDownvoted) {
+          tx.delete(downvoterRef);
+          tx.update(commentRef, {'downvotes': FieldValue.increment(-1)});
+        }
+        return;
       }
+
+      if (hasDownvoted) {
+        tx.delete(downvoterRef);
+        tx.update(commentRef, {'downvotes': FieldValue.increment(-1)});
+      }
+
+      tx.set(upvoterRef, {'at': FieldValue.serverTimestamp()});
+      tx.update(commentRef, {'upvotes': FieldValue.increment(1)});
+    });
+  }
+
+  @override
+  Future<void> downvote(String reportId, String commentId) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final commentRef = FirebaseFirestore.instance
+        .collection('reports')
+        .doc(reportId)
+        .collection('comments')
+        .doc(commentId);
+    final upvoterRef = commentRef.collection('upvoters').doc(uid);
+    final downvoterRef = commentRef.collection('downvoters').doc(uid);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final upSnap = await tx.get(upvoterRef);
+      final downSnap = await tx.get(downvoterRef);
+      final hasUpvoted = upSnap.exists;
+      final hasDownvoted = downSnap.exists;
+
+      if (hasDownvoted) {
+        tx.delete(downvoterRef);
+        tx.update(commentRef, {'downvotes': FieldValue.increment(-1)});
+        if (hasUpvoted) {
+          tx.delete(upvoterRef);
+          tx.update(commentRef, {'upvotes': FieldValue.increment(-1)});
+        }
+        return;
+      }
+
+      if (hasUpvoted) {
+        tx.delete(upvoterRef);
+        tx.update(commentRef, {'upvotes': FieldValue.increment(-1)});
+      }
+
+      tx.set(downvoterRef, {'at': FieldValue.serverTimestamp()});
+      tx.update(commentRef, {'downvotes': FieldValue.increment(1)});
     });
   }
 }

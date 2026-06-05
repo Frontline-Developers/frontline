@@ -54,6 +54,8 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
   CommentType _draftType = CommentType.context;
   final _textCtrl = TextEditingController();
   bool _sending = false;
+  final _commentOrder = <String>[];
+  bool _shouldResort = true;
 
   String get _myToken {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -80,9 +82,43 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
             authorToken: _myToken,
           );
       _textCtrl.clear();
+      _shouldResort = true;
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _markResortNeeded() {
+    _shouldResort = true;
+  }
+
+  void _refreshOrder() {
+    setState(() {
+      _shouldResort = true;
+    });
+  }
+
+  List<Comment> _stableSortedComments(List<Comment> tree) {
+    final visible = applySortFilter(tree, _sort);
+    if (_shouldResort || _commentOrder.isEmpty) {
+      _commentOrder
+        ..clear()
+        ..addAll(visible.map((c) => c.id));
+      _shouldResort = false;
+      return visible;
+    }
+
+    final byId = {for (final comment in visible) comment.id: comment};
+    final ordered = <Comment>[];
+    for (final id in _commentOrder) {
+      final comment = byId.remove(id);
+      if (comment != null) ordered.add(comment);
+    }
+    ordered.addAll(byId.values);
+    _commentOrder
+      ..clear()
+      ..addAll(ordered.map((c) => c.id));
+    return ordered;
   }
 
   @override
@@ -147,7 +183,11 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
             data: (all) => _StatsAndSort(
               all: all,
               sort: _sort,
-              onSort: (s) => setState(() => _sort = s),
+              onSort: (s) => setState(() {
+                _sort = s;
+                _markResortNeeded();
+              }),
+              onRefresh: _refreshOrder,
             ),
           ),
           const Divider(height: 1, color: _C.hairlineSoft),
@@ -169,8 +209,9 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                   ),
                 ),
               ),
-              data: (all) {
-                final items = applySortFilter(all, _sort);
+              data: (flat) {
+                final tree = buildCommentTree(flat);
+                final items = _stableSortedComments(tree);
                 if (items.isEmpty) {
                   return const Center(
                     child: Padding(
@@ -187,11 +228,10 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   itemCount: items.length,
                   itemBuilder: (_, i) => _CommentItem(
+                    key: ValueKey(items[i].id),
                     comment: items[i],
                     myToken: _myToken,
-                    onUpvote: () => ref
-                        .read(commentsDatasourceProvider)
-                        .upvote(widget.reportId, items[i].id),
+                    reportId: widget.reportId,
                   ),
                 );
               },
@@ -218,10 +258,12 @@ class _StatsAndSort extends StatelessWidget {
   final List<Comment> all;
   final CommentSort sort;
   final void Function(CommentSort) onSort;
+  final VoidCallback onRefresh;
   const _StatsAndSort({
     required this.all,
     required this.sort,
     required this.onSort,
+    required this.onRefresh,
   });
 
   @override
@@ -235,7 +277,6 @@ class _StatsAndSort extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Inline stats
           Row(
             children: [
               Icon(Icons.check_circle, size: 13, color: _C.verified),
@@ -271,6 +312,13 @@ class _StatsAndSort extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              GestureDetector(
+                onTap: onRefresh,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Icon(Icons.refresh, size: 14, color: _C.inkSecondary),
+                ),
+              ),
               Text(
                 '${all.length} total',
                 style: const TextStyle(fontSize: 11, color: _C.inkTertiary),
@@ -278,7 +326,6 @@ class _StatsAndSort extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          // Sort chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -323,168 +370,449 @@ class _StatsAndSort extends StatelessWidget {
 
 // ── Comment item ──────────────────────────────────────────────────────────────
 
-class _CommentItem extends StatelessWidget {
+class _CommentItem extends ConsumerStatefulWidget {
   final Comment comment;
   final String myToken;
-  final VoidCallback onUpvote;
+  final String reportId;
+  final int depth;
+
   const _CommentItem({
+    super.key,
     required this.comment,
     required this.myToken,
-    required this.onUpvote,
+    required this.reportId,
+    this.depth = 0,
   });
 
   @override
+  ConsumerState<_CommentItem> createState() => _CommentItemState();
+}
+
+class _CommentItemState extends ConsumerState<_CommentItem> {
+  bool _replyOpen = false;
+  bool _repliesVisible = true;
+  final _replyCtrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _replyCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _doUpvote() async {
+    await ref
+        .read(commentsDatasourceProvider)
+        .upvote(widget.reportId, widget.comment.id);
+  }
+
+  Future<void> _doDownvote() async {
+    await ref
+        .read(commentsDatasourceProvider)
+        .downvote(widget.reportId, widget.comment.id);
+  }
+
+  Future<void> _sendReply() async {
+    final text = _replyCtrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await ref
+          .read(commentsDatasourceProvider)
+          .addComment(
+            reportId: widget.reportId,
+            text: text,
+            type: CommentType.context,
+            authorToken: widget.myToken,
+            parentCommentId: widget.comment.id,
+          );
+      _replyCtrl.clear();
+      setState(() => _replyOpen = false);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isMe = comment.authorToken == myToken;
+    final comment = widget.comment;
+    final isMe = comment.authorToken == widget.myToken;
     final token = comment.authorToken;
     final initials = (token.length >= 2 ? token.substring(0, 2) : token)
         .toUpperCase();
+    final net = comment.upvotes - comment.downvotes;
 
-    final (borderColor, badgeBg, badgeFg, badgeLabel) = switch (comment.type) {
+    final (
+      borderColor,
+      badgeBg,
+      badgeFg,
+      badgeLabel,
+      badgeIcon,
+    ) = switch (comment.type) {
       CommentType.confirm => (
         _C.verified,
         _C.verifiedSoft,
         _C.verified,
-        'Confirms',
+        'CONFIRMS',
+        Icons.check,
       ),
       CommentType.dispute => (
         _C.disputed,
         _C.disputedSoft,
         _C.disputed,
-        'Disputes',
+        'DISPUTES',
+        Icons.warning_rounded,
       ),
       CommentType.context => (
         _C.inkTertiary,
         _C.raised,
         _C.inkSecondary,
-        'Context',
+        'CONTEXT',
+        Icons.info_outline,
       ),
     };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: _C.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _C.hairlineSoft),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 3, color: borderColor),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(11, 10, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _C.raised,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'monospace',
-                              color: _C.inkSecondary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            isMe
-                                ? '${comment.authorToken} (you) · ${_timeAgo(comment.createdAt)}'
-                                : '${comment.authorToken} · ${_timeAgo(comment.createdAt)}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: _C.inkTertiary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            badgeLabel,
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: badgeFg,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      comment.text,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        color: _C.ink,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: onUpvote,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _C.raised,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: _C.hairlineSoft),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.arrow_upward,
-                              size: 12,
-                              color: _C.inkSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${comment.upvotes}',
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: _C.inkSecondary,
+    return Padding(
+      padding: EdgeInsets.only(left: widget.depth > 0 ? 20.0 : 0.0, bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card
+          Container(
+            decoration: BoxDecoration(
+              color: _C.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _C.hairlineSoft),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 3, color: borderColor),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(11, 10, 12, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header: avatar | token + time | badge
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _C.raised,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'monospace',
+                                    color: _C.inkSecondary,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isMe
+                                          ? '${comment.authorToken} (you)'
+                                          : comment.authorToken,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'monospace',
+                                        color: _C.inkSecondary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      _timeAgo(comment.createdAt),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: _C.inkTertiary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              // Type badge (top-level only)
+                              if (widget.depth == 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: badgeBg,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(badgeIcon, size: 10, color: badgeFg),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        badgeLabel,
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.3,
+                                          color: badgeFg,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Body
+                          Text(
+                            comment.text,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              color: _C.ink,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Footer: vote pill | Reply | spacer | flag
+                          Row(
+                            children: [
+                              // Vote pill
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _C.raised,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: _C.hairlineSoft),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: _doUpvote,
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4),
+                                        child: Icon(
+                                          Icons.arrow_upward,
+                                          size: 13,
+                                          color: _C.inkSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '$net',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                        color: net > 0
+                                            ? _C.verified
+                                            : net < 0
+                                            ? _C.disputed
+                                            : _C.inkSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: _doDownvote,
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4),
+                                        child: Icon(
+                                          Icons.arrow_downward,
+                                          size: 13,
+                                          color: _C.inkSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Reply button
+                              GestureDetector(
+                                onTap: () =>
+                                    setState(() => _replyOpen = !_replyOpen),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.reply,
+                                        size: 13,
+                                        color: _replyOpen
+                                            ? _C.navy
+                                            : _C.inkSecondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Reply',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: _replyOpen
+                                              ? _C.navy
+                                              : _C.inkSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Replies count toggle
+                              if (comment.replies.isNotEmpty) ...[
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setState(
+                                    () => _repliesVisible = !_repliesVisible,
+                                  ),
+                                  child: Text(
+                                    _repliesVisible
+                                        ? '${comment.replies.length} ${comment.replies.length == 1 ? 'reply' : 'replies'} ▲'
+                                        : '${comment.replies.length} ${comment.replies.length == 1 ? 'reply' : 'replies'} ▼',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: _C.navy,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              // Flag
+                              GestureDetector(
+                                onTap: () {},
+                                child: const Icon(
+                                  Icons.flag_outlined,
+                                  size: 15,
+                                  color: _C.inkTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Inline reply composer
+                          if (_replyOpen) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _replyCtrl,
+                                    minLines: 1,
+                                    maxLines: 3,
+                                    autofocus: true,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: _C.ink,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Reply to ${comment.authorToken}…',
+                                      hintStyle: const TextStyle(
+                                        color: _C.inkTertiary,
+                                        fontSize: 13,
+                                      ),
+                                      filled: true,
+                                      fillColor: _C.raised,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _replyCtrl,
+                                  builder: (ctx2, val, child2) {
+                                    final hasText = val.text.trim().isNotEmpty;
+                                    return GestureDetector(
+                                      onTap: hasText && !_sending
+                                          ? _sendReply
+                                          : null,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: hasText ? _C.navy : _C.raised,
+                                        ),
+                                        child: _sending
+                                            ? const Padding(
+                                                padding: EdgeInsets.all(8),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                Icons.send,
+                                                size: 14,
+                                                color: hasText
+                                                    ? Colors.white
+                                                    : _C.inkTertiary,
+                                              ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          // Recursive replies
+          if (comment.replies.isNotEmpty && _repliesVisible)
+            ...comment.replies.map(
+              (r) => _CommentItem(
+                key: ValueKey(r.id),
+                comment: r,
+                myToken: widget.myToken,
+                reportId: widget.reportId,
+                depth: widget.depth + 1,
+              ),
+            ),
+        ],
       ),
     );
   }
