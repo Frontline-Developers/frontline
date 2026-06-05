@@ -1,8 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/repositories/search_repository.dart';
+abstract class SearchDatasource {
+  Future<List<String>> loadRecentSearches();
+  Future<void> saveRecentSearch(String term);
+  Future<void> clearRecentSearch(String term);
+  Future<void> clearAllRecentSearches();
+}
 
-class SearchDatasourceImpl implements SearchRepository {
+class SearchDatasourceImpl implements SearchDatasource {
   SearchDatasourceImpl(this._prefs);
 
   final SharedPreferences _prefs;
@@ -30,7 +35,5 @@ class SearchDatasourceImpl implements SearchRepository {
   }
 
   @override
-  Future<void> clearAllRecentSearches() async {
-    await _prefs.remove(_key);
-  }
+  Future<void> clearAllRecentSearches() async => _prefs.remove(_key);
 }

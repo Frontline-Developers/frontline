@@ -66,6 +66,7 @@ class _PinScreenState extends ConsumerState<PinScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _shakeController;
   late final Animation<double> _shakeAnimation;
+  late final FocusNode _focusNode;
 
   // Tracks which numpad key is visually "pressed" by a keyboard event.
   final _highlightedDigit = ValueNotifier<int?>(null);
@@ -73,6 +74,10 @@ class _PinScreenState extends ConsumerState<PinScreen>
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode(debugLabel: 'PinScreenFocus');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -91,6 +96,7 @@ class _PinScreenState extends ConsumerState<PinScreen>
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _highlightedDigit.dispose();
     _shakeController.dispose();
     super.dispose();
@@ -143,8 +149,14 @@ class _PinScreenState extends ConsumerState<PinScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Focus(
+        focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: _handleKey,
+        onFocusChange: (hasFocus) {
+          if (!hasFocus && mounted) {
+            _focusNode.requestFocus();
+          }
+        },
         child: Scaffold(
           backgroundColor: _C.bg,
           body: Column(

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/bookmark_provider.dart';
 import '../../../../core/providers/device_country_provider.dart';
+import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
@@ -105,11 +106,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
 // ── App bar ───────────────────────────────────────────────────────────────────
 
-class _FeedAppBar extends StatelessWidget {
+class _FeedAppBar extends ConsumerWidget {
   const _FeedAppBar();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookmarkCount = ref.watch(bookmarkNotifierProvider).length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
       child: Row(
@@ -138,6 +140,35 @@ class _FeedAppBar extends StatelessWidget {
             icon: const Icon(Icons.search, color: _P.inkSecondary, size: 22),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+          // Bookmark icon — between search and notification
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: () => context.push('/bookmarks'),
+                icon: const Icon(
+                  Icons.bookmark_border,
+                  color: _P.inkSecondary,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              ),
+              if (bookmarkCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 6,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _P.navy,
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             onPressed: () {},
@@ -253,13 +284,26 @@ class _FilterChips extends StatelessWidget {
 
 // ── Feed list ─────────────────────────────────────────────────────────────────
 
-class _FeedList extends StatelessWidget {
+class _FeedList extends StatefulWidget {
   final List<NewsItem> items;
   const _FeedList({required this.items});
 
   @override
+  State<_FeedList> createState() => _FeedListState();
+}
+
+class _FeedListState extends State<_FeedList> {
+  final _ctrl = ScrollController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
+    if (widget.items.isEmpty) {
       return const Center(
         child: Text(
           'No items match this filter',
@@ -267,15 +311,19 @@ class _FeedList extends StatelessWidget {
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 24),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
-        return item.source == NewsSource.citizen
-            ? _CitizenCard(key: ValueKey(item.id), item: item)
-            : _WireCard(key: ValueKey(item.id), item: item);
-      },
+    return ScrollNavButtons.wrap(
+      controller: _ctrl,
+      child: ListView.builder(
+        controller: _ctrl,
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        itemCount: widget.items.length,
+        itemBuilder: (_, i) {
+          final item = widget.items[i];
+          return item.source == NewsSource.citizen
+              ? _CitizenCard(key: ValueKey(item.id), item: item)
+              : _WireCard(key: ValueKey(item.id), item: item);
+        },
+      ),
     );
   }
 }
@@ -442,6 +490,7 @@ class _CitizenCard extends ConsumerWidget {
                           const SizedBox(width: 14),
                           _ActionBtn(
                             icon: Icons.chat_bubble_outline,
+                            count: item.commentCount,
                             onTap: () => showCommentsSheet(
                               context,
                               reportId: item.id,
@@ -478,7 +527,7 @@ class _CitizenCard extends ConsumerWidget {
                             ),
                           ),
                           const Spacer(),
-                          _BookmarkBtn(itemId: item.id),
+                          _BookmarkBtn(item: item),
                           const SizedBox(width: 4),
                           _ActionBtn(
                             icon: Icons.share_outlined,
@@ -680,7 +729,7 @@ class _WireCard extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          _BookmarkBtn(itemId: item.id),
+                          _BookmarkBtn(item: item),
                           const SizedBox(width: 4),
                           _ActionBtn(
                             icon: Icons.share_outlined,
@@ -718,17 +767,19 @@ class _CompareWithRow extends StatelessWidget {
           children: [
             const Icon(Icons.compare_arrows, size: 15, color: _P.navy),
             const SizedBox(width: 6),
-            Text(
-              item.category != null
-                  ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
-                  : 'Compare with other reports',
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: _P.navy,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                item.category != null
+                    ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
+                    : 'Compare with other reports',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: _P.navy,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const Spacer(),
             const Icon(Icons.chevron_right, size: 16, color: _P.inkTertiary),
           ],
         ),
@@ -876,17 +927,19 @@ void _share(NewsItem item) {
 }
 
 class _BookmarkBtn extends ConsumerWidget {
-  final String itemId;
-  const _BookmarkBtn({required this.itemId});
+  final NewsItem item;
+  const _BookmarkBtn({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final saved = ref.watch(bookmarkNotifierProvider).contains(itemId);
+    final saved = ref
+        .watch(bookmarkNotifierProvider)
+        .any((i) => i.id == item.id);
     return _ActionBtn(
       icon: saved ? Icons.bookmark : Icons.bookmark_border,
       active: saved,
       activeColor: _P.navy,
-      onTap: () => ref.read(bookmarkNotifierProvider.notifier).toggle(itemId),
+      onTap: () => ref.read(bookmarkNotifierProvider.notifier).toggle(item),
     );
   }
 }

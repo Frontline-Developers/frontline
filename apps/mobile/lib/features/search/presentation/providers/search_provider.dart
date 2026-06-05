@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../features/feed/domain/entities/news_item.dart';
 import '../../../../features/feed/presentation/providers/feed_provider.dart';
-import '../../data/datasources/search_datasource.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../../domain/usecases/search_items.dart';
 
@@ -264,12 +262,3 @@ class SearchNotifier extends Notifier<SearchState> {
     state = state.copyWith(recentSearches: []);
   }
 }
-
-// ── Async provider helper for main.dart ──────────────────────────────────────
-
-final searchRepositoryImplProvider = FutureProvider<SearchRepository>((
-  ref,
-) async {
-  final prefs = await SharedPreferences.getInstance();
-  return SearchDatasourceImpl(prefs);
-});

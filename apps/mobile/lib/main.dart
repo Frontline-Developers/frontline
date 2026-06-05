@@ -13,11 +13,37 @@ import 'features/pin/domain/entities/pin_state.dart';
 import 'features/pin/presentation/providers/pin_provider.dart';
 import 'features/pin/presentation/screens/pin_screen.dart';
 import 'features/search/data/datasources/search_datasource.dart';
+import 'features/search/data/repositories/search_repository_impl.dart';
 import 'features/search/presentation/providers/search_provider.dart';
 
 import 'firebase_options.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
+
+Future<void> _ensureAnonymousAuth() async {
+  if (FirebaseAuth.instance.currentUser != null) {
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance.signInAnonymously();
+  } catch (e) {
+    debugPrint('Anonymous sign-in failed: $e');
+  }
+
+  if (FirebaseAuth.instance.currentUser != null) {
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance
+        .authStateChanges()
+        .firstWhere((user) => user != null)
+        .timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Waiting for auth state failed: $e');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,26 +69,10 @@ Future<void> main() async {
 
   // Sign in anonymously so all Firestore rules (request.auth != null) pass.
   // Required in both emulator and prod — without this the feed gets permission-denied.
-  if (FirebaseAuth.instance.currentUser == null) {
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } catch (e) {
-      debugPrint('Anonymous sign-in failed: $e');
-      // Schedule a single retry after a brief delay — covers the common case
-      // where the network is not ready at cold start (e.g. app opens before
-      // connectivity is fully established).
-      Future.delayed(const Duration(seconds: 5), () async {
-        if (FirebaseAuth.instance.currentUser == null) {
-          try {
-            await FirebaseAuth.instance.signInAnonymously();
-          } catch (_) {}
-        }
-      });
-    }
-  }
+  await _ensureAnonymousAuth();
 
   final prefs = await SharedPreferences.getInstance();
-  final searchRepo = SearchDatasourceImpl(prefs);
+  final searchRepo = SearchRepositoryImpl(SearchDatasourceImpl(prefs));
 
   runApp(
     ProviderScope(

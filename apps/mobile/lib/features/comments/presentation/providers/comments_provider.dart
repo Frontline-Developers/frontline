@@ -18,11 +18,38 @@ final commentsStreamProvider = StreamProvider.family<List<Comment>, String>((
   return ref.watch(commentsDatasourceProvider).watchComments(reportId);
 });
 
+List<Comment> buildCommentTree(List<Comment> flat) {
+  final childrenOf = <String, List<Comment>>{};
+  for (final c in flat) {
+    if (c.parentCommentId != null) {
+      childrenOf.putIfAbsent(c.parentCommentId!, () => []).add(c);
+    }
+  }
+
+  Comment withReplies(Comment c) {
+    final kids = childrenOf[c.id] ?? [];
+    return Comment(
+      id: c.id,
+      type: c.type,
+      text: c.text,
+      authorToken: c.authorToken,
+      createdAt: c.createdAt,
+      upvotes: c.upvotes,
+      downvotes: c.downvotes,
+      parentCommentId: c.parentCommentId,
+      replies: kids.map(withReplies).toList(),
+    );
+  }
+
+  return flat.where((c) => c.parentCommentId == null).map(withReplies).toList();
+}
+
 List<Comment> applySortFilter(List<Comment> all, CommentSort sort) {
   return switch (sort) {
-    CommentSort.top => ([
-      ...all,
-    ]..sort((a, b) => b.upvotes.compareTo(a.upvotes))),
+    CommentSort.top =>
+      ([...all]..sort(
+        (a, b) => (b.upvotes - b.downvotes).compareTo(a.upvotes - a.downvotes),
+      )),
     CommentSort.recent => ([
       ...all,
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt))),

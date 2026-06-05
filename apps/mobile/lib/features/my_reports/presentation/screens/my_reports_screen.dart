@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../comments/presentation/providers/comments_provider.dart';
+import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
 import '../../domain/entities/my_report.dart';
 import '../providers/my_reports_provider.dart';
@@ -250,12 +252,6 @@ class _AggregateStats extends StatelessWidget {
                 label: 'CONFIRMS',
                 color: _C.ink,
               ),
-              const SizedBox(width: 24),
-              _StatCol(
-                value: _compact(state.totalViews),
-                label: 'TOTAL VIEWS',
-                color: _C.ink,
-              ),
             ],
           ),
         ],
@@ -413,7 +409,7 @@ class _FilterTab extends StatelessWidget {
 
 // ── Report list ───────────────────────────────────────────────────────────────
 
-class _ReportList extends StatelessWidget {
+class _ReportList extends StatefulWidget {
   final List<MyReport> reports;
   final bool isDeleting;
   final void Function(MyReport) onDelete;
@@ -431,21 +427,38 @@ class _ReportList extends StatelessWidget {
   });
 
   @override
+  State<_ReportList> createState() => _ReportListState();
+}
+
+class _ReportListState extends State<_ReportList> {
+  final _ctrl = ScrollController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      itemCount: reports.length + 1,
-      itemBuilder: (ctx, i) {
-        if (i == reports.length) return const _ExplainerCard();
-        final r = reports[i];
-        return _ReportCard(
-          report: r,
-          onDelete: () => onDelete(r),
-          onShare: () => onShare(r),
-          onComment: () => onComment(r),
-          onTap: () => onTapCard(r),
-        );
-      },
+    return ScrollNavButtons.wrap(
+      controller: _ctrl,
+      child: ListView.builder(
+        controller: _ctrl,
+        padding: const EdgeInsets.only(top: 8, bottom: 32),
+        itemCount: widget.reports.length + 1,
+        itemBuilder: (ctx, i) {
+          if (i == widget.reports.length) return const _ExplainerCard();
+          final r = widget.reports[i];
+          return _ReportCard(
+            report: r,
+            onDelete: () => widget.onDelete(r),
+            onShare: () => widget.onShare(r),
+            onComment: () => widget.onComment(r),
+            onTap: () => widget.onTapCard(r),
+          );
+        },
+      ),
     );
   }
 }
@@ -826,7 +839,7 @@ class _VerifyMeter extends StatelessWidget {
 
 // ── Action row ────────────────────────────────────────────────────────────────
 
-class _ActionRow extends StatelessWidget {
+class _ActionRow extends ConsumerWidget {
   final MyReport report;
   final VoidCallback onComment;
   final VoidCallback onShare;
@@ -838,15 +851,20 @@ class _ActionRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Read live comment count from Firestore so it's always accurate,
+    // even if the denormalized commentCount on the report doc is stale.
+    final liveCount = ref
+        .watch(commentsStreamProvider(report.id))
+        .when(
+          data: (c) => c.length,
+          loading: () => report.commentCount,
+          error: (e, s) => report.commentCount,
+        );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.visibility_outlined, size: 13, color: _C.inkMuted),
-          const SizedBox(width: 3),
-          _MetricText(number: _commaNum(report.views), label: ' views'),
-          const SizedBox(width: 10),
           const Icon(Icons.check_circle_outline, size: 13, color: _C.inkMuted),
           const SizedBox(width: 3),
           _MetricText(number: _commaNum(report.confirms), label: ' confirms'),
@@ -876,7 +894,7 @@ class _ActionRow extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${report.commentCount}',
+                    '$liveCount',
                     style: const TextStyle(
                       fontSize: 12,
                       color: _C.navy,

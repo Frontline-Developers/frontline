@@ -5,6 +5,7 @@ Comment _make({
   required String id,
   required CommentType type,
   required int upvotes,
+  int downvotes = 0,
   DateTime? createdAt,
 }) => Comment(
   id: id,
@@ -13,6 +14,7 @@ Comment _make({
   authorToken: 'tok',
   createdAt: createdAt ?? DateTime(2026, 6, 4, 10),
   upvotes: upvotes,
+  downvotes: downvotes,
 );
 
 void main() {
@@ -47,14 +49,39 @@ void main() {
   final all = [confirm1, confirm2, dispute1, context1];
 
   group('applySortFilter — top', () {
-    test('sorts by upvotes descending', () {
+    test('sorts by net score (upvotes - downvotes) descending', () {
       final result = applySortFilter(all, CommentSort.top);
-      expect(result.map((c) => c.upvotes).toList(), [10, 7, 3, 1]);
+      expect(result.map((c) => c.upvotes - c.downvotes).toList(), [
+        10,
+        7,
+        3,
+        1,
+      ]);
     });
 
     test('preserves all items', () {
       final result = applySortFilter(all, CommentSort.top);
       expect(result.length, 4);
+    });
+
+    test('downvotes reduce net score and affect ordering', () {
+      final highUpLowNet = _make(
+        id: 'x',
+        type: CommentType.context,
+        upvotes: 10,
+        downvotes: 8,
+      ); // net 2
+      final lowUpHighNet = _make(
+        id: 'y',
+        type: CommentType.context,
+        upvotes: 3,
+        downvotes: 0,
+      ); // net 3
+      final result = applySortFilter([
+        highUpLowNet,
+        lowUpHighNet,
+      ], CommentSort.top);
+      expect(result.first.id, 'y');
     });
   });
 

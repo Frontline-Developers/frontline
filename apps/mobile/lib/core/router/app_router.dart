@@ -11,6 +11,7 @@ import '../../features/my_reports/presentation/screens/report_detail_screen.dart
 import '../../features/reporting/presentation/screens/report_detail_screen.dart'
     as reporting;
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
+import '../../features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 
@@ -42,6 +43,10 @@ final appRouter = GoRouter(
       ],
     ),
     GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
+    GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarksScreen(),
+    ),
     GoRoute(
       path: '/report/new',
       builder: (context, state) => const ReportingScreen(),

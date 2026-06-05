@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontline/core/providers/bookmark_provider.dart';
 import 'package:frontline/core/providers/device_country_provider.dart';
 import 'package:frontline/features/feed/domain/entities/news_item.dart';
 import 'package:frontline/features/feed/presentation/providers/feed_provider.dart';
@@ -15,11 +16,17 @@ class _FakeFeedNotifier extends FeedNotifier {
   FeedState build() => _initial;
 }
 
+class _FakeBookmarkNotifier extends BookmarkNotifier {
+  @override
+  List<NewsItem> build() => const [];
+}
+
 Widget _wrap(FeedState state) => ProviderScope(
   overrides: [
     feedNotifierProvider.overrideWith(() => _FakeFeedNotifier(state)),
     voteProvider.overrideWith((ref, reportId) async => null),
     deviceCountryProvider.overrideWith((ref) async => 'Test Country'),
+    bookmarkNotifierProvider.overrideWith(_FakeBookmarkNotifier.new),
   ],
   child: const MaterialApp(home: FeedScreen()),
 );
@@ -29,6 +36,7 @@ NewsItem _citizen({
   String title = 'Strike observed',
   ItemStatus? status,
   String? category = 'combat',
+  int commentCount = 0,
 }) => NewsItem(
   id: id,
   title: title,
@@ -36,6 +44,7 @@ NewsItem _citizen({
   publishedAt: DateTime(2026, 6, 4, 9),
   status: status,
   category: category,
+  commentCount: commentCount,
 );
 
 NewsItem _wire({String id = 'w1', String title = 'AP News: Update'}) =>
@@ -91,6 +100,17 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Shelling near Kharkiv'), findsOneWidget);
+  });
+
+  testWidgets('shows comment count on the post comment button', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        FeedState(items: [_citizen(title: 'Strike observed', commentCount: 3)]),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('3'), findsOneWidget);
   });
 
   testWidgets('filter All shows items without filtering them out', (
