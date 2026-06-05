@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/vote_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../feed/domain/entities/news_item.dart';
 import '../../domain/entities/event_cluster.dart';
 import '../providers/compare_provider.dart';
@@ -450,16 +451,33 @@ class _RelatedReportsHeader extends StatelessWidget {
 
 // ── Cluster list ──────────────────────────────────────────────────────────────
 
-class _ClusterList extends StatelessWidget {
+class _ClusterList extends StatefulWidget {
   final List<EventCluster> clusters;
   const _ClusterList({required this.clusters});
 
   @override
+  State<_ClusterList> createState() => _ClusterListState();
+}
+
+class _ClusterListState extends State<_ClusterList> {
+  final _ctrl = ScrollController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 24),
-      itemCount: clusters.length,
-      itemBuilder: (_, i) => _EventClusterCard(cluster: clusters[i]),
+    return ScrollNavButtons.wrap(
+      controller: _ctrl,
+      child: ListView.builder(
+        controller: _ctrl,
+        padding: const EdgeInsets.only(top: 4, bottom: 24),
+        itemCount: widget.clusters.length,
+        itemBuilder: (_, i) => _EventClusterCard(cluster: widget.clusters[i]),
+      ),
     );
   }
 }
