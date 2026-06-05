@@ -7,7 +7,8 @@
     "serve": "npm run build && firebase emulators:start --only functions,auth,firestore,storage",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "NODE_OPTIONS=--no-deprecation jest"
+    "test": "NODE_OPTIONS=--no-deprecation jest",
+    "migrate:geohash": "npx ts-node --project scripts/tsconfig.json scripts/migrateGeohash.ts"
   },
   "engines": {
     "node": "24"
@@ -33,6 +34,7 @@
     "jest": "^30.4.2",
     "prettier": "^3.8.3",
     "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.0"
   },
   "private": true

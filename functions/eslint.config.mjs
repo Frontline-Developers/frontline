@@ -4,7 +4,7 @@ import prettierConfig from "eslint-config-prettier";
 import globals from "globals";
 
 export default [
-  {ignores: ["lib/**/*", "eslint.config.mjs", "jest.config.js"]},
+  {ignores: ["lib/**/*", "eslint.config.mjs", "jest.config.js", "scripts/**/*"]},
   ...tsPlugin.configs["flat/recommended"],
   importX.flatConfigs.recommended,
   {

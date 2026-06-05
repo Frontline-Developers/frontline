@@ -98,7 +98,7 @@ void main() {
     testWidgets('shows VERIFIED stat label', (tester) async {
       final state = MyReportsState(
         reports: [
-          _report(status: 'verified'),
+          _report(status: 'confirmed'),
           _report(id: 'r2'),
         ],
       );
@@ -130,7 +130,7 @@ void main() {
     ) async {
       final state = MyReportsState(
         reports: [
-          _report(id: 'r1', title: 'Verified report', status: 'verified'),
+          _report(id: 'r1', title: 'Verified report', status: 'confirmed'),
           _report(id: 'r2', title: 'Pending report', status: 'pending'),
         ],
       );
@@ -170,7 +170,7 @@ void main() {
       final state = MyReportsState(
         reports: [
           _report(id: 'r1', status: 'disputed'),
-          _report(id: 'r2', status: 'verified'),
+          _report(id: 'r2', status: 'confirmed'),
           _report(id: 'r3', status: 'pending'),
         ],
       );
@@ -197,7 +197,7 @@ void main() {
 
     testWidgets('verify meter NOT shown for verified reports', (tester) async {
       final state = MyReportsState(
-        reports: [_report(status: 'verified', confirms: 50, flags: 0)],
+        reports: [_report(status: 'confirmed', confirms: 50, flags: 0)],
       );
       await tester.pumpWidget(_wrap(state));
       // No "flagged" text for verified cards
