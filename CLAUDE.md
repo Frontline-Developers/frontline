@@ -103,10 +103,10 @@ npm install && npm run build && npm test   # npm test requires emulators
 | Feature | Provider | Status | Notes |
 |---|---|---|---|
 | `auth` | `authNotifierProvider` | Stub | Anonymous auth only — reference impl |
-| `map` | `mapNotifierProvider` | Active | flutter_map + OSM tiles, category/time filters, "You are here" GPS toggle |
+| `map` | `mapNotifierProvider` | Active | flutter_map + OSM tiles, category/time filters, "You are here" GPS toggle; `LocationService` in `map/data/services/` provides `getCityName` for the map feature only |
 | `feed` | `feedNotifierProvider` | Stub | Citizen + GDELT wire news combined feed |
-| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF |
-| `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID |
+| `reporting` | `reportingNotifierProvider` | Partial | Multi-step form + `ReportDetailScreen` (`/report/:id`); calls `fuzzReportLocation` CF; `GeocodingService` in `reporting/data/services/` — bidirectional geocoding in location step; evidence step supports up to 5 photos (append, per-photo remove) |
+| `my_reports` | `myReportsNotifierProvider` | Stub | Local query by anonymous UID; status filter uses `'confirmed'` (Firestore value), displays as "VERIFIED" |
 | `alerts` | `alertNotifierProvider` | Active | Save alert subscriptions to Firestore; `sendAlertNotifications` CF dispatches FCM push |
 | `compare` | `compareNotifierProvider` | Done | Groups reports+wire by category+date; SUPPORTS/CONTRADICTS/UNVERIFIED timeline |
 | `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
@@ -252,7 +252,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **485 tests** across 39 test files — all pass, zero analyze issues.
+Total: **495 tests** across 39 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -263,7 +263,7 @@ Total: **485 tests** across 39 test files — all pass, zero analyze issues.
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
-| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview |
+| `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview; `StepLocation` bidirectional geocoding (forward search + 800ms debounced reverse, loading state, structured label) |
 | `pin` | `pin/domain/pin_state_test.dart`, `pin/presentation/pin_notifier_test.dart`, `pin/presentation/pin_screen_test.dart` | `PinState`/`PinStatus` entity + sentinel; `PinNotifier` full flow (createPin→confirmPin→biometricSetup/unlocked, enterPin correct/wrong, bypassWarning, resetAll, biometricEnable/skip); `PinScreen` all states + dot indicator + numpad + Forgot PIN dialog + bypass banner + biometric setup screen |
 | `splash` | `splash/presentation/splash_screen_test.dart` | SplashScreen render + title + subtitle + privacy note + progress indicator + loading label; 6 tests |
 | `search` | `search/domain/search_logic_test.dart`, `search/data/search_datasource_test.dart`, `search/presentation/search_notifier_test.dart`, `search/presentation/search_screen_test.dart` | `searchMatches` AND logic + scope filter + all haystack fields; `SearchDatasourceImpl` save/load/dedup/max-8/clear; `SearchNotifier` all state transitions + trending computation; `SearchScreen` all states (empty/results/no-results) + scope chips + recent pills + Search button |

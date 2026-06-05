@@ -32,7 +32,6 @@ class MapReportModel {
       category: json['category'] as String? ?? 'other',
       // Firestore schema uses 'description'; fallback to 'title' for mock data.
       title: json['description'] as String? ?? json['title'] as String? ?? '',
-      // locationLabel is not in Firestore schema — use empty string fallback.
       locationLabel: json['locationLabel'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
       createdAt: ts.toDate(),

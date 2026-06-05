@@ -78,10 +78,11 @@ class VoteDatasourceImpl implements VoteDatasource {
         }
       }
 
+      final clampedDispute = max(0, disputeCount);
       tx.update(reportRef, {
         'confirmCount': max(0, confirmCount),
-        'disputeCount': max(0, disputeCount),
-        'isDisputed': max(0, disputeCount) > 0,
+        'disputeCount': clampedDispute,
+        'isDisputed': clampedDispute > 0,
       });
     });
   }

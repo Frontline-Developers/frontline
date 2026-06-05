@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/reporting_datasource.dart';
 import '../../data/repositories/reporting_repository_impl.dart';
+import '../../data/services/geocoding_service.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/repositories/reporting_repository.dart';
+
+export '../../data/services/geocoding_service.dart' show GeocodingService;
 
 enum ReportingStage { describe, location, evidence, processing, success }
 
@@ -47,6 +50,10 @@ class ReportingState {
 }
 
 const _sentinel = Object();
+
+final geocodingServiceProvider = Provider<GeocodingService>(
+  (_) => const GeocodingServiceImpl(),
+);
 
 final reportingDatasourceProvider = Provider<ReportingDatasource>(
   (_) => ReportingDatasourceImpl(),

@@ -417,7 +417,7 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, label, bg, fg) = switch (status) {
-      'verified' => (
+      'confirmed' => (
         Icons.check_circle_outline,
         'VERIFIED',
         _C.verifiedBg,

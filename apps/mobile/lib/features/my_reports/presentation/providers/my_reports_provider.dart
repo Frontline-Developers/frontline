@@ -27,7 +27,7 @@ class MyReportsState {
   List<MyReport> get filtered => switch (filter) {
     MyReportsFilter.all => reports,
     MyReportsFilter.verified =>
-      reports.where((r) => r.status == 'verified').toList(),
+      reports.where((r) => r.status == 'confirmed').toList(),
     MyReportsFilter.pending =>
       reports.where((r) => r.status == 'pending').toList(),
     MyReportsFilter.disputed =>
@@ -37,7 +37,7 @@ class MyReportsState {
   int countFor(MyReportsFilter f) => switch (f) {
     MyReportsFilter.all => reports.length,
     MyReportsFilter.verified =>
-      reports.where((r) => r.status == 'verified').length,
+      reports.where((r) => r.status == 'confirmed').length,
     MyReportsFilter.pending =>
       reports.where((r) => r.status == 'pending').length,
     MyReportsFilter.disputed =>
