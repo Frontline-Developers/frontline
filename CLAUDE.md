@@ -112,6 +112,7 @@ npm install && npm run build && npm test   # npm test requires emulators
 | `pin` | `pinNotifierProvider` | Done | Mandatory 6-digit PIN gate on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data; web bypass detection |
 | `splash` | _(no provider — StatefulWidget)_ | Done | Animated radar splash, auto-nav to /feed after 2.8 s |
 | `search` | `searchNotifierProvider` | Done | Full-screen overlay from Feed; AND keyword search; recent searches (SharedPreferences); What's Going On top-5 countries |
+| `bookmarks` | _(provider in `core/providers/bookmark_provider.dart`)_ | Stub | Saved-item bookmarks screen |
 
 ---
 
@@ -252,7 +253,7 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **501 tests** across 39 test files — all pass, zero analyze issues.
+Total: **545 tests** across 42 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
@@ -260,8 +261,9 @@ Total: **501 tests** across 39 test files — all pass, zero analyze issues.
 | `feed` | `feed/domain/news_item_test.dart`, `feed/presentation/feed_screen_test.dart` | `NewsItem` entity; FeedScreen loading/error/empty/loaded; all 4 filter chips |
 | `map` | `map/domain/map_filters_test.dart`, `map/data/map_report_model_test.dart`, `map/presentation/map_screen_test.dart`, `map/presentation/map_notifier_test.dart`, `map/presentation/locate_me_test.dart` | `MapFilters`/`MapTimeRange`/`MapCategory` entities; `MapReportModel.fromJson` + `toEntity` + fallbacks; MapScreen all 5 required states; `MapNotifier` all methods + `watchArea` state transitions + `searchLocation` (6 cases); locate-me toggle; `LocationService` now includes `searchLocation` forward-geocoding |
 | `alerts` | `alerts/domain/save_alert_test.dart`, `alerts/presentation/alert_notifier_test.dart`, `alerts/data/fcm_token_service_test.dart` | `SaveAlert` validation + boundary values (radius 1–20); `AlertNotifier` idle/saving/saved/error + `reset()`; FCM registration success + non-blocking failure |
-| `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
-| `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |
+| `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart`, `my_reports/presentation/report_detail_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states; MyReportDetailScreen citizen/wire renders |
+| `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart`, `comments/presentation/build_comment_tree_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases; `buildCommentTree` threading logic |
+| `bookmarks` | `bookmarks/presentation/bookmarks_screen_test.dart` | BookmarksScreen render test |
 | `compare` | `compare/domain/event_cluster_test.dart`, `compare/domain/fetch_related_wire_news_usecase_test.dart`, `compare/presentation/compare_notifier_test.dart`, `compare/presentation/compare_screen_test.dart` | `EvidenceEval.evalFromVotes` all branches; `FetchRelatedWireNewsUseCase` three-tier fallback + `extractLocations`; streaming `CompareNotifier` (initial/emit/error/replace); CompareScreen all states + SUPPORTS/CONTRADICTS/UNVERIFIED badges + anchor path |
 | `reporting` | 10 files (datasource, model, domain, notifier, screen, widgets, report_detail) | Full coverage of multi-step form, processing pipeline, EXIF, location fuzzing; `ReportDetailScreen` citizen/wire renders, verification panel, confirm/flag buttons, source name, "Read full article", compare CTA, discussion preview; `StepLocation` bidirectional geocoding (forward search + 800ms debounced reverse, loading state, structured label) |
 | `pin` | `pin/domain/pin_state_test.dart`, `pin/presentation/pin_notifier_test.dart`, `pin/presentation/pin_screen_test.dart` | `PinState`/`PinStatus` entity + sentinel; `PinNotifier` full flow (createPin→confirmPin→biometricSetup/unlocked, enterPin correct/wrong, bypassWarning, resetAll, biometricEnable/skip); `PinScreen` all states + dot indicator + numpad + Forgot PIN dialog + bypass banner + biometric setup screen |
