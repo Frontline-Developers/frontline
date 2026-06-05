@@ -3,9 +3,9 @@ import 'package:frontline/features/map/domain/entities/map_filters.dart';
 
 void main() {
   group('MapFilters — defaults', () {
-    test('default timeRange is sixHours', () {
+    test('default timeRange is all', () {
       const filters = MapFilters();
-      expect(filters.timeRange, MapTimeRange.sixHours);
+      expect(filters.timeRange, MapTimeRange.all);
     });
 
     test('default category is all', () {
@@ -40,7 +40,7 @@ void main() {
 
     test('returns true when explicitly set to default values', () {
       const filters = MapFilters(
-        timeRange: MapTimeRange.sixHours,
+        timeRange: MapTimeRange.all,
         category: MapCategory.all,
       );
       expect(filters.isDefault, isTrue);

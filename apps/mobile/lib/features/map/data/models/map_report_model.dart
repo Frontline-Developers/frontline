@@ -23,7 +23,7 @@ class MapReportModel {
   });
 
   factory MapReportModel.fromJson(String id, Map<String, dynamic> json) {
-    final ts = json['createdAt'] as Timestamp;
+    final ts = json['createdAt'] as Timestamp?;
     final gp = json['location'] as GeoPoint;
     return MapReportModel(
       id: id,
@@ -34,7 +34,7 @@ class MapReportModel {
       title: json['description'] as String? ?? json['title'] as String? ?? '',
       locationLabel: json['locationLabel'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
-      createdAt: ts.toDate(),
+      createdAt: ts?.toDate() ?? DateTime.now(),
     );
   }
 
