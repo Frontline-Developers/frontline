@@ -32,7 +32,13 @@ class MapDatasourceImpl implements MapDatasource {
           center: GeoFirePoint(GeoPoint(lat, lng)),
           radiusInKm: radiusKm,
           field: 'geohash',
-          geopointFrom: (data) => data['location'] as GeoPoint,
+          // New documents store geohash as a nested map {geohash, geopoint}.
+          // Fall back to the top-level 'location' field for legacy documents.
+          geopointFrom: (data) {
+            final geo = data['geohash'];
+            if (geo is Map<String, dynamic>) return geo['geopoint'] as GeoPoint;
+            return data['location'] as GeoPoint;
+          },
           strictMode: true,
         )
         .map(

@@ -35,7 +35,7 @@ class CommentModel {
       id: doc.id,
       type: type,
       text: data['text'] as String? ?? '',
-      authorToken: data['authorToken'] as String? ?? '??????',
+      authorToken: data['authorToken'] as String? ?? '',
       createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
       upvotes: (data['upvotes'] as num?)?.toInt() ?? 0,
       downvotes: (data['downvotes'] as num?)?.toInt() ?? 0,

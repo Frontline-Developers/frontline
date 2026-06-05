@@ -6,6 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../domain/entities/report.dart';
 import '../providers/reporting_provider.dart';
 import 'report_theme.dart';
 
@@ -44,6 +45,9 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
   }
 
   Future<void> _pickPhoto() async {
+    final current = ref.read(reportingNotifierProvider).draft.mediaBytes;
+    if (current.length >= ReportDraft.maxPhotos) return;
+
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
@@ -76,9 +80,13 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
 
     setState(() => _exifRows = rows);
     _stripAnim.value = 0;
+    // Read current list again after async gap — user may have removed photos.
+    final updated = List<Uint8List>.from(
+      ref.read(reportingNotifierProvider).draft.mediaBytes,
+    )..add(compressed);
     ref
         .read(reportingNotifierProvider.notifier)
-        .updateDraft(mediaBytes: [compressed]);
+        .updateDraft(mediaBytes: updated);
     _stripAnim.forward();
   }
 
@@ -127,10 +135,16 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
     }
   }
 
-  void _removePhoto() {
-    ref.read(reportingNotifierProvider.notifier).updateDraft(mediaBytes: []);
-    setState(() => _exifRows = []);
-    _stripAnim.value = 0;
+  void _removePhotoAt(int index) {
+    final current = ref.read(reportingNotifierProvider).draft.mediaBytes;
+    final updated = List<Uint8List>.from(current)..removeAt(index);
+    ref
+        .read(reportingNotifierProvider.notifier)
+        .updateDraft(mediaBytes: updated);
+    if (updated.isEmpty) {
+      setState(() => _exifRows = []);
+      _stripAnim.value = 0;
+    }
   }
 
   @override
@@ -143,7 +157,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
       children: [
         const Text('EVIDENCE', style: ReportTextStyles.sectionLabel),
         const SizedBox(height: 10),
-        if (!hasPhoto) _dropzone() else _preview(draft.mediaBytes.first),
+        if (!hasPhoto) _dropzone() else _photoSection(draft.mediaBytes),
         const SizedBox(height: 22),
         const Text('OPTIONAL CONTEXT', style: ReportTextStyles.sectionLabel),
         const SizedBox(height: 8),
@@ -222,7 +236,8 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
     );
   }
 
-  Widget _preview(Uint8List previewBytes) {
+  Widget _photoSection(List<Uint8List> photos) {
+    final canAdd = photos.length < ReportDraft.maxPhotos;
     return Container(
       decoration: BoxDecoration(
         color: ReportPalette.card,
@@ -233,71 +248,23 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 4 / 3,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.memory(
-                  previewBytes,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                ),
-                AnimatedBuilder(
-                  animation: _stripAnim,
-                  builder: (context, _) {
-                    if (_stripAnim.value >= 1) return const SizedBox.shrink();
-                    return Container(
-                      color: const Color(0xB30F1117),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'STRIPPING METADATA...',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: _removePhoto,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0x99000000),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 14,
-                      ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 8.0;
+                final tileSize = (constraints.maxWidth - spacing) / 2;
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: [
+                    ...photos.asMap().entries.map(
+                      (e) => _thumbnailTile(e.value, e.key, tileSize),
                     ),
-                  ),
-                ),
-              ],
+                    if (canAdd) _addMoreTile(tileSize),
+                  ],
+                );
+              },
             ),
           ),
           AnimatedBuilder(
@@ -305,7 +272,7 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
             builder: (context, _) {
               if (_stripAnim.value < 1) return const SizedBox.shrink();
               return Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -338,6 +305,103 @@ class _StepEvidenceState extends ConsumerState<StepEvidence>
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _thumbnailTile(Uint8List bytes, int index, double size) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            ),
+          ),
+          // EXIF strip loading overlay on the last photo while animating.
+          if (index ==
+              ref.read(reportingNotifierProvider).draft.mediaBytes.length - 1)
+            AnimatedBuilder(
+              animation: _stripAnim,
+              builder: (context, _) {
+                if (_stripAnim.value >= 1) return const SizedBox.shrink();
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    color: const Color(0xB30F1117),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () => _removePhotoAt(index),
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x99000000),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addMoreTile(double size) {
+    return GestureDetector(
+      onTap: _pickPhoto,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Container(
+          decoration: BoxDecoration(
+            color: ReportPalette.raised,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: ReportPalette.hairlineStrong, width: 1.5),
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_a_photo_outlined,
+                color: ReportPalette.navy,
+                size: 24,
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Add photo',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: ReportPalette.inkSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

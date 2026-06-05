@@ -26,7 +26,10 @@ void main() {
       expect(loc.latitude, 50.024);
       expect(loc.longitude, 36.229);
 
-      expect(json['geohash'], 'gbsuv');
+      final geoField = json['geohash'] as Map<String, dynamic>;
+      expect(geoField['geohash'], 'gbsuv');
+      expect((geoField['geopoint'] as GeoPoint).latitude, 50.024);
+      expect((geoField['geopoint'] as GeoPoint).longitude, 36.229);
       expect(json['mediaUrls'], ['gs://foo/a.jpg']);
       expect(json['status'], 'pending');
       expect(json['confirmCount'], 0);

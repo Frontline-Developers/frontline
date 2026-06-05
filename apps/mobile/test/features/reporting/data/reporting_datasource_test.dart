@@ -309,7 +309,9 @@ void main() {
         lng: 36.2,
       );
       await ds.submitReport(draft);
-      expect(calls.writes.single.json['geohash'], 'gbsuv');
+      final geoField =
+          calls.writes.single.json['geohash'] as Map<String, dynamic>;
+      expect(geoField['geohash'], 'gbsuv');
     });
   });
 

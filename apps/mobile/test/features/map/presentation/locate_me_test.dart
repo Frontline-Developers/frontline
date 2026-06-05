@@ -21,6 +21,9 @@ class _FakeLocationService implements LocationService {
   @override
   Future<String?> getCityName(double lat, double lng) async =>
       _result != null ? _cityName : null;
+
+  @override
+  Future<LatLng?> searchLocation(String address) async => null;
 }
 
 ProviderContainer _container(LocationService svc) => ProviderContainer(

@@ -4,7 +4,7 @@
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "geohash",   "order": "ASCENDING" },
+        { "fieldPath": "geohash.geohash", "order": "ASCENDING" },
         { "fieldPath": "category",  "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]

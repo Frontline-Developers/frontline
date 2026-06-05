@@ -163,6 +163,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Move the map and reload reports when geocoding resolves a new location.
+    ref.listen<LatLng?>(mapNotifierProvider.select((s) => s.searchedLocation), (
+      _,
+      location,
+    ) {
+      if (location == null) return;
+      _mapController.move(location, 12.0);
+      ref
+          .read(mapNotifierProvider.notifier)
+          .watchArea(location.latitude, location.longitude, 300);
+    });
+    // Show a snackbar when a location search yields no results.
+    ref.listen<String?>(mapNotifierProvider.select((s) => s.searchError), (
+      _,
+      err,
+    ) {
+      if (err == null || !context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(err),
+            backgroundColor: _combatRed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          ),
+        );
+    });
+
     final state = ref.watch(mapNotifierProvider);
     final notifier = ref.read(mapNotifierProvider.notifier);
     final filteredReports = _applyFilters(state.reports, state.filters);
@@ -294,8 +327,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         const SizedBox(width: 12),
       ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Divider(height: 1, color: Colors.grey.shade200),
+        preferredSize: const Size.fromHeight(57),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: _MapSearchBar(state: state, notifier: notifier),
+            ),
+            Divider(height: 1, color: Colors.grey.shade200),
+          ],
+        ),
       ),
     );
   }
@@ -906,6 +948,79 @@ class _ClusterMarkerWidget extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Search bar (AppBar bottom)
+// ---------------------------------------------------------------------------
+
+class _MapSearchBar extends StatefulWidget {
+  final MapState state;
+  final MapNotifier notifier;
+
+  const _MapSearchBar({required this.state, required this.notifier});
+
+  @override
+  State<_MapSearchBar> createState() => _MapSearchBarState();
+}
+
+class _MapSearchBarState extends State<_MapSearchBar> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() => widget.notifier.searchLocation(_ctrl.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _ctrl,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (_) => _submit(),
+      onChanged: (_) => setState(() {}),
+      style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+      decoration: InputDecoration(
+        hintText: 'Search location...',
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: Icon(Icons.search, color: Colors.grey.shade500, size: 20),
+        suffixIcon: widget.state.isSearching
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _navy,
+                  ),
+                ),
+              )
+            : _ctrl.text.isNotEmpty
+            ? IconButton(
+                key: const Key('mapSearchClearButton'),
+                icon: Icon(Icons.close, size: 16, color: Colors.grey.shade500),
+                onPressed: () => setState(() => _ctrl.clear()),
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _navy, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        isDense: true,
+      ),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +20,8 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   late final TextEditingController _labelController;
   late final MapController _mapController;
   bool _locating = false;
+  bool _geocoding = false;
+  Timer? _reverseGeocodeTimer;
   LatLng _displayCenter = _defaultCenter;
 
   // Default global view when the user hasn't picked yet.
@@ -36,6 +40,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
 
   @override
   void dispose() {
+    _reverseGeocodeTimer?.cancel();
     _labelController.dispose();
     _mapController.dispose();
     super.dispose();
@@ -48,6 +53,62 @@ class _StepLocationState extends ConsumerState<StepLocation> {
     ref
         .read(reportingNotifierProvider.notifier)
         .updateDraft(lat: camera.center.latitude, lng: camera.center.longitude);
+
+    // Debounce reverse geocoding — cancel any pending call and reschedule.
+    _reverseGeocodeTimer?.cancel();
+    _reverseGeocodeTimer = Timer(const Duration(milliseconds: 800), () {
+      _reverseGeocode(camera.center.latitude, camera.center.longitude);
+    });
+  }
+
+  Future<void> _reverseGeocode(double lat, double lng) async {
+    if (!mounted) return;
+    setState(() => _geocoding = true);
+    try {
+      final label = await ref
+          .read(geocodingServiceProvider)
+          .reverseGeocode(lat, lng);
+      if (!mounted) return;
+      if (label != null) {
+        _labelController.text = label;
+        ref
+            .read(reportingNotifierProvider.notifier)
+            .updateDraft(locationLabel: label);
+      }
+    } finally {
+      if (mounted) setState(() => _geocoding = false);
+    }
+  }
+
+  Future<void> _forwardGeocode(String address) async {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _geocoding = true);
+    try {
+      final svc = ref.read(geocodingServiceProvider);
+      final result = await svc.forwardGeocode(trimmed);
+      if (!mounted) return;
+      if (result != null) {
+        _mapController.move(LatLng(result.lat, result.lng), _pickedZoom);
+        ref
+            .read(reportingNotifierProvider.notifier)
+            .updateDraft(lat: result.lat, lng: result.lng);
+        // Reverse-geocode the resolved position to get a structured label.
+        final label = await svc.reverseGeocode(result.lat, result.lng);
+        if (!mounted) return;
+        if (label != null) {
+          _labelController.text = label;
+          ref
+              .read(reportingNotifierProvider.notifier)
+              .updateDraft(locationLabel: label);
+        }
+      } else {
+        _showSnack('Address not found. Try a different search.');
+      }
+    } finally {
+      if (mounted) setState(() => _geocoding = false);
+    }
   }
 
   Future<void> _useMyLocation() async {
@@ -69,6 +130,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
       ref
           .read(reportingNotifierProvider.notifier)
           .updateDraft(lat: pos.latitude, lng: pos.longitude);
+      await _reverseGeocode(pos.latitude, pos.longitude);
     } catch (e) {
       _showSnack('Could not get your location: $e');
     } finally {
@@ -111,9 +173,11 @@ class _StepLocationState extends ConsumerState<StepLocation> {
         const SizedBox(height: 8),
         TextField(
           controller: _labelController,
+          textInputAction: TextInputAction.search,
           onChanged: (v) => ref
               .read(reportingNotifierProvider.notifier)
               .updateDraft(locationLabel: v),
+          onSubmitted: _forwardGeocode,
           decoration: InputDecoration(
             hintText: 'City, district, neighborhood...',
             hintStyle: const TextStyle(
@@ -125,6 +189,28 @@ class _StepLocationState extends ConsumerState<StepLocation> {
               color: ReportPalette.inkTertiary,
               size: 20,
             ),
+            suffixIcon: _geocoding
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ReportPalette.navy,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    key: const Key('locationSearchButton'),
+                    icon: const Icon(
+                      Icons.search,
+                      color: ReportPalette.inkTertiary,
+                      size: 20,
+                    ),
+                    tooltip: 'Search address',
+                    onPressed: () => _forwardGeocode(_labelController.text),
+                  ),
             filled: true,
             fillColor: ReportPalette.raised,
             border: OutlineInputBorder(
