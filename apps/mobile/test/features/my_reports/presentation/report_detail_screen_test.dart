@@ -27,9 +27,7 @@ Widget _wrap(Widget child, {List<Comment> comments = const []}) {
   return ProviderScope(
     overrides: [
       voteProvider.overrideWith((ref, id) async => null),
-      commentsStreamProvider.overrideWith(
-        (ref, id) => Stream.value(comments),
-      ),
+      commentsStreamProvider.overrideWith((ref, id) => Stream.value(comments)),
       voteDatasourceProvider.overrideWith((_) => _FakeVoteDatasource()),
     ],
     child: MaterialApp(home: child),
@@ -168,30 +166,33 @@ void main() {
   });
 
   // Positive action — active vote state
-  testWidgets('Confirm button uses filled icon when user already voted confirm',
-      (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          voteProvider.overrideWith((ref, id) async => 'confirm'),
-          commentsStreamProvider.overrideWith(
-            (ref, id) => Stream.value(const []),
+  testWidgets(
+    'Confirm button uses filled icon when user already voted confirm',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            voteProvider.overrideWith((ref, id) async => 'confirm'),
+            commentsStreamProvider.overrideWith(
+              (ref, id) => Stream.value(const []),
+            ),
+            voteDatasourceProvider.overrideWith((_) => _FakeVoteDatasource()),
+          ],
+          child: MaterialApp(
+            home: MyReportDetailScreen(reportId: 'r1', report: _report()),
           ),
-          voteDatasourceProvider.overrideWith((_) => _FakeVoteDatasource()),
-        ],
-        child: MaterialApp(
-          home: MyReportDetailScreen(reportId: 'r1', report: _report()),
         ),
-      ),
-    );
-    await tester.pump();
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
-    expect(find.byIcon(Icons.check_circle_outline), findsNothing);
-  });
+      );
+      await tester.pump();
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+    },
+  );
 
   // Discussion — empty
-  testWidgets('shows "No comments yet" when discussion is empty',
-      (tester) async {
+  testWidgets('shows "No comments yet" when discussion is empty', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(MyReportDetailScreen(reportId: 'r1', report: _report())),
     );
@@ -200,8 +201,9 @@ void main() {
   });
 
   // Discussion — with comments
-  testWidgets('shows comment preview text when comments are present',
-      (tester) async {
+  testWidgets('shows comment preview text when comments are present', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         MyReportDetailScreen(reportId: 'r1', report: _report()),
@@ -212,8 +214,9 @@ void main() {
     expect(find.textContaining('I confirm this from nearby.'), findsOneWidget);
   });
 
-  testWidgets('shows "View all" link when comments are present',
-      (tester) async {
+  testWidgets('shows "View all" link when comments are present', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         MyReportDetailScreen(reportId: 'r1', report: _report()),
