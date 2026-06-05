@@ -1097,10 +1097,10 @@ class _FeedShareSheet extends StatelessWidget {
                   color: const Color(0xFF868E96),
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: _fullUrl));
-                    Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Link copied')),
                     );
+                    Navigator.pop(context);
                   },
                 ),
                 _ShareBtn(
