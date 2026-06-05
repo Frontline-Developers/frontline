@@ -106,25 +106,6 @@ void main() {
     expect(find.text('3'), findsOneWidget);
   });
 
-  testWidgets('shows comment count on the post comment button', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        FeedState(
-          items: [
-            _citizen(
-              title: 'Strike observed',
-              commentCount: 3,
-              category: 'combat',
-            ),
-          ],
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.text('3'), findsOneWidget);
-  });
-
   testWidgets('filter All shows items without filtering them out', (
     tester,
   ) async {
