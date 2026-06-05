@@ -47,6 +47,13 @@ final appRouter = GoRouter(
       path: '/bookmarks',
       builder: (context, state) => const BookmarksScreen(),
     ),
+    // Also reachable from outside ShellRoute (e.g. report detail screen).
+    GoRoute(
+      path: '/compare-push',
+      builder: (context, state) => CompareScreen(
+        anchorItem: state.extra is NewsItem ? state.extra as NewsItem : null,
+      ),
+    ),
     GoRoute(
       path: '/report/new',
       builder: (context, state) => const ReportingScreen(),
