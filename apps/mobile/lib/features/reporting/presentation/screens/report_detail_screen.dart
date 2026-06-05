@@ -45,6 +45,19 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   int _imageIndex = 0;
 
+  void _showShareSheet(BuildContext ctx, NewsItem item) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) =>
+          _ShareSheet(item: item, onClose: () => Navigator.of(sheetCtx).pop()),
+    );
+  }
+
   Future<void> _castVote(String type) async {
     final ds = ref.read(voteDatasourceProvider);
     await ds.castVote(widget.item.id, type);
@@ -86,6 +99,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   bookmarked: bookmarked,
                   onBookmark: () =>
                       ref.read(bookmarkNotifierProvider.notifier).toggle(item),
+                  onShare: () => _showShareSheet(context, item),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -109,7 +123,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             onConfirm: () => _castVote('confirm'),
                             onFlag: () => _castVote('dispute'),
                           ),
-                        _CompareCTA(item: item),
+                        _CompareCTA(
+                          item: item,
+                          onCompare: () =>
+                              context.push('/compare-push', extra: item),
+                        ),
                         _DiscussionSection(item: item, comments: comments),
                       ],
                     ),
@@ -129,6 +147,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                 reportId: item.id,
                 title: item.title,
               ),
+              onShare: () => _showShareSheet(context, item),
             ),
           ),
         ],
@@ -143,10 +162,12 @@ class _TopBar extends StatelessWidget {
   final NewsItem item;
   final bool bookmarked;
   final VoidCallback onBookmark;
+  final VoidCallback onShare;
   const _TopBar({
     required this.item,
     required this.bookmarked,
     required this.onBookmark,
+    required this.onShare,
   });
 
   @override
@@ -192,7 +213,7 @@ class _TopBar extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.share_outlined, size: 18),
-            onPressed: () {},
+            onPressed: onShare,
             color: _P.inkSecondary,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
@@ -636,14 +657,15 @@ class _VoteButton extends StatelessWidget {
 
 class _CompareCTA extends StatelessWidget {
   final NewsItem item;
-  const _CompareCTA({required this.item});
+  final VoidCallback onCompare;
+  const _CompareCTA({required this.item, required this.onCompare});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: GestureDetector(
-        onTap: () => context.push('/compare', extra: item),
+        onTap: onCompare,
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -855,7 +877,12 @@ class _CommentPreviewCard extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   final bool isCitizen;
   final VoidCallback onComment;
-  const _ActionBar({required this.isCitizen, required this.onComment});
+  final VoidCallback onShare;
+  const _ActionBar({
+    required this.isCitizen,
+    required this.onComment,
+    required this.onShare,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -883,7 +910,7 @@ class _ActionBar extends StatelessWidget {
                 label: 'Share',
                 icon: Icons.share_outlined,
                 outlined: false,
-                onTap: () {},
+                onTap: onShare,
               ),
             ),
           ] else
@@ -892,7 +919,7 @@ class _ActionBar extends StatelessWidget {
                 label: 'Share',
                 icon: Icons.share_outlined,
                 outlined: false,
-                onTap: () {},
+                onTap: onShare,
               ),
             ),
         ],
@@ -943,6 +970,244 @@ class _BarButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Share sheet ───────────────────────────────────────────────────────────────
+
+class _ShareSheet extends StatelessWidget {
+  final NewsItem item;
+  final VoidCallback onClose;
+  const _ShareSheet({required this.item, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = item.mediaUrls.isNotEmpty
+        ? item.mediaUrls.first
+        : item.imageUrl;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _P.navySoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    color: _P.navy,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Share report',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: _P.ink,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Sharing never reveals the reporter',
+                        style: TextStyle(fontSize: 13, color: _P.inkTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onClose,
+                  icon: const Icon(
+                    Icons.close,
+                    color: _P.inkTertiary,
+                    size: 20,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Preview card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _P.raised,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _P.hairlineSoft),
+              ),
+              child: Row(
+                children: [
+                  if (imageUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, e, s) =>
+                              Container(color: const Color(0xFF5C3317)),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5C3317),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FRONTLINE.APP/R/${item.id.substring(0, 6).toUpperCase()}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: _P.inkTertiary,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _P.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Share icons row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _ShareIcon(
+                  icon: Icons.link,
+                  label: 'Copy link',
+                  onTap: () {
+                    onClose();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Link copied')),
+                    );
+                  },
+                ),
+                _ShareIcon(
+                  icon: Icons.chat_bubble_outline,
+                  label: 'Signal',
+                  onTap: onClose,
+                ),
+                _ShareIcon(
+                  icon: Icons.send_outlined,
+                  label: 'Telegram',
+                  onTap: onClose,
+                ),
+                _ShareIcon(
+                  icon: Icons.message_outlined,
+                  label: 'WhatsApp',
+                  onTap: onClose,
+                ),
+                _ShareIcon(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  onTap: onClose,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Privacy note
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.shield_outlined, size: 14, color: _P.navy),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'The shared link contains only the public report — no token, no device info, nothing tying it to the original reporter.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _P.inkSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _ShareIcon({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: _P.raised,
+              shape: BoxShape.circle,
+              border: Border.all(color: _P.hairline),
+            ),
+            child: Icon(icon, color: _P.inkSecondary, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: _P.inkTertiary),
+          ),
+        ],
       ),
     );
   }
