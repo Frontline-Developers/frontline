@@ -6,11 +6,17 @@ A privacy-first, location-based citizen reporting and news platform. Submit anon
 
 ## Features
 
-- **Map Feed** — Interactive Mapbox map with real-time citizen reports, custom SVG markers, and dynamic clustering
-- **Live Feed** — Chronological split-timeline of citizen reports and GDELT wire news
-- **Anonymous Reporting** — Multi-step form with camera/gallery uploads; coordinates fuzzed ±3km server-side before any storage
-- **Confirm / Dispute** — Community consensus system with duplicate-vote protection
-- **My Reports** — Personal submission history with offline support
+- **Map Feed** — Interactive flutter_map/OpenStreetMap map with real-time citizen reports, radius filter, category/time filters, and "You are here" GPS toggle
+- **Live Feed** — Combined timeline of citizen reports and GDELT wire news with inline vote counts and comment previews
+- **Anonymous Reporting** — Multi-step form (describe → location → evidence); coordinates fuzzed ±3km server-side before any storage; up to 5 photos with per-photo remove
+- **Confirm / Dispute** — Community consensus system; Cloud Functions atomically update vote counts and flip report status at threshold
+- **Comments** — Threaded discussion on each report; pinned comments; sort by newest / top / oldest
+- **Search** — Full-text AND keyword search across titles, body, location, category; recent searches; "What's Going On" top-5 trending countries
+- **Compare** — Groups reports and wire news by category + date into SUPPORTS / CONTRADICTS / UNVERIFIED evidence timelines
+- **Alerts** — Subscribe to a location + category combo; FCM push dispatched by Cloud Function on new matching reports
+- **Bookmarks** — Save any feed item for later
+- **PIN Gate** — Mandatory 6-digit PIN on every launch; biometric unlock opt-in (Android); "Forgot PIN" wipes all local data
+- **My Reports** — Personal submission history with status filter
 - **Privacy by design** — Anonymous Firebase Auth, no PII stored, EXIF stripped from all media, no IP logging
 
 ---
@@ -19,14 +25,14 @@ A privacy-first, location-based citizen reporting and news platform. Submit anon
 
 | Layer | Technology |
 |---|---|
-| Framework | Flutter 3.41.7 · Dart 3.x |
+| Framework | Flutter 3.41+ · Dart 3.x |
 | State management | Riverpod 3.x (`Notifier` pattern) |
 | Navigation | GoRouter 17.x |
-| Maps | Mapbox Flutter SDK 2.x |
-| Backend | Firebase (Auth · Firestore · Storage · Functions) |
+| Maps | flutter_map 8.x + OpenStreetMap tiles (no token, web + mobile parity) |
 | Geo queries | geoflutterfire_plus |
+| Backend | Firebase (Auth · Firestore · Storage · Functions) |
 | Models | Freezed · json_serializable |
-| Cloud Functions | TypeScript · Node 24 · firebase-functions v7 |
+| Cloud Functions | TypeScript · Node 24 · firebase-functions v2 |
 | CI/CD | GitHub Actions |
 
 ---
@@ -35,8 +41,8 @@ A privacy-first, location-based citizen reporting and news platform. Submit anon
 
 | Tool | Version | Install |
 |---|---|---|
-| Flutter | 3.41.7 (stable) | [flutter.dev](https://docs.flutter.dev/get-started/install) |
-| Dart | ≥ 3.9 | bundled with Flutter |
+| Flutter | 3.41+ (stable) | [flutter.dev](https://docs.flutter.dev/get-started/install) |
+| Dart | ≥ 3.x | bundled with Flutter |
 | Node.js | ≥ 24 | [nodejs.org](https://nodejs.org) |
 | Java JDK | 21 | [adoptium.net](https://adoptium.net) |
 | Firebase CLI | latest | `npm install -g firebase-tools` |
@@ -65,7 +71,6 @@ The setup script:
 - Runs `flutter pub get` and `dart run build_runner build`
 - Installs Cloud Functions npm dependencies
 - Creates `apps/mobile/.env` from the example file
-- Prompts for your **Mapbox access token** and saves it to `.env`
 - Prompts for your **Firebase project ID** and runs `flutterfire configure`
 
 ### 3. Start developing
@@ -98,23 +103,34 @@ frontline/
 │   │   ├── core/
 │   │   │   ├── router/        GoRouter configuration + bottom nav shell
 │   │   │   ├── theme/         AppColors, AppTheme (dark journalism palette)
-│   │   │   └── utils/         location_fuzzing.dart (±3km algorithm)
-│   │   ├── features/
-│   │   │   ├── auth/          Anonymous Firebase Auth
-│   │   │   ├── map/           Mapbox map feed + GeoFire queries
-│   │   │   ├── feed/          Citizen + wire news timeline
-│   │   │   ├── reporting/     Multi-step anonymous report form
-│   │   │   └── my_reports/    Personal submission history
-│   │   └── shared/widgets/
-│   ├── test/features/         Tests mirror lib/features/ structure
+│   │   │   └── providers/     Cross-feature providers (e.g. bookmarkProvider)
+│   │   └── features/
+│   │       ├── auth/          Anonymous Firebase Auth (canonical reference impl)
+│   │       ├── map/           flutter_map + OSM tiles, GeoFire radius queries
+│   │       ├── feed/          Citizen + wire news combined timeline
+│   │       ├── reporting/     Multi-step anonymous report form + ReportDetailScreen
+│   │       ├── comments/      Threaded comments with pin + sort
+│   │       ├── search/        Full-text search overlay with trending countries
+│   │       ├── compare/       Evidence timeline (SUPPORTS/CONTRADICTS/UNVERIFIED)
+│   │       ├── alerts/        Location + category alert subscriptions + FCM
+│   │       ├── bookmarks/     Saved-item bookmarks screen
+│   │       ├── pin/           6-digit PIN gate + biometric unlock
+│   │       ├── splash/        Animated radar splash screen
+│   │       └── my_reports/    Personal submission history
+│   ├── test/features/         Tests mirror lib/features/ structure (546 tests)
 │   ├── android/
 │   ├── web/
 │   └── pubspec.yaml
 ├── functions/                 Firebase Cloud Functions (TypeScript)
 │   └── src/
 │       ├── index.ts
-│       ├── gdelt.ts           Scheduled GDELT news fetcher
-│       └── locationFuzzing.ts Callable location fuzz (±3km, server-side)
+│       ├── gdelt.ts                  Scheduled GDELT news fetcher (every 30 min)
+│       ├── locationFuzzing.ts        Callable — fuzz submitted coords ±3km
+│       ├── confirmReport.ts          Callable — atomic confirm vote + status flip
+│       ├── disputeReport.ts          Callable — atomic dispute vote + status flip
+│       ├── evaluateReportTrust.ts    Triggered — heuristic trust scoring
+│       ├── sendAlertNotifications.ts Triggered — FCM push to matching subscribers
+│       └── admin.ts                  Internal admin helpers
 ├── firestore.rules
 ├── storage.rules
 ├── firebase.json
@@ -123,8 +139,7 @@ frontline/
 │   └── build.yml              Compile check (APK + web) on every PR
 ├── .claude/                   Claude Code agent config (skills, hooks, agents)
 ├── CLAUDE.md                  AI agent guide — read before every session
-├── PROJECT_CONTEXT.md         Full WBS, Firestore schema, team assignments
-└── PLAN.md                    Project roadmap
+└── PROJECT_CONTEXT.md         Full WBS, Firestore schema, team assignments
 ```
 
 Each feature follows Clean Architecture:
@@ -225,7 +240,7 @@ Use the `/feature-scaffold` skill in Claude Code to generate the full Clean Arch
 feat(map): add GeoFire radius query to map datasource
 fix(reporting): call fuzzReportLocation CF before Firestore write
 test(feed): add widget tests for empty and error states
-chore(deps): upgrade mapbox_maps_flutter to 2.5.0
+chore(deps): upgrade flutter_map to 8.1.0
 ```
 
 Types: `feat` · `fix` · `docs` · `test` · `refactor` · `chore` · `ci` · `perf` · `revert`
@@ -250,12 +265,9 @@ Copy `apps/mobile/.env.example` to `apps/mobile/.env` (gitignored):
 ```env
 # true → local emulators | false → production Firebase
 USE_EMULATOR=true
-
-# Get a token at https://account.mapbox.com/access-tokens/
-MAPBOX_ACCESS_TOKEN=your_token_here
 ```
 
-Both values are passed to Flutter via `--dart-define` and never bundled in committed source.
+This value is passed to Flutter via `--dart-define` and never bundled in committed source. OpenStreetMap tiles require no access token.
 
 ---
 
@@ -278,11 +290,12 @@ This generates `apps/mobile/lib/firebase_options.dart` and `apps/mobile/android/
 | Storage | 9199 |
 | Emulator UI | 4000 |
 
-### Deploying Cloud Functions
+### Deploying
 
 ```bash
 # Requires Blaze (pay-as-you-go) plan
 firebase deploy --only functions
+firebase deploy --only firestore:rules,storage:rules
 ```
 
 Use the `/firebase-deploy` skill in Claude Code for guided deployment with pre-deploy checks.
@@ -304,7 +317,6 @@ Two GitHub Actions workflows run on every PR:
 |---|---|
 | `FIREBASE_OPTIONS` | `base64 -w 0 apps/mobile/lib/firebase_options.dart` |
 | `GOOGLE_SERVICES_JSON` | `base64 -w 0 apps/mobile/android/app/google-services.json` |
-| `MAPBOX_ACCESS_TOKEN` | Plain Mapbox public access token |
 
 ---
 
@@ -327,7 +339,7 @@ Two GitHub Actions workflows run on every PR:
 | Nicha | Backend/Flutter — Firestore, Auth, Cloud Functions |
 | Natthanicha | UI/UX + Flutter — design system, Reporting Form |
 | Kalyatorn | UI/UX + Flutter — Map UI, Timeline, My Reports |
-| May | Flutter/Mapbox + Cloud Functions — GDELT, theming |
+| May | Flutter + Cloud Functions — GDELT, theming |
 
 ---
 
