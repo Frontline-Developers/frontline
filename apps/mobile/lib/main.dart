@@ -20,6 +20,31 @@ import 'firebase_options.dart';
 
 const _useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: true);
 
+Future<void> _ensureAnonymousAuth() async {
+  if (FirebaseAuth.instance.currentUser != null) {
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance.signInAnonymously();
+  } catch (e) {
+    debugPrint('Anonymous sign-in failed: $e');
+  }
+
+  if (FirebaseAuth.instance.currentUser != null) {
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance
+        .authStateChanges()
+        .firstWhere((user) => user != null)
+        .timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Waiting for auth state failed: $e');
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -44,23 +69,7 @@ Future<void> main() async {
 
   // Sign in anonymously so all Firestore rules (request.auth != null) pass.
   // Required in both emulator and prod — without this the feed gets permission-denied.
-  if (FirebaseAuth.instance.currentUser == null) {
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } catch (e) {
-      debugPrint('Anonymous sign-in failed: $e');
-      // Schedule a single retry after a brief delay — covers the common case
-      // where the network is not ready at cold start (e.g. app opens before
-      // connectivity is fully established).
-      Future.delayed(const Duration(seconds: 5), () async {
-        if (FirebaseAuth.instance.currentUser == null) {
-          try {
-            await FirebaseAuth.instance.signInAnonymously();
-          } catch (_) {}
-        }
-      });
-    }
-  }
+  await _ensureAnonymousAuth();
 
   final prefs = await SharedPreferences.getInstance();
   final searchRepo = SearchRepositoryImpl(SearchDatasourceImpl(prefs));
