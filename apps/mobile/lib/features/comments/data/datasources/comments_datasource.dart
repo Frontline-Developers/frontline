@@ -47,11 +47,18 @@ class CommentsDatasourceImpl implements CommentsDatasource {
       createdAt: DateTime.now(),
       upvotes: 0,
     );
-    await FirebaseFirestore.instance
+    final batch = FirebaseFirestore.instance.batch();
+    final commentRef = FirebaseFirestore.instance
         .collection('reports')
         .doc(reportId)
         .collection('comments')
-        .add(model.toFirestore());
+        .doc();
+    batch.set(commentRef, model.toFirestore());
+    batch.update(
+      FirebaseFirestore.instance.collection('reports').doc(reportId),
+      {'commentCount': FieldValue.increment(1)},
+    );
+    await batch.commit();
   }
 
   @override

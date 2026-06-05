@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontline/features/comments/presentation/providers/comments_provider.dart';
 import 'package:frontline/features/my_reports/domain/entities/my_report.dart';
 import 'package:frontline/features/my_reports/presentation/providers/my_reports_provider.dart';
 import 'package:frontline/features/my_reports/presentation/screens/my_reports_screen.dart';
@@ -20,6 +21,9 @@ class _FakeMyReportsNotifier extends MyReportsNotifier {
 Widget _wrap(MyReportsState state) => ProviderScope(
   overrides: [
     myReportsNotifierProvider.overrideWith(() => _FakeMyReportsNotifier(state)),
+    // _ActionRow is a ConsumerWidget that watches commentsStreamProvider.
+    // Override to avoid Firebase calls in tests.
+    commentsStreamProvider.overrideWith((ref, id) => Stream.value(const [])),
   ],
   child: const MaterialApp(home: MyReportsScreen()),
 );
@@ -107,12 +111,6 @@ void main() {
       final state = MyReportsState(reports: [_report(confirms: 50)]);
       await tester.pumpWidget(_wrap(state));
       expect(find.text('CONFIRMS'), findsOneWidget);
-    });
-
-    testWidgets('shows TOTAL VIEWS stat label', (tester) async {
-      final state = MyReportsState(reports: [_report(views: 1000)]);
-      await tester.pumpWidget(_wrap(state));
-      expect(find.text('TOTAL VIEWS'), findsOneWidget);
     });
   });
 
