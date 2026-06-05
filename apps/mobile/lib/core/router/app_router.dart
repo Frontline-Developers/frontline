@@ -11,6 +11,7 @@ import '../../features/my_reports/presentation/screens/report_detail_screen.dart
 import '../../features/reporting/presentation/screens/report_detail_screen.dart'
     as reporting;
 import '../../features/reporting/presentation/screens/reporting_screen.dart';
+import '../../features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 
 const _navy = Color(0xFF1E3A8A);
@@ -39,6 +40,10 @@ final appRouter = GoRouter(
           builder: (context, state) => const MyReportsScreen(),
         ),
       ],
+    ),
+    GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarksScreen(),
     ),
     GoRoute(
       path: '/report/new',

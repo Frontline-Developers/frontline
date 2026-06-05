@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/providers/bookmark_provider.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/providers/comments_provider.dart';
@@ -42,7 +44,6 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   int _imageIndex = 0;
-  bool _bookmarked = false;
 
   Future<void> _castVote(String type) async {
     final ds = ref.read(voteDatasourceProvider);
@@ -54,6 +55,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final isCitizen = item.source == NewsSource.citizen;
+    final bookmarked = ref
+        .watch(bookmarkNotifierProvider)
+        .any((i) => i.id == item.id);
 
     final voteAsync = ref.watch(voteProvider(item.id));
     final userVote = voteAsync.when(
@@ -79,8 +83,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               children: [
                 _TopBar(
                   item: item,
-                  bookmarked: _bookmarked,
-                  onBookmark: () => setState(() => _bookmarked = !_bookmarked),
+                  bookmarked: bookmarked,
+                  onBookmark: () =>
+                      ref.read(bookmarkNotifierProvider.notifier).toggle(item),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
