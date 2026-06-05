@@ -5,8 +5,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/bookmark_provider.dart';
-import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../../core/providers/device_country_provider.dart';
+import '../../../../core/widgets/scroll_nav_buttons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
