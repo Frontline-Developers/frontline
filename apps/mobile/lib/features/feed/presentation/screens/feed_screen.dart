@@ -718,17 +718,19 @@ class _CompareWithRow extends StatelessWidget {
           children: [
             const Icon(Icons.compare_arrows, size: 15, color: _P.navy),
             const SizedBox(width: 6),
-            Text(
-              item.category != null
-                  ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
-                  : 'Compare with other reports',
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: _P.navy,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                item.category != null
+                    ? 'Compare with other ${_categoryLabel(item.category!).toLowerCase()} reports'
+                    : 'Compare with other reports',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: _P.navy,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const Spacer(),
             const Icon(Icons.chevron_right, size: 16, color: _P.inkTertiary),
           ],
         ),
