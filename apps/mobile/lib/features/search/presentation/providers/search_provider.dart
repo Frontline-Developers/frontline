@@ -124,10 +124,21 @@ List<TrendingCountry> computeTrendingCountries(
     if (item.status == ItemStatus.disputed && !includeDisputed) continue;
 
     final countries = <String>{};
-    for (final loc in item.locations) {
-      final key = loc.toLowerCase().trim();
-      final country = _kCityToCountry[key];
-      if (country != null) countries.add(country);
+
+    if (item.source == NewsSource.citizen) {
+      for (final loc in item.locations) {
+        final trimmed = loc.trim();
+        if (trimmed.isEmpty) continue;
+        final parts = trimmed.split(',');
+        final country = parts.last.trim();
+        if (country.isNotEmpty) countries.add(country);
+      }
+    } else {
+      for (final loc in item.locations) {
+        final key = loc.toLowerCase().trim();
+        final country = _kCityToCountry[key];
+        if (country != null) countries.add(country);
+      }
     }
 
     for (final c in countries) {
