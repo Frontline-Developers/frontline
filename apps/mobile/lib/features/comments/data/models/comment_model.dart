@@ -8,6 +8,8 @@ class CommentModel {
   final String authorToken;
   final DateTime createdAt;
   final int upvotes;
+  final int downvotes;
+  final String? parentCommentId;
 
   const CommentModel({
     required this.id,
@@ -16,6 +18,8 @@ class CommentModel {
     required this.authorToken,
     required this.createdAt,
     required this.upvotes,
+    this.downvotes = 0,
+    this.parentCommentId,
   });
 
   factory CommentModel.fromFirestore(DocumentSnapshot doc) {
@@ -34,6 +38,8 @@ class CommentModel {
       authorToken: data['authorToken'] as String? ?? '??????',
       createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
       upvotes: (data['upvotes'] as num?)?.toInt() ?? 0,
+      downvotes: (data['downvotes'] as num?)?.toInt() ?? 0,
+      parentCommentId: data['parentCommentId'] as String?,
     );
   }
 
@@ -43,6 +49,8 @@ class CommentModel {
     'authorToken': authorToken,
     'createdAt': FieldValue.serverTimestamp(),
     'upvotes': 0,
+    'downvotes': 0,
+    if (parentCommentId != null) 'parentCommentId': parentCommentId,
   };
 
   Comment toEntity() => Comment(
@@ -52,5 +60,7 @@ class CommentModel {
     authorToken: authorToken,
     createdAt: createdAt,
     upvotes: upvotes,
+    downvotes: downvotes,
+    parentCommentId: parentCommentId,
   );
 }
