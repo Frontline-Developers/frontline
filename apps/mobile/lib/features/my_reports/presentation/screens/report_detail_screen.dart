@@ -6,7 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_utils.dart';
 import '../../../comments/presentation/providers/comments_provider.dart';
 import '../../../comments/presentation/widgets/comments_sheet.dart';
-import '../../../feed/presentation/providers/vote_provider.dart';
+import '../../../../core/providers/vote_provider.dart';
 import '../../domain/entities/my_report.dart';
 
 // ── Palette — mirrors reporting/presentation/screens/report_detail_screen ─────

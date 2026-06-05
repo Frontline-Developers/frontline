@@ -54,7 +54,6 @@ class CommentsDatasourceImpl implements CommentsDatasource {
         .collection('comments')
         .doc();
     batch.set(commentRef, model.toFirestore());
-    // Keep the denormalized counter on the report document in sync.
     batch.update(
       FirebaseFirestore.instance.collection('reports').doc(reportId),
       {'commentCount': FieldValue.increment(1)},

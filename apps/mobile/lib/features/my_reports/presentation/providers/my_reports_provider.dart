@@ -47,7 +47,6 @@ class MyReportsState {
   // Aggregate stats
   int get verifiedCount => countFor(MyReportsFilter.verified);
   int get totalConfirms => reports.fold(0, (s, r) => s + r.confirms);
-  int get totalViews => reports.fold(0, (s, r) => s + r.views);
 
   MyReportsState copyWith({
     List<MyReport>? reports,
