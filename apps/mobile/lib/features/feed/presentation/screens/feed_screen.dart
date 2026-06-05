@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/bookmark_provider.dart';
@@ -531,7 +531,7 @@ class _CitizenCard extends ConsumerWidget {
                           const SizedBox(width: 4),
                           _ActionBtn(
                             icon: Icons.share_outlined,
-                            onTap: () => _share(item),
+                            onTap: () => _showShareSheet(context, item),
                           ),
                         ],
                       ),
@@ -733,7 +733,7 @@ class _WireCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           _ActionBtn(
                             icon: Icons.share_outlined,
-                            onTap: () => _share(item),
+                            onTap: () => _showShareSheet(context, item),
                           ),
                         ],
                       ),
@@ -921,9 +921,329 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-void _share(NewsItem item) {
-  final text = item.url != null ? '${item.title}\n${item.url}' : item.title;
-  Share.share(text);
+void _showShareSheet(BuildContext context, NewsItem item) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _FeedShareSheet(item: item),
+  );
+}
+
+// ── Share sheet ───────────────────────────────────────────────────────────────
+
+class _FeedShareSheet extends StatelessWidget {
+  final NewsItem item;
+  const _FeedShareSheet({required this.item});
+
+  String get _reportUrl => 'frontline.app/r/${item.id}';
+  String get _fullUrl => 'https://$_reportUrl';
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = item.source == NewsSource.citizen
+        ? (item.mediaUrls.isNotEmpty ? item.mediaUrls.first : null)
+        : item.imageUrl;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Handle ──────────────────────────────────────────────────────
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDEE2E6),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            // ── Header ──────────────────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    color: Color(0xFF495057),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Share report',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF212529),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Sharing never reveals the reporter',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF868E96),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.close,
+                    color: Color(0xFF868E96),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // ── Preview card ─────────────────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE9ECEF)),
+              ),
+              child: Row(
+                children: [
+                  if (imageUrl != null)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(11),
+                        bottomLeft: Radius.circular(11),
+                      ),
+                      child: Image.network(
+                        imageUrl,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, e, s) => const _ShareThumb(),
+                      ),
+                    )
+                  else
+                    const ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(11),
+                        bottomLeft: Radius.circular(11),
+                      ),
+                      child: _ShareThumb(),
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _reportUrl.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF868E96),
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF212529),
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // ── Share buttons ─────────────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _ShareBtn(
+                  icon: Icons.link_rounded,
+                  label: 'Copy link',
+                  color: const Color(0xFF868E96),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: _fullUrl));
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Link copied')),
+                    );
+                  },
+                ),
+                _ShareBtn(
+                  icon: Icons.signal_cellular_alt,
+                  label: 'Signal',
+                  color: const Color(0xFF2C6BED),
+                  onTap: () {
+                    launchUrl(
+                      Uri.parse('https://signal.me/share?url=$_fullUrl'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                _ShareBtn(
+                  icon: Icons.send_rounded,
+                  label: 'Telegram',
+                  color: const Color(0xFF0088CC),
+                  onTap: () {
+                    launchUrl(
+                      Uri.parse(
+                        'https://t.me/share/url?url=${Uri.encodeComponent(_fullUrl)}&text=${Uri.encodeComponent(item.title)}',
+                      ),
+                      mode: LaunchMode.externalApplication,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                _ShareBtn(
+                  icon: Icons.chat_rounded,
+                  label: 'WhatsApp',
+                  color: const Color(0xFF25D366),
+                  onTap: () {
+                    launchUrl(
+                      Uri.parse(
+                        'https://wa.me/?text=${Uri.encodeComponent('${item.title}\n$_fullUrl')}',
+                      ),
+                      mode: LaunchMode.externalApplication,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                _ShareBtn(
+                  icon: Icons.mail_outline_rounded,
+                  label: 'Email',
+                  color: const Color(0xFFE8421A),
+                  onTap: () {
+                    launchUrl(
+                      Uri.parse(
+                        'mailto:?subject=${Uri.encodeComponent(item.title)}&body=${Uri.encodeComponent(_fullUrl)}',
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // ── Privacy note ─────────────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.verified_user_outlined,
+                  size: 14,
+                  color: Color(0xFF1E3A8A),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'The shared link contains only the public report — no token, no device info, nothing tying it to the original reporter.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF495057),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareThumb extends StatelessWidget {
+  const _ShareThumb();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      color: const Color(0xFF1E3A8A),
+      child: const Icon(
+        Icons.article_outlined,
+        color: Color(0x44FFFFFF),
+        size: 28,
+      ),
+    );
+  }
+}
+
+class _ShareBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ShareBtn({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF495057)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BookmarkBtn extends ConsumerWidget {
