@@ -26,9 +26,7 @@ class _FakeBookmarkNotifier extends BookmarkNotifier {
 
 Widget _wrap(List<NewsItem> items) => ProviderScope(
   overrides: [
-    bookmarkNotifierProvider.overrideWith(
-      () => _FakeBookmarkNotifier(items),
-    ),
+    bookmarkNotifierProvider.overrideWith(() => _FakeBookmarkNotifier(items)),
   ],
   child: const MaterialApp(home: BookmarksScreen()),
 );
