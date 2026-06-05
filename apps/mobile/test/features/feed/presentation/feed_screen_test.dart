@@ -29,6 +29,7 @@ NewsItem _citizen({
   String title = 'Strike observed',
   ItemStatus? status,
   String? category = 'combat',
+  int commentCount = 0,
 }) => NewsItem(
   id: id,
   title: title,
@@ -36,6 +37,7 @@ NewsItem _citizen({
   publishedAt: DateTime(2026, 6, 4, 9),
   status: status,
   category: category,
+  commentCount: commentCount,
 );
 
 NewsItem _wire({String id = 'w1', String title = 'AP News: Update'}) =>
@@ -91,6 +93,36 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Shelling near Kharkiv'), findsOneWidget);
+  });
+
+  testWidgets('shows comment count on the post comment button', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        FeedState(items: [_citizen(title: 'Strike observed', commentCount: 3)]),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('3'), findsOneWidget);
+  });
+
+  testWidgets('shows comment count on the post comment button', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        FeedState(
+          items: [
+            _citizen(
+              title: 'Strike observed',
+              commentCount: 3,
+              category: 'combat',
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('3'), findsOneWidget);
   });
 
   testWidgets('filter All shows items without filtering them out', (

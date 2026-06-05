@@ -70,6 +70,7 @@ class ReportFeedModel {
   final List<String> mediaUrls;
   final int confirmCount;
   final int disputeCount;
+  final int commentCount;
   final DateTime publishedAt;
 
   const ReportFeedModel({
@@ -81,6 +82,7 @@ class ReportFeedModel {
     required this.mediaUrls,
     required this.confirmCount,
     required this.disputeCount,
+    required this.commentCount,
     required this.publishedAt,
   });
 
@@ -111,6 +113,7 @@ class ReportFeedModel {
       mediaUrls: List<String>.from(data['mediaUrls'] as List? ?? []),
       confirmCount: (data['confirmCount'] as num?)?.toInt() ?? 0,
       disputeCount: (data['disputeCount'] as num?)?.toInt() ?? 0,
+      commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       publishedAt: publishedAt,
     );
   }
@@ -126,6 +129,7 @@ class ReportFeedModel {
     mediaUrls: mediaUrls,
     confirmCount: confirmCount,
     disputeCount: disputeCount,
+    commentCount: commentCount,
   );
 
   // Split description at a word boundary ≤90 chars for use as a card title.

@@ -442,6 +442,7 @@ class _CitizenCard extends ConsumerWidget {
                           const SizedBox(width: 14),
                           _ActionBtn(
                             icon: Icons.chat_bubble_outline,
+                            count: item.commentCount,
                             onTap: () => showCommentsSheet(
                               context,
                               reportId: item.id,
