@@ -151,7 +151,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.initState();
     // Kick off the initial data load centred on Ukraine
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(mapNotifierProvider.notifier).watchArea(49.0, 31.5, 600);
+      // 20015 km ≈ half the Earth's circumference — covers every report globally.
+      ref.read(mapNotifierProvider.notifier).watchArea(0, 0, 20015);
     });
   }
 
