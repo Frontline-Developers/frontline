@@ -31,9 +31,9 @@ class MapDatasourceImpl implements MapDatasource {
         .subscribeWithin(
           center: GeoFirePoint(GeoPoint(lat, lng)),
           radiusInKm: radiusKm,
-          field: 'geohash',
-          // New documents store geohash as a nested map {geohash, geopoint}.
-          // Fall back to the top-level 'location' field for legacy documents.
+          // Reports store geohash as a nested map {geohash: string, geopoint: GeoPoint}.
+          // geoflutterfire_plus range-queries on this path for the hash string.
+          field: 'geohash.geohash',
           geopointFrom: (data) {
             final geo = data['geohash'];
             if (geo is Map<String, dynamic>) return geo['geopoint'] as GeoPoint;
