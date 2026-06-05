@@ -133,7 +133,7 @@ class ReportFeedModel {
     confirmCount: confirmCount,
     disputeCount: disputeCount,
     commentCount: commentCount,
-    locations: locationLabel.isNotEmpty ? [locationLabel] : const [],
+    locations: locationLabel.isNotEmpty ? [locationLabel] : [],
   );
 
   // Split description at a word boundary ≤90 chars for use as a card title.

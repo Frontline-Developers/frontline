@@ -21,6 +21,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
   late final MapController _mapController;
   bool _locating = false;
   bool _geocoding = false;
+  bool _confirmed = false;
   Timer? _reverseGeocodeTimer;
   LatLng _displayCenter = _defaultCenter;
 
@@ -54,6 +55,12 @@ class _StepLocationState extends ConsumerState<StepLocation> {
         .read(reportingNotifierProvider.notifier)
         .updateDraft(lat: camera.center.latitude, lng: camera.center.longitude);
 
+    // Show spinner immediately and clear confirmed state on new pan.
+    setState(() {
+      if (!_geocoding) _geocoding = true;
+      _confirmed = false;
+    });
+
     // Debounce reverse geocoding — cancel any pending call and reschedule.
     _reverseGeocodeTimer?.cancel();
     _reverseGeocodeTimer = Timer(const Duration(milliseconds: 800), () {
@@ -74,6 +81,7 @@ class _StepLocationState extends ConsumerState<StepLocation> {
         ref
             .read(reportingNotifierProvider.notifier)
             .updateDraft(locationLabel: label);
+        if (mounted) setState(() => _confirmed = true);
       }
     } finally {
       if (mounted) setState(() => _geocoding = false);
@@ -354,25 +362,25 @@ class _StepLocationState extends ConsumerState<StepLocation> {
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(14, 10, 14, 14),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                 child: Text.rich(
                   TextSpan(
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11.5,
                       color: ReportPalette.inkSecondary,
                       height: 1.5,
                     ),
                     children: [
-                      TextSpan(text: 'The pin shows your pick. We '),
-                      TextSpan(
+                      const TextSpan(text: 'The pin shows your pick. We '),
+                      const TextSpan(
                         text: 'fuzz the coordinates ±3km on the server',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: ReportPalette.ink,
                         ),
                       ),
-                      TextSpan(
+                      const TextSpan(
                         text:
                             ' before storage, so the report can\'t be traced to your home but the affected area is still meaningful.',
                       ),
@@ -380,10 +388,95 @@ class _StepLocationState extends ConsumerState<StepLocation> {
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: _confirmed
+                      ? _ConfirmedBadge(label: _labelController.text)
+                      : OutlinedButton.icon(
+                          onPressed: _geocoding
+                              ? null
+                              : () => _reverseGeocode(
+                                  _displayCenter.latitude,
+                                  _displayCenter.longitude,
+                                ),
+                          icon: _geocoding
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: ReportPalette.navy,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.my_location,
+                                  size: 16,
+                                  color: ReportPalette.navy,
+                                ),
+                          label: Text(
+                            _geocoding
+                                ? 'Looking up location…'
+                                : 'Confirm this location',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: ReportPalette.navy,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: const BorderSide(
+                              color: ReportPalette.navy,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ConfirmedBadge extends StatelessWidget {
+  final String label;
+  const _ConfirmedBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF6EE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E7D32), width: 1.2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check_circle, size: 16, color: Color(0xFF2E7D32)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label.isNotEmpty ? 'Saved as "$label"' : 'Location confirmed',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2E7D32),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
