@@ -252,13 +252,13 @@ No AI attribution in commits or PRs. Write as a developer would.
 
 ## 13. Test Coverage
 
-Total: **495 tests** across 39 test files — all pass, zero analyze issues.
+Total: **501 tests** across 39 test files — all pass, zero analyze issues.
 
 | Feature | Test files | What is covered |
 |---|---|---|
 | `auth` | `auth/domain/auth_state_test.dart` | `AuthState`, `UserIdentity`, `AuthStatus` enum, `copyWith` sentinel |
 | `feed` | `feed/domain/news_item_test.dart`, `feed/presentation/feed_screen_test.dart` | `NewsItem` entity; FeedScreen loading/error/empty/loaded; all 4 filter chips |
-| `map` | `map/domain/map_filters_test.dart`, `map/data/map_report_model_test.dart`, `map/presentation/map_screen_test.dart`, `map/presentation/map_notifier_test.dart`, `map/presentation/locate_me_test.dart` | `MapFilters`/`MapTimeRange`/`MapCategory` entities; `MapReportModel.fromJson` + `toEntity` + fallbacks; MapScreen all 5 required states; `MapNotifier` all methods + `watchArea` state transitions; locate-me toggle |
+| `map` | `map/domain/map_filters_test.dart`, `map/data/map_report_model_test.dart`, `map/presentation/map_screen_test.dart`, `map/presentation/map_notifier_test.dart`, `map/presentation/locate_me_test.dart` | `MapFilters`/`MapTimeRange`/`MapCategory` entities; `MapReportModel.fromJson` + `toEntity` + fallbacks; MapScreen all 5 required states; `MapNotifier` all methods + `watchArea` state transitions + `searchLocation` (6 cases); locate-me toggle; `LocationService` now includes `searchLocation` forward-geocoding |
 | `alerts` | `alerts/domain/save_alert_test.dart`, `alerts/presentation/alert_notifier_test.dart`, `alerts/data/fcm_token_service_test.dart` | `SaveAlert` validation + boundary values (radius 1–20); `AlertNotifier` idle/saving/saved/error + `reset()`; FCM registration success + non-blocking failure |
 | `my_reports` | `my_reports/domain/my_report_test.dart`, `my_reports/presentation/my_reports_screen_test.dart` | `MyReport` entity; MyReportsScreen loading/empty/list states |
 | `comments` | `comments/domain/comment_test.dart`, `comments/presentation/apply_sort_filter_test.dart` | `Comment` entity; `applySortFilter` all 4 sort modes + edge cases |

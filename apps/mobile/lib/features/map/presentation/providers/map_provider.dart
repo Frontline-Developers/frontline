@@ -26,6 +26,9 @@ class MapState {
   final bool showUserMarker;
   final String? locationCity;
   final bool showCityLabels;
+  final bool isSearching;
+  final String? searchError;
+  final LatLng? searchedLocation;
 
   const MapState({
     this.reports = const [],
@@ -38,6 +41,9 @@ class MapState {
     this.showUserMarker = false,
     this.locationCity,
     this.showCityLabels = false,
+    this.isSearching = false,
+    this.searchError,
+    this.searchedLocation,
   });
 
   MapState copyWith({
@@ -51,6 +57,9 @@ class MapState {
     bool? showUserMarker,
     Object? locationCity = _sentinel,
     bool? showCityLabels,
+    bool? isSearching,
+    Object? searchError = _sentinel,
+    Object? searchedLocation = _sentinel,
   }) {
     return MapState(
       reports: reports ?? this.reports,
@@ -69,6 +78,13 @@ class MapState {
           ? this.locationCity
           : locationCity as String?,
       showCityLabels: showCityLabels ?? this.showCityLabels,
+      isSearching: isSearching ?? this.isSearching,
+      searchError: searchError == _sentinel
+          ? this.searchError
+          : searchError as String?,
+      searchedLocation: searchedLocation == _sentinel
+          ? this.searchedLocation
+          : searchedLocation as LatLng?,
     );
   }
 }
@@ -143,6 +159,33 @@ class MapNotifier extends Notifier<MapState> {
 
   void toggleCityLabels() =>
       state = state.copyWith(showCityLabels: !state.showCityLabels);
+
+  /// Forward-geocodes [address] and sets [searchedLocation] on success.
+  /// The map screen reacts to [searchedLocation] to move the camera and
+  /// reload reports for the new area.
+  Future<void> searchLocation(String address) async {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return;
+    state = state.copyWith(isSearching: true, searchError: null);
+    try {
+      final location = await ref
+          .read(locationServiceProvider)
+          .searchLocation(trimmed);
+      if (location == null) {
+        state = state.copyWith(
+          isSearching: false,
+          searchError: 'Location not found. Try a different search.',
+        );
+        return;
+      }
+      state = state.copyWith(isSearching: false, searchedLocation: location);
+    } catch (_) {
+      state = state.copyWith(
+        isSearching: false,
+        searchError: 'Search failed. Please try again.',
+      );
+    }
+  }
 
   /// Toggles the "You are here" marker.
   ///

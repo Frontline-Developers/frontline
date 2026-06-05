@@ -10,6 +10,10 @@ abstract interface class LocationService {
   /// Reverse-geocodes [lat]/[lng] to a human-readable city name.
   /// Returns null if geocoding fails or the result is empty.
   Future<String?> getCityName(double lat, double lng);
+
+  /// Forward-geocodes [address] to the first matching LatLng.
+  /// Returns null if no match found or on any error.
+  Future<LatLng?> searchLocation(String address);
 }
 
 class LocationServiceImpl implements LocationService {
@@ -27,10 +31,14 @@ class LocationServiceImpl implements LocationService {
         return null;
       }
 
+      // Last-known position is instant (no hardware GPS required).
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) return LatLng(last.latitude, last.longitude);
+
+      // Fresh fix with low accuracy (network/wifi) — typically <3 seconds.
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 10),
+          accuracy: LocationAccuracy.low,
         ),
       );
       return LatLng(pos.latitude, pos.longitude);
@@ -51,6 +59,17 @@ class LocationServiceImpl implements LocationService {
           : p.subAdministrativeArea?.isNotEmpty == true
           ? p.subAdministrativeArea
           : p.country;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<LatLng?> searchLocation(String address) async {
+    try {
+      final locations = await geo.locationFromAddress(address);
+      if (locations.isEmpty) return null;
+      return LatLng(locations.first.latitude, locations.first.longitude);
     } catch (_) {
       return null;
     }
