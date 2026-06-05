@@ -82,12 +82,6 @@ class _StepLocationState extends ConsumerState<StepLocation> {
             .read(reportingNotifierProvider.notifier)
             .updateDraft(locationLabel: label);
         if (mounted) setState(() => _confirmed = true);
-      } else {
-        _labelController.clear();
-        ref
-            .read(reportingNotifierProvider.notifier)
-            .updateDraft(locationLabel: '');
-        if (mounted) setState(() => _confirmed = false);
       }
     } finally {
       if (mounted) setState(() => _geocoding = false);
